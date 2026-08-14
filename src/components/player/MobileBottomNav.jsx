@@ -22,6 +22,7 @@ export default function MobileBottomNav({
       padding: '0.5rem max(1rem, env(safe-area-inset-right, 0px)) calc(0.5rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px))) max(1rem, env(safe-area-inset-left, 0px))',
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'space-around',
       boxShadow: '0 -10px 30px rgba(0,0,0,0.9)'
     }}>
       {/* Lobby Tab */}
@@ -63,6 +64,28 @@ export default function MobileBottomNav({
         <i className="fa-solid fa-clock-rotate-left" style={{ fontSize: '1.2rem' }} />
         <span>Ledger</span>
       </button>
+
+      {/* Android APK Download Tab */}
+      <a
+        href="/downloads/winning-heaven.apk"
+        download
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#4ade80',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.25rem',
+          fontSize: '0.7rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          textDecoration: 'none'
+        }}
+      >
+        <i className="fa-brands fa-android" style={{ fontSize: '1.2rem', color: '#22c55e' }} />
+        <span>App</span>
+      </a>
 
       {/* Referrals Tab */}
       <button

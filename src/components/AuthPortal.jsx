@@ -947,14 +947,39 @@ export default function AuthPortal({
       </div>
 
       {/* Support Quick Contact Footer */}
-      <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 2 }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Need help?</span>
-        <button
-          onClick={onOpenSupport}
-          style={{ background: 'transparent', border: 'none', color: 'var(--cyan-primary)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer' }}
+      <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Need help?</span>
+          <button
+            onClick={onOpenSupport}
+            style={{ background: 'transparent', border: 'none', color: 'var(--cyan-primary)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Contact Customer Support
+          </button>
+        </div>
+
+        <a
+          href="/downloads/winning-heaven.apk"
+          download
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(255, 215, 0, 0.15) 100%)',
+            border: '1px solid rgba(34, 197, 94, 0.4)',
+            borderRadius: '20px',
+            padding: '0.45rem 1rem',
+            color: '#4ade80',
+            fontSize: '0.78rem',
+            fontWeight: 800,
+            textDecoration: 'none',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+            transition: 'all 0.2s ease'
+          }}
         >
-          Contact Customer Support
-        </button>
+          <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.95rem' }} />
+          <span>Download Official Android APK</span>
+        </a>
       </div>
     </div>
   );

@@ -34,9 +34,11 @@ export default function GameDetailSheet({
   };
 
   const handleLaunch = () => {
-    const launchUrl = userAccount.loginUrl || game.loginUrl || game.url;
-    if (launchUrl) {
-      window.open(launchUrl, '_blank');
+    let launchUrl = userAccount?.loginUrl || game.link || game.loginUrl || game.url || game.downloadUrl;
+    if (launchUrl && typeof launchUrl === 'string' && launchUrl.trim()) {
+      launchUrl = launchUrl.trim();
+      const targetUrl = /^https?:\/\//i.test(launchUrl) ? launchUrl : `https://${launchUrl}`;
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
       if (showToast) showToast('Platform launch link not configured by admin.', 'info');
     }

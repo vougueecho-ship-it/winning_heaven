@@ -11,19 +11,24 @@ export default function PlayerLedger({
   onClaimRemainder,
   onDepositFromCashout
 }) {
-  const [filterType, setFilterType] = useState('ALL'); // 'ALL' | 'DEPOSIT' | 'WITHDRAW'
+  const [filterType, setFilterType] = useState('ALL'); // 'ALL' | 'DEPOSIT' | 'WITHDRAW' | 'BONUS'
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED'
 
   const filteredTxs = useMemo(() => {
     return transactions.filter((tx) => {
+      const type = (tx.type || '').toUpperCase();
+      const status = (tx.status || '').toUpperCase();
+
       // Type check
-      if (filterType !== 'ALL' && (tx.type || '').toUpperCase() !== filterType) {
-        return false;
-      }
+      if (filterType === 'DEPOSIT' && type !== 'DEPOSIT') return false;
+      if (filterType === 'WITHDRAW' && !['WITHDRAW', 'REMAINDER_PAYOUT', 'COMMISSION_WITHDRAW', 'AFFILIATE_COMMISSION_WITHDRAW'].includes(type)) return false;
+      if (filterType === 'BONUS' && !['BONUS', 'FREEPLAY', 'SIGNUP_FREEPLAY', 'PROMOTION_BONUS'].includes(type)) return false;
+
       // Status check
-      if (filterStatus !== 'ALL' && (tx.status || '').toUpperCase() !== filterStatus) {
-        return false;
-      }
+      if (filterStatus === 'APPROVED' && !['APPROVED', 'SUCCESS'].includes(status)) return false;
+      if (filterStatus === 'PENDING' && !['PENDING', 'COINS_LOADING', 'PROOF_PENDING', 'REMAINDER_PENDING'].includes(status)) return false;
+      if (filterStatus === 'REJECTED' && !['REJECTED', 'FAILED', 'CANCELLED'].includes(status)) return false;
+
       return true;
     });
   }, [transactions, filterType, filterStatus]);
@@ -31,7 +36,8 @@ export default function PlayerLedger({
   const getStatusBadge = (status) => {
     const s = String(status || '').toUpperCase();
     if (s === 'APPROVED' || s === 'SUCCESS') return <span className="badge-emerald"><i className="fa-solid fa-circle-check" /> COMPLETED</span>;
-    if (s === 'REJECTED' || s === 'FAILED') return <span className="badge-red"><i className="fa-solid fa-circle-xmark" /> REJECTED</span>;
+    if (s === 'REJECTED' || s === 'FAILED' || s === 'CANCELLED') return <span className="badge-red"><i className="fa-solid fa-circle-xmark" /> REJECTED</span>;
+    if (s === 'COINS_LOADING') return <span className="badge-gold"><i className="fa-solid fa-spinner fa-spin" /> LOADING COINS</span>;
     return <span className="badge-gold"><i className="fa-solid fa-hourglass-half" /> PENDING</span>;
   };
 
@@ -72,12 +78,14 @@ export default function PlayerLedger({
               padding: '0.5rem 0.85rem',
               borderRadius: '10px',
               fontSize: '0.82rem',
-              outline: 'none'
+              outline: 'none',
+              cursor: 'pointer'
             }}
           >
             <option value="ALL">All Types</option>
             <option value="DEPOSIT">Deposits Only</option>
             <option value="WITHDRAW">Cashouts Only</option>
+            <option value="BONUS">Freeplay & Bonuses</option>
           </select>
 
           <select
@@ -90,7 +98,8 @@ export default function PlayerLedger({
               padding: '0.5rem 0.85rem',
               borderRadius: '10px',
               fontSize: '0.82rem',
-              outline: 'none'
+              outline: 'none',
+              cursor: 'pointer'
             }}
           >
             <option value="ALL">All Statuses</option>
@@ -118,10 +127,25 @@ export default function PlayerLedger({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {filteredTxs.map((tx) => {
-            const isDeposit = (tx.type || '').toUpperCase() === 'DEPOSIT';
+            const txType = (tx.type || '').toUpperCase();
+            const isDeposit = txType === 'DEPOSIT';
+            const isWithdraw = ['WITHDRAW', 'REMAINDER_PAYOUT', 'COMMISSION_WITHDRAW', 'AFFILIATE_COMMISSION_WITHDRAW'].includes(txType);
+            const isBonus = !isDeposit && !isWithdraw;
             const isPending = (tx.status || '').toUpperCase() === 'PENDING';
             const needsProof = isDeposit && isPending && !tx.screenshot;
             const hasHold = parseFloat(tx.payoutHold || 0) > 0 && tx.remainderPaid !== true;
+
+            const iconBg = isDeposit ? 'rgba(0, 230, 118, 0.12)' : isWithdraw ? 'rgba(0, 240, 255, 0.12)' : 'rgba(255, 200, 0, 0.12)';
+            const iconBorder = isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)';
+            const iconColor = isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)';
+
+            const labelTitle = isBonus
+              ? (tx.code === 'SIGNUP-FREE3' ? 'SIGNUP FREEPLAY' : 'FREEPLAY BONUS')
+              : tx.isDepositFromCashout
+                ? 'CASHOUT DEP'
+                : isDeposit
+                  ? 'DEPOSIT'
+                  : 'CASHOUT';
 
             return (
               <div
@@ -145,21 +169,21 @@ export default function PlayerLedger({
                     width: '44px',
                     height: '44px',
                     borderRadius: '50%',
-                    background: isDeposit ? 'rgba(0, 230, 118, 0.12)' : 'rgba(0, 240, 255, 0.12)',
-                    border: `1px solid ${isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)'}`,
+                    background: iconBg,
+                    border: `1px solid ${iconBorder}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)',
+                    color: iconColor,
                     fontSize: '1.1rem',
                     flexShrink: 0
                   }}>
-                    <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : 'fa-solid fa-arrow-up-right'} />
+                    <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
                   </div>
 
                   <div>
                     <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem', fontFamily: 'var(--font-heading)' }}>
-                      {tx.isDepositFromCashout ? 'CASHOUT DEP' : isDeposit ? 'DEPOSIT' : 'CASHOUT'} - {tx.gameTitle || tx.gatewayName || 'MAIN WALLET'}
+                      {labelTitle} - {tx.gameTitle || tx.gatewayName || 'MAIN WALLET'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
@@ -180,9 +204,9 @@ export default function PlayerLedger({
                       fontSize: '1.1rem',
                       fontWeight: 900,
                       fontFamily: 'var(--font-heading)',
-                      color: isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)'
+                      color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
                     }}>
-                      {isDeposit ? '+' : '-'}${parseFloat(tx.amount || 0).toFixed(2)}
+                      {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
                     </div>
                     {tx.noteCode && (
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>

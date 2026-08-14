@@ -158,6 +158,30 @@ export default function PlayerNavbar({
 
         {/* Right Quick Action Control Bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+          {/* APK Download Button */}
+          <a
+            href="/downloads/winning-heaven.apk"
+            download
+            title="Download Android App APK"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(34, 197, 94, 0.15) 100%)',
+              border: '1px solid rgba(255, 215, 0, 0.4)',
+              color: '#ffe566',
+              borderRadius: '8px',
+              padding: '0.42rem 0.65rem',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.85rem' }} />
+            <span className="nav-btn-text">APP</span>
+          </a>
+
           {/* Deposit Button */}
           <button onClick={onOpenDeposit} className="btn-gold-glow" style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}>
             <i className="fa-solid fa-plus-circle" /> <span className="nav-btn-text">DEPOSIT</span>
@@ -219,47 +243,69 @@ export default function PlayerNavbar({
                 fontWeight: 800,
                 cursor: 'pointer',
                 fontFamily: 'var(--font-heading)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 boxShadow: '0 0 12px rgba(255,200,0,0.25)',
                 flexShrink: 0
               }}
             >
-              {displayName.charAt(0).toUpperCase()}
+              {displayName.slice(0, 1).toUpperCase()}
             </button>
 
             {/* User Dropdown Menu */}
             <AnimatePresence>
               {userDropdownOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
                   transition={{ duration: 0.15 }}
                   style={{
                     position: 'absolute',
-                    top: '46px',
                     right: 0,
-                    width: '230px',
-                    background: 'rgba(10, 14, 28, 0.96)',
+                    top: 'calc(100% + 10px)',
+                    width: '240px',
+                    background: 'rgba(10, 14, 28, 0.98)',
                     backdropFilter: 'blur(20px)',
-                    border: '1px solid var(--card-border)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid var(--gold-primary)',
                     borderRadius: '16px',
                     padding: '0.85rem',
-                    boxShadow: '0 15px 40px rgba(0,0,0,0.9), 0 0 25px rgba(255,200,0,0.15)',
-                    zIndex: 1001,
+                    boxShadow: '0 15px 40px rgba(0,0,0,0.9)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.6rem'
+                    gap: '0.45rem',
+                    zIndex: 1001
                   }}
                 >
-                  <div style={{ paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-muted)' }}>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem', fontFamily: 'var(--font-heading)' }}>
-                      {displayName}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ padding: '0.35rem 0.45rem 0.65rem 0.45rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ color: '#fff', fontWeight: 800, fontSize: '0.88rem' }}>{displayName}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {displayEmail}
                     </div>
                   </div>
+
+                  {canClaimRemainder && onClaimRemainder && (
+                    <button
+                      onClick={() => { setUserDropdownOpen(false); onClaimRemainder(); }}
+                      style={{
+                        background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
+                        color: '#000',
+                        fontWeight: 900,
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        marginBottom: '0.2rem'
+                      }}
+                    >
+                      <i className="fa-solid fa-gift" /> CLAIM REMAINDER
+                    </button>
+                  )}
 
                   <button
                     onClick={() => { setUserDropdownOpen(false); onOpenProfile(); }}
@@ -300,6 +346,29 @@ export default function PlayerNavbar({
                   >
                     <i className="fa-solid fa-receipt" style={{ color: 'var(--cyan-primary)' }} /> Transaction Ledger
                   </button>
+
+                  <a
+                    href="/downloads/winning-heaven.apk"
+                    download
+                    onClick={() => setUserDropdownOpen(false)}
+                    style={{
+                      background: 'rgba(34, 197, 94, 0.1)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      color: '#4ade80',
+                      textAlign: 'left',
+                      padding: '0.45rem',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    <i className="fa-brands fa-android" style={{ color: '#22c55e' }} /> Download Android APK
+                  </a>
 
                   <button
                     onClick={handleLogoutClick}

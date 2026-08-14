@@ -272,6 +272,17 @@ export async function POST(req) {
 
     const userEmail = newTx.userEmail.toLowerCase().trim();
 
+    // Deposit rules validation
+    if (newTx.type === 'DEPOSIT') {
+      const depAmt = parseFloat(newTx.amount || 0);
+      if (!depAmt || depAmt < 5) {
+        return NextResponse.json({ success: false, message: 'Minimum deposit amount is $5.00.' }, { status: 400 });
+      }
+      if (!newTx.proofPending && !newTx.screenshot && !newTx.isDepositFromCashout) {
+        return NextResponse.json({ success: false, message: 'Payment screenshot receipt is required for deposit.' }, { status: 400 });
+      }
+    }
+
     // Deposit proofs attach via /api/transactions/proof after a tiny create POST.
     // Only compress images that are actually present on this request (withdrawals).
     const proofPending = Boolean(newTx.proofPending) && newTx.type === 'DEPOSIT';

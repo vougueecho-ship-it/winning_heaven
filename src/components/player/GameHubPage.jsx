@@ -43,9 +43,11 @@ export default function GameHubPage({
   };
 
   const handleLaunch = () => {
-    const launchUrl = userAccount?.loginUrl || game.loginUrl || game.url;
-    if (launchUrl) {
-      window.open(launchUrl, '_blank');
+    let launchUrl = userAccount?.loginUrl || game.link || game.loginUrl || game.url || game.downloadUrl;
+    if (launchUrl && typeof launchUrl === 'string' && launchUrl.trim()) {
+      launchUrl = launchUrl.trim();
+      const targetUrl = /^https?:\/\//i.test(launchUrl) ? launchUrl : `https://${launchUrl}`;
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
       if (showToast) showToast('Platform launch link not configured by admin.', 'info');
     }
@@ -431,8 +433,26 @@ export default function GameHubPage({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 {gameTxs.map((tx) => {
-                  const isDeposit = (tx.type || '').toUpperCase() === 'DEPOSIT';
-                  const isWithdraw = (tx.type || '').toUpperCase() === 'WITHDRAW';
+                  const txType = (tx.type || '').toUpperCase();
+                  const isDeposit = txType === 'DEPOSIT';
+                  const isWithdraw = ['WITHDRAW', 'REMAINDER_PAYOUT', 'COMMISSION_WITHDRAW'].includes(txType);
+                  const isFreeplay = !isDeposit && !isWithdraw;
+
+                  const iconBg = isDeposit
+                    ? 'rgba(0,230,118,0.15)'
+                    : isWithdraw
+                      ? 'rgba(0,240,255,0.15)'
+                      : 'rgba(255,200,0,0.15)';
+                  const iconBorder = isDeposit
+                    ? 'var(--emerald-primary)'
+                    : isWithdraw
+                      ? 'var(--cyan-primary)'
+                      : 'var(--gold-primary)';
+                  const iconColor = isDeposit
+                    ? 'var(--emerald-primary)'
+                    : isWithdraw
+                      ? 'var(--cyan-primary)'
+                      : 'var(--gold-primary)';
 
                   return (
                     <div
@@ -454,12 +474,12 @@ export default function GameHubPage({
                           width: '38px',
                           height: '38px',
                           borderRadius: '50%',
-                          background: isDeposit ? 'rgba(0,230,118,0.15)' : 'rgba(0,240,255,0.15)',
-                          border: `1px solid ${isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)'}`,
+                          background: iconBg,
+                          border: `1px solid ${iconBorder}`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)',
+                          color: iconColor,
                           fontSize: '0.95rem'
                         }}>
                           <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
@@ -479,9 +499,9 @@ export default function GameHubPage({
                           fontSize: '1rem',
                           fontWeight: 900,
                           fontFamily: 'var(--font-heading)',
-                          color: isDeposit ? 'var(--emerald-primary)' : 'var(--cyan-primary)'
+                          color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
                         }}>
-                          {isDeposit ? '+' : '-'}${parseFloat(tx.amount || 0).toFixed(2)}
+                          {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
                         </div>
                         <span className={tx.status === 'APPROVED' || tx.status === 'SUCCESS' ? 'badge-emerald' : tx.status === 'REJECTED' || tx.status === 'FAILED' ? 'badge-red' : 'badge-gold'}>
                           {tx.status || 'PENDING'}

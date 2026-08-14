@@ -139,12 +139,12 @@ export function PlayerDepositModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     const numAmt = parseFloat(amount);
-    if (!numAmt || numAmt <= 0) {
-      if (showToast) showToast('Please enter a valid deposit amount.', 'error');
+    if (!numAmt || numAmt < 5) {
+      if (showToast) showToast('Minimum deposit amount is $5.00.', 'error');
       return;
     }
     if (!screenshot) {
-      if (showToast) showToast('Please attach screenshot proof of payment.', 'error');
+      if (showToast) showToast('Payment screenshot receipt is required for deposit verification.', 'error');
       return;
     }
 
@@ -185,8 +185,8 @@ export function PlayerDepositModal({
       return;
     }
     const numAmt = parseFloat(amount);
-    if (!numAmt || numAmt <= 0) {
-      if (showToast) showToast('Please enter a valid deposit amount.', 'error');
+    if (!numAmt || numAmt < 5) {
+      if (showToast) showToast('Minimum deposit amount is $5.00.', 'error');
       return;
     }
     setStep(2);
@@ -346,49 +346,71 @@ export function PlayerDepositModal({
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem' }}>
-                {['10', '25', '50', '100'].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => setAmount(val)}
-                    style={{
-                      background: amount === val ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'rgba(255,255,255,0.06)',
-                      color: amount === val ? '#000' : '#fff',
-                      border: amount === val ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '12px',
-                      padding: '0.75rem',
-                      fontWeight: 900,
-                      fontSize: '1rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ${val}
-                  </button>
-                ))}
-              </div>
-
               <div>
                 <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>
-                  DEPOSIT AMOUNT ($)
+                  SELECT OR ENTER AMOUNT (MINIMUM $5.00) <span style={{ color: 'var(--gold-primary)' }}>*</span>
                 </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter deposit amount"
-                  style={{
-                    width: '100%',
-                    background: 'rgba(6, 8, 18, 0.8)',
-                    border: '1px solid var(--gold-primary)',
-                    borderRadius: '12px',
-                    padding: '0.85rem 1rem',
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                  {['5', '10', '25', '50', '100', '250'].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAmount(val)}
+                      style={{
+                        background: amount === val ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'rgba(255,255,255,0.06)',
+                        color: amount === val ? '#000' : '#fff',
+                        border: amount === val ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '12px',
+                        padding: '0.65rem 0.5rem',
+                        fontWeight: 900,
+                        fontSize: '0.95rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      ${val}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
                     color: 'var(--gold-primary)',
-                    fontSize: '1.2rem',
                     fontWeight: 900,
-                    fontFamily: 'var(--font-heading)',
-                    outline: 'none'
-                  }}
-                />
+                    fontSize: '1.2rem',
+                    pointerEvents: 'none'
+                  }}>$</span>
+                  <input
+                    type="number"
+                    min="5"
+                    step="1"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="5.00 (Minimum $5)"
+                    style={{
+                      width: '100%',
+                      background: 'rgba(6, 8, 18, 0.8)',
+                      border: parseFloat(amount) < 5 ? '1px solid var(--red-primary)' : '1px solid var(--gold-primary)',
+                      borderRadius: '12px',
+                      padding: '0.85rem 1rem 0.85rem 2.2rem',
+                      color: 'var(--gold-primary)',
+                      fontSize: '1.2rem',
+                      fontWeight: 900,
+                      fontFamily: 'var(--font-heading)',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                {parseFloat(amount) < 5 && (
+                  <div style={{ color: 'var(--red-primary)', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.35rem' }}>
+                    <i className="fa-solid fa-triangle-exclamation" /> Minimum deposit is $5.00
+                  </div>
+                )}
               </div>
 
               <button onClick={handleProceedToGateways} className="btn-gold-glow" style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem' }}>

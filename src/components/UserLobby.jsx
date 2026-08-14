@@ -17,6 +17,10 @@ import ReferralCenter from './ReferralCenter';
 import AppInstallModal from './AppInstallModal';
 import OfflineBanner from './OfflineBanner';
 import PullToRefresh from './PullToRefresh';
+import CasinoRulesAccordion from './player/CasinoRulesAccordion';
+import LivePayoutsMarquee from './player/LivePayoutsMarquee';
+import SubscribePromptModal from './player/SubscribePromptModal';
+import PlayerPromoModal from './player/PlayerPromoModal';
 import { PlayerDepositModal, PlayerWithdrawModal, PlayerGameAccountModal } from './player/PlayerModals';
 import { canShowClaimRemainderButton } from '../lib/remainderClaim';
 
@@ -303,6 +307,9 @@ export default function UserLobby({
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.25 }}
               >
+                {/* 12-Card Live Approved Cashout Stream Marquee Ticker */}
+                <LivePayoutsMarquee liveTransactions={transactions} />
+
                 {/* Hero Banner Carousel */}
                 <PlayerHeroBanner
                   frontendSettings={frontendSettings}
@@ -322,6 +329,9 @@ export default function UserLobby({
                   onViewCredentials={handleViewCredentials}
                   onDepositToGame={(game) => handleOpenDepositForGame(game.title)}
                 />
+
+                {/* Platform Rules & Player Guidelines Accordion */}
+                <CasinoRulesAccordion />
               </motion.div>
             )}
 
@@ -475,6 +485,19 @@ export default function UserLobby({
           onInstallApp={onInstallApp}
         />
       )}
+
+      {/* --- Subscribe Push Notification Prompt on Login --- */}
+      <SubscribePromptModal
+        currentUser={currentUser}
+        showToast={showToast}
+      />
+
+      {/* --- In-App Promo Modal --- */}
+      <PlayerPromoModal
+        currentUser={currentUser}
+        onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
+        showToast={showToast}
+      />
     </div>
   );
 }
