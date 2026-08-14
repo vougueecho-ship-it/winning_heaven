@@ -1,4 +1,4 @@
-const SW_VERSION = 'winning-heaven-static-v5';
+const SW_VERSION = 'winning-heaven-static-v6';
 const APP_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
