@@ -155,7 +155,11 @@ export default function AuthPortal({
       }
 
       const sid = res.data.sid;
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://winningheaven.com';
+      const rawOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://winningheaven.com';
+      // Use live production domain for native apps and webviews
+      const origin = (!rawOrigin || rawOrigin.includes('capacitor://') || (rawOrigin.includes('localhost') && !rawOrigin.includes(':3000')))
+        ? 'https://winningheaven.com'
+        : rawOrigin;
       const redirectUri = `${origin}/auth/google/callback`;
       const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
         DEFAULT_GOOGLE_CLIENT_ID
