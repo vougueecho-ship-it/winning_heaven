@@ -65,28 +65,6 @@ export default function MobileBottomNav({
         <span>Ledger</span>
       </button>
 
-      {/* Android APK Download Tab */}
-      <a
-        href="/downloads/winning-heaven.apk"
-        download
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: '#4ade80',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.25rem',
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          cursor: 'pointer',
-          textDecoration: 'none'
-        }}
-      >
-        <i className="fa-brands fa-android" style={{ fontSize: '1.2rem', color: '#22c55e' }} />
-        <span>App</span>
-      </a>
-
       {/* Referrals Tab */}
       <button
         onClick={() => onSelectTab('referrals')}
