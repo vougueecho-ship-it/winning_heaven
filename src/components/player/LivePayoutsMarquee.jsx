@@ -56,10 +56,10 @@ export default function LivePayoutsMarquee({ liveTransactions = [] }) {
   return (
     <div style={{
       width: '100%',
-      marginBottom: '1.75rem',
+      margin: '0.25rem 0 1.6rem 0',
       display: 'flex',
       flexDirection: 'column',
-      gap: '0.6rem'
+      gap: '0.65rem'
     }}>
       {/* Header Bar */}
       <div style={{

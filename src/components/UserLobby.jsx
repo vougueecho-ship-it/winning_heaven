@@ -295,8 +295,9 @@ export default function UserLobby({
           maxWidth: '1400px',
           width: '100%',
           margin: '0 auto',
-          padding: '0 1.25rem',
-          flex: 1
+          padding: '1.25rem 1.25rem 2.5rem 1.25rem',
+          flex: 1,
+          boxSizing: 'border-box'
         }}>
           <AnimatePresence mode="wait">
             {activeTab === 'main' && (
