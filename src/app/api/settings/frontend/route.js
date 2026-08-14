@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
   signupFreeplay: 3,
   minimumDepositLimit: 5,
   minimumWithdrawalLimit: 5,
-  freeplayMaxCashout: 50,
+  freeplayMaxCashout: 30,
   freeplayUnlockDeposit: 25,
   cashoutTiers: [
     { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS = {
     },
     {
       title: 'Freeplay Cashout Limit & Hold Balance',
-      description: 'Freeplay ($3 Signup) allows a maximum cashout of $50.00. Excess balance remains on hold and is unlocked upon a $25.00 deposit.'
+      description: 'Freeplay ($3 Signup) allows a maximum cashout of $30.00. Excess balance remains on hold and is unlocked upon a $25.00 deposit.'
     }
   ],
   // Withdrawal form proof requirements (Super Admin toggles)

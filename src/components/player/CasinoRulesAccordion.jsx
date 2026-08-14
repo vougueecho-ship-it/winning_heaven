@@ -16,7 +16,7 @@ export default function CasinoRulesAccordion({ frontendSettings = {} }) {
   const minDep = frontendSettings.minimumDepositLimit !== undefined ? Number(frontendSettings.minimumDepositLimit) : 5;
   const minWith = frontendSettings.minimumWithdrawalLimit !== undefined ? Number(frontendSettings.minimumWithdrawalLimit) : 5;
   const fpAmount = frontendSettings.signupFreeplay !== undefined ? Number(frontendSettings.signupFreeplay) : 3;
-  const fpMaxCashout = frontendSettings.freeplayMaxCashout !== undefined ? Number(frontendSettings.freeplayMaxCashout) : 50;
+  const fpMaxCashout = frontendSettings.freeplayMaxCashout !== undefined ? Number(frontendSettings.freeplayMaxCashout) : 30;
   const fpUnlock = frontendSettings.freeplayUnlockDeposit !== undefined ? Number(frontendSettings.freeplayUnlockDeposit) : 25;
   const firstBonus = frontendSettings.firstDepositBonus !== undefined ? Number(frontendSettings.firstDepositBonus) : 300;
   const regBonus = frontendSettings.regularDepositBonus !== undefined ? Number(frontendSettings.regularDepositBonus) : 20;
