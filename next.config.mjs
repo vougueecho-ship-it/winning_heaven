@@ -26,6 +26,16 @@ const nextConfig = {
         headers: [
           { key: 'Content-Disposition', value: 'attachment' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+      // Prevent Hostinger CDN / Cloudflare edge from serving stale HTML pages
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, max-age=0, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
         ],
       },
     ];

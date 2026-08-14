@@ -5,6 +5,10 @@ import NativeChrome from "../components/NativeChrome";
 import NativeBackButton from "../components/NativeBackButton";
 import MetaPixel from "../components/MetaPixel";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export const metadata = {
   title: "Winning Heaven - Celestial Vegas Casino & Instant Cashouts",
   description: "Welcome to Winning Heaven Casino. Access sweepstakes games, grab heavenly bonuses, and cash out instantly!",
