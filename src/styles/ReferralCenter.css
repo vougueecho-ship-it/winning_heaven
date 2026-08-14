@@ -1,0 +1,57 @@
+/* =========================================================================
+   WINNING HEAVEN - VIP AFFILIATE LOUNGE MODULAR STYLESHEET
+   ========================================================================= */
+
+.referral-lounge-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  padding-bottom: 3rem;
+}
+
+.referral-lounge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.75rem;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.referral-hero-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(20,16,40,0.96) 0%, rgba(10,12,24,0.96) 100%);
+  border: 1px solid rgba(255,200,0,0.3);
+  border-radius: 24px;
+  padding: 2.75rem 2.25rem;
+  overflow: hidden;
+  box-shadow: var(--card-glow-shadow);
+}
+
+.referral-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.referral-stat-box {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.referral-table-card {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  border-radius: 22px;
+  padding: 1.75rem;
+}

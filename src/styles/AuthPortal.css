@@ -1,0 +1,248 @@
+/* =========================================================================
+   WINNING HEAVEN - AUTHENTICATION & ENTRY PORTAL MODULAR STYLESHEET
+   ========================================================================= */
+
+.auth-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  position: relative;
+  z-index: 1;
+  background: radial-gradient(ellipse at 50% 0%, #0d1330 0%, #040612 80%), url("/heavenly_auth_bg.png") center center / cover no-repeat;
+}
+
+.auth-glass-card {
+  width: 100%;
+  max-width: 460px;
+  background: rgba(10, 14, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 200, 0, 0.3);
+  border-radius: 26px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 200, 0, 0.2);
+  padding: 2.25rem 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.auth-glass-card:hover {
+  border-color: var(--gold-primary);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.95), 0 0 50px rgba(255, 200, 0, 0.3);
+}
+
+.auth-header-accent {
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 4px;
+  background: var(--gold-gradient);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 0 20px var(--gold-primary);
+}
+
+.auth-logo-badge {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 0.85rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-logo-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,0,0.4) 0%, transparent 70%);
+  filter: blur(12px);
+}
+
+.auth-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(255,200,0,0.7));
+  animation: logoPulse 3s infinite ease-in-out;
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(255,200,0,0.7)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 24px rgba(255,200,0,0.9)); }
+}
+
+.auth-title {
+  font-family: var(--font-heading);
+  font-size: 1.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.auth-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+.auth-tab-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  background: rgba(4, 6, 18, 0.85);
+  padding: 0.35rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 1.5rem;
+}
+
+.auth-tab-btn {
+  padding: 0.75rem 0;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.auth-tab-btn.active {
+  background: var(--gold-gradient);
+  color: #04050b;
+  box-shadow: 0 4px 18px rgba(255, 200, 0, 0.35);
+}
+
+/* High-Tech Input Groups */
+.cyber-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.cyber-input-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cyber-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(4, 6, 18, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 0 1rem;
+  transition: all 0.2s ease;
+}
+
+.cyber-input-wrapper:focus-within {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 20px rgba(255, 200, 0, 0.3);
+  background: rgba(4, 6, 18, 0.95);
+}
+
+.cyber-input-icon {
+  font-size: 1.1rem;
+  color: var(--gold-primary);
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.cyber-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0.9rem 0;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+}
+
+.cyber-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.google-auth-button {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.google-auth-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 200, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 1.25rem 0;
+  gap: 0.75rem;
+}
+
+.auth-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-divider-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.otp-box-grid {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.otp-box-input {
+  width: 48px;
+  height: 56px;
+  background: rgba(4, 6, 18, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  color: var(--gold-primary);
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.otp-box-input:focus {
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+}

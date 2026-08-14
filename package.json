@@ -1,0 +1,57 @@
+{
+  "name": "winning-heaven",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "android:sync": "cap sync android",
+    "android:debug": "JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android/gradlew -p android assembleDebug",
+    "android:release": "npm run android:sync && JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android/gradlew -p android assembleRelease && cp android/app/build/outputs/apk/release/app-release.apk public/downloads/winning-heaven.apk",
+    "android:aab": "npm run android:sync && JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android/gradlew -p android bundleRelease && mkdir -p public/downloads && cp android/app/build/outputs/bundle/release/app-release.aab public/downloads/winning-heaven.aab",
+    "ios:sync": "cap sync ios",
+    "ios:open": "cap open ios",
+    "portal:sync": "cp capacitor.config.ts .capacitor.player.config.bak.ts && cp capacitor.portal.config.ts capacitor.config.ts && npx cap sync android; STATUS=$?; mv .capacitor.player.config.bak.ts capacitor.config.ts; exit $STATUS",
+    "portal:open": "cp capacitor.config.ts .capacitor.player.config.bak.ts && cp capacitor.portal.config.ts capacitor.config.ts && npx cap open android; STATUS=$?; mv .capacitor.player.config.bak.ts capacitor.config.ts; exit $STATUS",
+    "portal:debug": "JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android-portal/gradlew -p android-portal assembleDebug",
+    "portal:release": "npm run portal:sync && JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android-portal/gradlew -p android-portal assembleRelease && mkdir -p public/downloads && cp android-portal/app/build/outputs/apk/release/app-release.apk public/downloads/winning-heaven-portal.apk",
+    "distributor:sync": "cp capacitor.config.ts .capacitor.player.config.bak.ts && cp capacitor.distributor.config.ts capacitor.config.ts && npx cap sync android; STATUS=$?; mv .capacitor.player.config.bak.ts capacitor.config.ts; exit $STATUS",
+    "distributor:open": "cp capacitor.config.ts .capacitor.player.config.bak.ts && cp capacitor.distributor.config.ts capacitor.config.ts && npx cap open android; STATUS=$?; mv .capacitor.player.config.bak.ts capacitor.config.ts; exit $STATUS",
+    "distributor:debug": "JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android-distributor/gradlew -p android-distributor assembleDebug",
+    "distributor:release": "npm run distributor:sync && JAVA_HOME=/usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/usr/local/opt/openjdk@21/bin:$PATH ./android-distributor/gradlew -p android-distributor assembleRelease && mkdir -p public/downloads && cp android-distributor/app/build/outputs/apk/release/app-release.apk public/downloads/winning-heaven-distributor.apk"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.2",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@react-oauth/google": "^0.13.5",
+    "firebase-admin": "^14.2.0",
+    "framer-motion": "^12.42.2",
+    "mongodb": "^7.4.0",
+    "next": "16.2.11",
+    "nodemailer": "^9.0.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "0.35.3",
+    "swr": "^2.4.2",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "16.2.11"
+  },
+  "overrides": {
+    "postcss": "^8.5.10",
+    "uuid": "^11.1.1",
+    "sharp": "0.35.3",
+    "brace-expansion@1": "1.1.16"
+  }
+}

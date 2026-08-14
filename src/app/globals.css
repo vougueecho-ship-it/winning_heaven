@@ -1,0 +1,10 @@
+/* =========================================================================
+   WINNING HEAVEN - GLOBAL MASTER CSS IMPORTS
+   ========================================================================= */
+
+@import '../styles/variables.css';
+@import '../styles/AuthPortal.css';
+@import '../styles/UserLobby.css';
+@import '../styles/ReferralCenter.css';
+@import '../styles/Modals.css';
+@import '../styles/AdminDashboard.css';

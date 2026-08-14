@@ -1,0 +1,261 @@
+/* =========================================================================
+   WINNING HEAVEN - MODALS & OVERLAY MASTER STYLESHEET
+   ========================================================================= */
+
+/* Backdrop Overlay */
+.modal-backdrop-overlay,
+.panel-modal-overlay,
+.modal-backdrop-custom {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(4, 5, 11, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  z-index: 100000 !important;
+  animation: fadeInOverlay 0.2s ease-out !important;
+}
+
+/* Modal Content Box */
+.modal-glass-container,
+.modal-content {
+  width: 95% !important;
+  max-width: 520px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  background: rgba(10, 14, 30, 0.96) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 215, 0, 0.35) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 45px rgba(255, 200, 0, 0.2) !important;
+  padding: 0 !important;
+  position: relative !important;
+  color: #fff !important;
+  z-index: 100001 !important;
+  box-sizing: border-box !important;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-content.border-gold {
+  border-color: rgba(255, 215, 0, 0.45) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(255, 215, 0, 0.25) !important;
+}
+
+.modal-content.border-red {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Modal Header Bar */
+.modal-header,
+.modal-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 1.25rem 1.5rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.modal-header h3,
+.modal-header-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif) !important;
+  font-size: 1.15rem !important;
+  font-weight: 900 !important;
+  color: #fff !important;
+  letter-spacing: 0.03em !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  flex: 1 !important;
+}
+
+/* Modal Close Button */
+.close-modal,
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.3rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  outline: none !important;
+  line-height: 1 !important;
+}
+
+.close-modal:hover,
+.modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #ef4444 !important;
+  transform: rotate(90deg) scale(1.05) !important;
+}
+
+/* Modal Body Container */
+.modal-body {
+  padding: 1.25rem 1.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+  color: #f8fafc !important;
+  box-sizing: border-box !important;
+}
+
+.modal-body .input-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.4rem !important;
+  margin-bottom: 0.85rem !important;
+  width: 100% !important;
+}
+
+.modal-body .input-group label {
+  font-size: 0.775rem !important;
+  font-weight: 700 !important;
+  color: #cbd5e1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  font-family: var(--font-heading, 'Outfit', sans-serif) !important;
+}
+
+.modal-body .submit-btn {
+  width: 100% !important;
+  height: 46px !important;
+  margin-top: 0.75rem !important;
+  background: linear-gradient(135deg, #ffc800 0%, #e6a100 100%) !important;
+  color: #111 !important;
+  font-weight: 900 !important;
+  border-radius: 12px !important;
+  font-size: 0.875rem !important;
+  font-family: var(--font-heading, 'Outfit', sans-serif) !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 18px rgba(255, 200, 0, 0.35) !important;
+  letter-spacing: 0.04em !important;
+}
+
+.modal-body .submit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 22px rgba(255, 200, 0, 0.5) !important;
+  filter: brightness(1.08) !important;
+}
+
+/* Payment Gateway Selector Pills */
+.payment-gateways-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.gateway-pill {
+  padding: 0.75rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(6, 8, 18, 0.8);
+  color: #fff;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.gateway-pill.active,
+.gateway-pill:hover {
+  background: rgba(255, 200, 0, 0.12);
+  border-color: var(--gold-primary, #ffc800);
+  box-shadow: 0 0 15px rgba(255, 200, 0, 0.3);
+}
+
+/* Quick Amount Selector Chips */
+.amount-chips-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.amount-chip {
+  flex: 1;
+  min-width: 60px;
+  padding: 0.6rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(6, 8, 18, 0.8);
+  color: #fff;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.amount-chip.active,
+.amount-chip:hover {
+  background: linear-gradient(135deg, #ffc800 0%, #e6a100 100%);
+  color: #04050b;
+  border-color: var(--gold-primary, #ffc800);
+  box-shadow: 0 4px 15px rgba(255, 200, 0, 0.35);
+}
+
+/* Dropzone Proof Screenshot Uploader */
+.dropzone-upload-box {
+  border: 2px dashed rgba(255, 200, 0, 0.4);
+  background: rgba(4, 6, 18, 0.7);
+  border-radius: 18px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dropzone-upload-box:hover {
+  border-color: var(--gold-primary, #ffc800);
+  background: rgba(255, 200, 0, 0.08);
+  box-shadow: 0 0 20px rgba(255, 200, 0, 0.2);
+}
+
+/* Keyframe Animations */
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
