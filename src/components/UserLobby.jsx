@@ -331,7 +331,7 @@ export default function UserLobby({
                 />
 
                 {/* Platform Rules & Player Guidelines Accordion */}
-                <CasinoRulesAccordion />
+                <CasinoRulesAccordion frontendSettings={frontendSettings} />
               </motion.div>
             )}
 

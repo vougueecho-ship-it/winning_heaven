@@ -26,6 +26,29 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [signupFreeplay, setSignupFreeplay] = useState(3);
   const [minimumDepositLimit, setMinimumDepositLimit] = useState(5);
   const [minimumWithdrawalLimit, setMinimumWithdrawalLimit] = useState(5);
+  const [freeplayMaxCashout, setFreeplayMaxCashout] = useState(50);
+  const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(25);
+  const [cashoutTiers, setCashoutTiers] = useState([
+    { depositRange: '$5 - $9', maxCashout: '$50.00', multiplier: '10x', note: 'Fast 5-minute payout' },
+    { depositRange: '$10 - $19', maxCashout: '$100.00', multiplier: '10x', note: 'Standard Cashout' },
+    { depositRange: '$20 - $49', maxCashout: '$250.00', multiplier: '12x', note: 'VIP Express Payout' },
+    { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'High Roller Tier' },
+    { depositRange: '$100+', maxCashout: '$2,000.00+', multiplier: '20x+', note: 'Unlimited VIP Cashout' }
+  ]);
+  const [customCashoutRules, setCustomCashoutRules] = useState([
+    {
+      title: 'Freeplay Cashout Limit',
+      description: 'Maximum cashout on $3 Freeplay winnings is $50.00. Excess balance is kept on hold and released upon a $25 deposit.'
+    },
+    {
+      title: 'Deposit-Based Redemption Caps',
+      description: 'Cashout amounts are calculated based on your total verified deposit amount for that gaming session.'
+    },
+    {
+      title: 'Hold Balance Release',
+      description: 'Remaining hold balances can be transferred to load coins into other games or claimed during future qualified deposits.'
+    }
+  ]);
   const [withdrawRequireGameScreenshot, setWithdrawRequireGameScreenshot] = useState(false);
   const [withdrawRequireTagQrScreenshot, setWithdrawRequireTagQrScreenshot] = useState(true);
 
@@ -104,6 +127,14 @@ export default function FrontendSettingsTab({ adminUser }) {
       setSignupFreeplay(s.signupFreeplay !== undefined ? s.signupFreeplay : 3);
       setMinimumDepositLimit(s.minimumDepositLimit !== undefined ? s.minimumDepositLimit : 5);
       setMinimumWithdrawalLimit(s.minimumWithdrawalLimit !== undefined ? s.minimumWithdrawalLimit : 5);
+      setFreeplayMaxCashout(s.freeplayMaxCashout !== undefined ? s.freeplayMaxCashout : 50);
+      setFreeplayUnlockDeposit(s.freeplayUnlockDeposit !== undefined ? s.freeplayUnlockDeposit : 25);
+      if (Array.isArray(s.cashoutTiers) && s.cashoutTiers.length > 0) {
+        setCashoutTiers(s.cashoutTiers);
+      }
+      if (Array.isArray(s.customCashoutRules) && s.customCashoutRules.length > 0) {
+        setCustomCashoutRules(s.customCashoutRules);
+      }
       setWithdrawRequireGameScreenshot(s.withdrawRequireGameScreenshot === true);
       setWithdrawRequireTagQrScreenshot(s.withdrawRequireTagQrScreenshot !== false);
 
@@ -207,6 +238,42 @@ export default function FrontendSettingsTab({ adminUser }) {
     setAnnouncements(updated);
   };
 
+  // Cashout Tier Handlers
+  const addCashoutTier = () => {
+    setCashoutTiers([
+      ...cashoutTiers,
+      { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'Standard Tier' }
+    ]);
+  };
+
+  const deleteCashoutTier = (idx) => {
+    setCashoutTiers(cashoutTiers.filter((_, i) => i !== idx));
+  };
+
+  const updateCashoutTier = (idx, field, val) => {
+    const updated = [...cashoutTiers];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setCashoutTiers(updated);
+  };
+
+  // Custom Rule Bullet Handlers
+  const addCustomRule = () => {
+    setCustomCashoutRules([
+      ...customCashoutRules,
+      { title: 'New Platform Rule', description: 'Rule description here' }
+    ]);
+  };
+
+  const deleteCustomRule = (idx) => {
+    setCustomCashoutRules(customCashoutRules.filter((_, i) => i !== idx));
+  };
+
+  const updateCustomRule = (idx, field, val) => {
+    const updated = [...customCashoutRules];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setCustomCashoutRules(updated);
+  };
+
   // Submit Handler
   const handleSave = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -226,6 +293,10 @@ export default function FrontendSettingsTab({ adminUser }) {
         signupFreeplay: Number(signupFreeplay),
         minimumDepositLimit: Number(minimumDepositLimit),
         minimumWithdrawalLimit: Number(minimumWithdrawalLimit),
+        freeplayMaxCashout: Number(freeplayMaxCashout),
+        freeplayUnlockDeposit: Number(freeplayUnlockDeposit),
+        cashoutTiers,
+        customCashoutRules,
         withdrawRequireGameScreenshot,
         withdrawRequireTagQrScreenshot,
         withdrawNotice,
@@ -853,6 +924,368 @@ export default function FrontendSettingsTab({ adminUser }) {
                       }}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Freeplay Cashout & Deposit Unlock Settings */}
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.85)',
+                border: '1px solid rgba(0, 240, 255, 0.25)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '1.25rem'
+              }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#00f0ff', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Max Cashout Allowed from Freeplay ($)
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <i className="fa-solid fa-gift" style={{ position: 'absolute', left: '14px', color: '#00f0ff', fontSize: '0.88rem' }} />
+                    <input
+                      type="number"
+                      value={freeplayMaxCashout}
+                      onChange={(e) => setFreeplayMaxCashout(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(0, 240, 255, 0.3)',
+                        borderRadius: '14px',
+                        padding: '0.75rem 1rem 0.75rem 2.6rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Maximum win withdrawal amount on $3 Freeplay (Default: $50.00)
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#ffc800', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
+                    Deposit Required to Unlock Hold Balance ($)
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <i className="fa-solid fa-lock-open" style={{ position: 'absolute', left: '14px', color: '#ffc800', fontSize: '0.88rem' }} />
+                    <input
+                      type="number"
+                      value={freeplayUnlockDeposit}
+                      onChange={(e) => setFreeplayUnlockDeposit(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(255, 200, 0, 0.3)',
+                        borderRadius: '14px',
+                        padding: '0.75rem 1rem 0.75rem 2.6rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Deposit amount required to unlock excess Freeplay Hold (Default: $25.00)
+                  </span>
+                </div>
+              </div>
+
+              {/* Deposit vs. Cashout Tiers Manager */}
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.85)',
+                border: '1.5px solid rgba(255, 215, 0, 0.25)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <i className="fa-solid fa-scale-balanced" style={{ color: '#ffd700' }} />
+                      <span>Deposit vs. Cashout Tiers Table (Displayed in Lobby Rules)</span>
+                    </h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Define how much players can withdraw based on their deposit tier.
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addCashoutTier}
+                    style={{
+                      background: 'rgba(255, 215, 0, 0.12)',
+                      border: '1px solid rgba(255, 215, 0, 0.4)',
+                      color: '#ffd700',
+                      borderRadius: '8px',
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <i className="fa-solid fa-plus" /> Add Cashout Tier
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {cashoutTiers.map((tier, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: 'rgba(12, 16, 32, 0.95)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '12px',
+                        padding: '0.85rem',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr)) 40px',
+                        gap: '0.65rem',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div>
+                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
+                          Deposit Range
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.depositRange || ''}
+                          onChange={(e) => updateCashoutTier(idx, 'depositRange', e.target.value)}
+                          placeholder="$5 - $9"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: '#fff',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
+                          Max Cashout Limit
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.maxCashout || ''}
+                          onChange={(e) => updateCashoutTier(idx, 'maxCashout', e.target.value)}
+                          placeholder="$50.00"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: '#00e676',
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
+                          Multiplier / Ratio
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.multiplier || ''}
+                          onChange={(e) => updateCashoutTier(idx, 'multiplier', e.target.value)}
+                          placeholder="10x"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: 'var(--gold-primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
+                          Speed Note / Tag
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.note || ''}
+                          onChange={(e) => updateCashoutTier(idx, 'note', e.target.value)}
+                          placeholder="Instant Cashout"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: '#fff',
+                            fontSize: '0.8rem',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '1rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => deleteCashoutTier(idx)}
+                          disabled={cashoutTiers.length <= 1}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#ef4444',
+                            borderRadius: '8px',
+                            width: '32px',
+                            height: '32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <i className="fa-solid fa-trash-can" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Cashout Rules (Bullet Points) */}
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.85)',
+                border: '1.5px solid rgba(255, 215, 0, 0.25)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <i className="fa-solid fa-list-check" style={{ color: '#ffd700' }} />
+                      <span>Custom Platform Terms &amp; Fair Play Rules</span>
+                    </h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Additional bullet points displayed in the Player Lobby Rules Accordion.
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addCustomRule}
+                    style={{
+                      background: 'rgba(255, 215, 0, 0.12)',
+                      border: '1px solid rgba(255, 215, 0, 0.4)',
+                      color: '#ffd700',
+                      borderRadius: '8px',
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <i className="fa-solid fa-plus" /> Add Rule Bullet
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {customCashoutRules.map((rule, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: 'rgba(12, 16, 32, 0.95)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '12px',
+                        padding: '0.85rem',
+                        display: 'flex',
+                        gap: '0.75rem',
+                        alignItems: 'flex-start'
+                      }}
+                    >
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <input
+                          type="text"
+                          value={rule.title || ''}
+                          onChange={(e) => updateCustomRule(idx, 'title', e.target.value)}
+                          placeholder="Rule Title (e.g. Freeplay Limit)"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: 'var(--gold-primary)',
+                            fontSize: '0.82rem',
+                            fontWeight: 800,
+                            outline: 'none'
+                          }}
+                        />
+                        <textarea
+                          rows={2}
+                          value={rule.description || ''}
+                          onChange={(e) => updateCustomRule(idx, 'description', e.target.value)}
+                          placeholder="Detailed explanation of the rule..."
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: '#fff',
+                            fontSize: '0.8rem',
+                            outline: 'none',
+                            resize: 'vertical'
+                          }}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteCustomRule(idx)}
+                        disabled={customCashoutRules.length <= 1}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#ef4444',
+                          borderRadius: '8px',
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          flexShrink: 0,
+                          marginTop: '4px'
+                        }}
+                      >
+                        <i className="fa-solid fa-trash-can" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </section>

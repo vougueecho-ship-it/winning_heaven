@@ -20,6 +20,29 @@ const DEFAULT_SETTINGS = {
   signupFreeplay: 3,
   minimumDepositLimit: 5,
   minimumWithdrawalLimit: 5,
+  freeplayMaxCashout: 50,
+  freeplayUnlockDeposit: 25,
+  cashoutTiers: [
+    { depositRange: '$5 - $9', maxCashout: '$50.00', multiplier: '10x', note: 'Fast 5-minute payout' },
+    { depositRange: '$10 - $19', maxCashout: '$100.00', multiplier: '10x', note: 'Standard Cashout' },
+    { depositRange: '$20 - $49', maxCashout: '$250.00', multiplier: '12x', note: 'VIP Express Payout' },
+    { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'High Roller Tier' },
+    { depositRange: '$100+', maxCashout: '$2,000.00+', multiplier: '20x+', note: 'Unlimited VIP Cashout' }
+  ],
+  customCashoutRules: [
+    {
+      title: 'Freeplay Cashout Limit',
+      description: 'Maximum cashout on $3 Freeplay winnings is $50.00. Excess balance is kept on hold and released upon a $25 deposit.'
+    },
+    {
+      title: 'Deposit-Based Redemption Caps',
+      description: 'Cashout amounts are calculated based on your total verified deposit amount for that gaming session.'
+    },
+    {
+      title: 'Hold Balance Release',
+      description: 'Remaining hold balances can be transferred to load coins into other games or claimed during future qualified deposits.'
+    }
+  ],
   // Withdrawal form proof requirements (Super Admin toggles)
   withdrawRequireGameScreenshot: false,
   withdrawRequireTagQrScreenshot: true,

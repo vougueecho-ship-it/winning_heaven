@@ -1,109 +1,134 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const RULES_SECTIONS = [
-  {
-    id: 'deposit_rules',
-    icon: 'fa-solid fa-coins',
-    iconColor: '#ffc800',
-    title: 'DEPOSIT & COIN LOADING RULES',
-    subtitle: 'Minimum limits, screenshot requirements & match bonuses',
-    items: [
-      {
-        highlight: 'Minimum Deposit:',
-        text: 'The minimum deposit amount is strictly $5.00. Deposits under $5.00 will not be processed.'
-      },
-      {
-        highlight: 'Mandatory Payment Receipt:',
-        text: 'A clear payment screenshot showing the recipient tag, amount, and timestamp is required for all deposits to verify transfer.'
-      },
-      {
-        highlight: 'Instant Match Bonuses:',
-        text: 'Enjoy a 300% First Deposit Match Bonus on your initial load and 20% match bonus on all subsequent reload deposits.'
-      },
-      {
-        highlight: 'Rapid Coin Allotment:',
-        text: 'Our 24/7 coin distribution staff loads game credits directly to your linked game username within minutes of verification.'
-      }
-    ]
-  },
-  {
-    id: 'freeplay_rules',
-    icon: 'fa-solid fa-gift',
-    iconColor: '#00f0ff',
-    title: 'FREEPLAY & SIGNUP BONUS RULES',
-    subtitle: '$3 signup bonus, $50 max cashout & balance hold unlocks',
-    items: [
-      {
-        highlight: '$3.00 Instant Freeplay:',
-        text: 'All newly registered players are eligible to claim $3.00 Freeplay on their first platform game of choice.'
-      },
-      {
-        highlight: '$50.00 Max Cashout on Freeplay:',
-        text: 'The maximum allowable cashout redeemed from freeplay bonuses is $50.00.'
-      },
-      {
-        highlight: 'Remaining Hold Balance:',
-        text: 'Any excess balance above $50.00 is safely preserved in your Cashout Hold and can be unlocked as game deposit bonus after depositing $25.00.'
-      },
-      {
-        highlight: 'One Freeplay Policy:',
-        text: 'Freeplay is limited to one claim per person, device, and household.'
-      }
-    ]
-  },
-  {
-    id: 'cashout_rules',
-    icon: 'fa-solid fa-bolt',
-    iconColor: '#00e676',
-    title: 'CASHOUT & REDEMPTION RULES',
-    subtitle: 'Supported payout methods, fast processing & remainder payouts',
-    items: [
-      {
-        highlight: 'Supported Payout Methods:',
-        text: 'Redeem your winnings instantly via CashApp, PayPal, Chime, Zelle, Bitcoin, Apple Pay, or Venmo.'
-      },
-      {
-        highlight: 'Direct Payment Processing:',
-        text: 'Approved payouts are sent directly to your payment tag or wallet address by our 24/7 finance team.'
-      },
-      {
-        highlight: 'Partial Payouts & Remaining Claims:',
-        text: 'If a cashout has a remainder balance, you can claim the remainder or transfer it directly into another game with one tap.'
-      }
-    ]
-  },
-  {
-    id: 'security_rules',
-    icon: 'fa-solid fa-shield-halved',
-    iconColor: '#a855f7',
-    title: 'ACCOUNT SAFETY & FAIR PLAY RULES',
-    subtitle: 'Single account policy, RNG fairness & 24/7 player assistance',
-    items: [
-      {
-        highlight: 'Single Account Policy:',
-        text: 'Players may only operate one Winning Heaven account. Multi-accounting to abuse promotions is strictly prohibited.'
-      },
-      {
-        highlight: 'Fair RNG Gaming:',
-        text: 'All integrated slot and fish game platforms operate certified provably fair RNG algorithms.'
-      },
-      {
-        highlight: '24/7 Live Support:',
-        text: 'Have a question about a deposit or payout? Click the yellow headset icon at the bottom-right to chat live with our support team.'
-      }
-    ]
-  }
+const DEFAULT_TIERS = [
+  { depositRange: '$5 - $9', maxCashout: '$50.00', multiplier: '10x', note: 'Fast 5-minute payout' },
+  { depositRange: '$10 - $19', maxCashout: '$100.00', multiplier: '10x', note: 'Standard Cashout' },
+  { depositRange: '$20 - $49', maxCashout: '$250.00', multiplier: '12x', note: 'VIP Express Payout' },
+  { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'High Roller Tier' },
+  { depositRange: '$100+', maxCashout: '$2,000.00+', multiplier: '20x+', note: 'Unlimited VIP Cashout' }
 ];
 
-export default function CasinoRulesAccordion() {
+export default function CasinoRulesAccordion({ frontendSettings = {} }) {
   const [openSection, setOpenSection] = useState(null);
+
+  const minDep = frontendSettings.minimumDepositLimit !== undefined ? Number(frontendSettings.minimumDepositLimit) : 5;
+  const minWith = frontendSettings.minimumWithdrawalLimit !== undefined ? Number(frontendSettings.minimumWithdrawalLimit) : 5;
+  const fpAmount = frontendSettings.signupFreeplay !== undefined ? Number(frontendSettings.signupFreeplay) : 3;
+  const fpMaxCashout = frontendSettings.freeplayMaxCashout !== undefined ? Number(frontendSettings.freeplayMaxCashout) : 50;
+  const fpUnlock = frontendSettings.freeplayUnlockDeposit !== undefined ? Number(frontendSettings.freeplayUnlockDeposit) : 25;
+  const firstBonus = frontendSettings.firstDepositBonus !== undefined ? Number(frontendSettings.firstDepositBonus) : 300;
+  const regBonus = frontendSettings.regularDepositBonus !== undefined ? Number(frontendSettings.regularDepositBonus) : 20;
+
+  const tiers = Array.isArray(frontendSettings.cashoutTiers) && frontendSettings.cashoutTiers.length > 0
+    ? frontendSettings.cashoutTiers
+    : DEFAULT_TIERS;
+
+  const customRules = Array.isArray(frontendSettings.customCashoutRules) && frontendSettings.customCashoutRules.length > 0
+    ? frontendSettings.customCashoutRules
+    : [];
 
   const toggleSection = (id) => {
     setOpenSection((prev) => (prev === id ? null : id));
   };
+
+  const sections = useMemo(() => [
+    {
+      id: 'deposit_rules',
+      icon: 'fa-solid fa-coins',
+      iconColor: '#ffc800',
+      title: 'DEPOSIT & COIN LOADING RULES',
+      subtitle: `Minimum $${minDep}.00, screenshot receipts & ${firstBonus}% match bonus`,
+      items: [
+        {
+          highlight: `Minimum Deposit $${minDep}.00:`,
+          text: `The minimum allowed deposit is strictly $${minDep}.00. Deposits below this amount cannot be loaded.`
+        },
+        {
+          highlight: 'Mandatory Payment Receipt:',
+          text: 'A clear payment screenshot showing the note code, recipient tag, and timestamp is required for all deposits.'
+        },
+        {
+          highlight: `${firstBonus}% First Deposit Bonus:`,
+          text: `Receive a massive ${firstBonus}% coin match on your initial load and ${regBonus}% bonus on all subsequent reload deposits.`
+        },
+        {
+          highlight: 'Instant 24/7 Coin Allotment:',
+          text: 'Our live coin distribution staff loads game credits directly to your in-game username within minutes of verification.'
+        }
+      ]
+    },
+    {
+      id: 'cashout_tiers',
+      icon: 'fa-solid fa-scale-balanced',
+      iconColor: '#00e676',
+      title: 'DEPOSIT VS. CASHOUT LIMITS & TIERS',
+      subtitle: `Withdrawal caps based on deposit amount & minimum $${minWith}.00 cashout`,
+      isTierTable: true,
+      items: [
+        {
+          highlight: `Minimum Withdrawal $${minWith}.00:`,
+          text: `The minimum payout request is $${minWith}.00. Instant redemptions sent via CashApp, PayPal, Chime, Zelle, Bitcoin, Apple Pay, and Venmo.`
+        },
+        {
+          highlight: 'Session-Based Redemption Caps:',
+          text: 'Allowable cashout limits are calculated based on your total verified deposit amount for the active gaming session.'
+        }
+      ]
+    },
+    {
+      id: 'freeplay_rules',
+      icon: 'fa-solid fa-gift',
+      iconColor: '#00f0ff',
+      title: 'SIGNUP FREEPLAY & BONUS CASHOUT RULES',
+      subtitle: `$${fpAmount}.00 Freeplay, $${fpMaxCashout}.00 max cashout & $${fpUnlock}.00 hold unlock`,
+      items: [
+        {
+          highlight: `$${fpAmount}.00 Instant Signup Freeplay:`,
+          text: `All newly registered players receive $${fpAmount}.00 Freeplay on their first game of choice without any initial deposit.`
+        },
+        {
+          highlight: `$${fpMaxCashout}.00 Max Cashout on Freeplay:`,
+          text: `The maximum allowable cashout redeemed from $${fpAmount}.00 freeplay winnings is $${fpMaxCashout}.00.`
+        },
+        {
+          highlight: `Hold Balance Unlock with $${fpUnlock}.00 Deposit:`,
+          text: `Any excess winnings above $${fpMaxCashout}.00 are securely kept on Cashout Hold and automatically released as game deposit bonus after depositing $${fpUnlock}.00.`
+        },
+        {
+          highlight: '1 Freeplay Per Player:',
+          text: 'Freeplay promotions are strictly limited to one per player account, device, and household.'
+        }
+      ]
+    },
+    {
+      id: 'security_rules',
+      icon: 'fa-solid fa-shield-halved',
+      iconColor: '#a855f7',
+      title: 'ACCOUNT SAFETY & FAIR PLAY RULES',
+      subtitle: 'Single account policy, certified RNG & 24/7 player assistance',
+      items: [
+        {
+          highlight: 'Single Account Policy:',
+          text: 'Players may only operate one Winning Heaven account. Multi-accounting to exploit bonuses will lead to forfeiture of balances.'
+        },
+        {
+          highlight: 'Certified Provably Fair RNG:',
+          text: 'All slot and fish arcade platforms operate certified RNG algorithms ensuring genuine payout probabilities.'
+        },
+        {
+          highlight: '24/7 Live Support:',
+          text: 'Questions about deposits, cashout tiers, or hold balances? Click the yellow headset icon at the bottom-right to chat live with finance staff.'
+        },
+        ...customRules.map((cr) => ({
+          highlight: `${cr.title}:`,
+          text: cr.description
+        }))
+      ]
+    }
+  ], [minDep, minWith, fpAmount, fpMaxCashout, fpUnlock, firstBonus, regBonus, customRules]);
 
   return (
     <section style={{
@@ -146,10 +171,10 @@ export default function CasinoRulesAccordion() {
               fontFamily: 'var(--font-heading)',
               letterSpacing: '0.04em'
             }}>
-              PLATFORM RULES & <span className="gold-gradient-text">PLAYER GUIDELINES</span>
+              PLATFORM RULES & <span className="gold-gradient-text">CASHOUT TIERS</span>
             </h3>
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Click any section below to review deposit, bonus, and cashout terms
+              Click any section below to review deposit requirements, withdrawal caps, and bonus terms
             </p>
           </div>
         </div>
@@ -169,7 +194,7 @@ export default function CasinoRulesAccordion() {
 
       {/* Accordion List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-        {RULES_SECTIONS.map((sec) => {
+        {sections.map((sec) => {
           const isOpen = openSection === sec.id;
 
           return (
@@ -269,8 +294,73 @@ export default function CasinoRulesAccordion() {
                       marginTop: '0.25rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.65rem'
+                      gap: '0.75rem'
                     }}>
+                      {/* If Cashout Tiers Section: Render Rich Interactive Tiers Table */}
+                      {sec.isTierTable && (
+                        <div style={{
+                          background: 'rgba(6, 8, 18, 0.95)',
+                          border: '1px solid rgba(0, 230, 118, 0.3)',
+                          borderRadius: '14px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            padding: '0.75rem 1rem',
+                            background: 'rgba(0, 230, 118, 0.1)',
+                            borderBottom: '1px solid rgba(0, 230, 118, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#00e676', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              <i className="fa-solid fa-bolt" style={{ marginRight: '6px' }} /> Verified Cashout Limits by Deposit
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              Minimum Payout: ${minWith}.00
+                            </span>
+                          </div>
+
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                              <thead>
+                                <tr style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                  <th style={{ padding: '0.65rem 1rem', fontWeight: 800 }}>Deposit Range</th>
+                                  <th style={{ padding: '0.65rem 1rem', fontWeight: 800 }}>Max Cashout Cap</th>
+                                  <th style={{ padding: '0.65rem 1rem', fontWeight: 800 }}>Multiplier</th>
+                                  <th style={{ padding: '0.65rem 1rem', fontWeight: 800 }}>Payout Speed</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tiers.map((t, idx) => (
+                                  <tr
+                                    key={idx}
+                                    style={{
+                                      borderBottom: idx < tiers.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                                      background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'
+                                    }}
+                                  >
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 800, color: '#fff' }}>
+                                      {t.depositRange}
+                                    </td>
+                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 900, color: '#00e676', fontFamily: 'var(--font-heading)' }}>
+                                      {t.maxCashout}
+                                    </td>
+                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--gold-primary)', fontWeight: 800 }}>
+                                      {t.multiplier || '10x'}
+                                    </td>
+                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                      <i className="fa-solid fa-check" style={{ color: '#00e676', marginRight: '5px' }} />
+                                      {t.note || 'Instant Cashout'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rule Bullets */}
                       {sec.items.map((item, idx) => (
                         <div
                           key={idx}
