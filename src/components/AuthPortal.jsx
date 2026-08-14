@@ -419,273 +419,270 @@ export default function AuthPortal({
       position: 'relative',
       background: '#04060e',
       display: 'flex',
-      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 'max(1.5rem, calc(1.5rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px)))) max(1rem, env(safe-area-inset-right, 0px)) max(1.5rem, calc(1.5rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))) max(1rem, env(safe-area-inset-left, 0px))',
+      padding: 'max(1.25rem, calc(1.25rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px)))) max(1.25rem, env(safe-area-inset-right, 0px)) max(1.25rem, calc(1.25rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))) max(1.25rem, env(safe-area-inset-left, 0px))',
       boxSizing: 'border-box',
       overflowX: 'hidden'
     }}>
-      {/* Background Ambient Glow Orbs */}
+      {/* FULL-SCREEN IMMERSIVE CASINO BACKGROUND IMAGE */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundImage: 'url(/heavenly_auth_bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 20%',
+        backgroundRepeat: 'no-repeat',
+        zIndex: 0
+      }} />
+
+      {/* Cinematic Dark Gradient Overlays */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'radial-gradient(circle at top right, rgba(255,200,0,0.15) 0%, transparent 50%), linear-gradient(105deg, rgba(4,6,14,0.4) 0%, rgba(4,6,14,0.85) 45%, rgba(4,6,14,0.96) 100%)',
+        zIndex: 1
+      }} />
+
+      {/* Ambient Lighting Orbs */}
       <div style={{
         position: 'fixed',
         top: '-15%',
         left: '20%',
-        width: '700px',
-        height: '700px',
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,200,0,0.12) 0%, rgba(0,240,255,0.05) 45%, transparent 70%)',
-        pointerEvents: 'none',
-        zIndex: 0
-      }} />
-      <div style={{
-        position: 'fixed',
-        bottom: '-15%',
-        right: '15%',
         width: '600px',
         height: '600px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(168,85,247,0.1) 0%, rgba(255,153,0,0.05) 50%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(255,200,0,0.15) 0%, rgba(0,240,255,0.05) 50%, transparent 70%)',
         pointerEvents: 'none',
-        zIndex: 0
+        zIndex: 1
       }} />
 
-      {/* Main Luxury 2-Column Grid Container */}
+      {/* Full-Screen Content Wrapper */}
       <div style={{
         width: '100%',
-        maxWidth: '1160px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
-        gap: '2rem',
+        maxWidth: '1240px',
+        minHeight: '85vh',
+        display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '2.5rem',
         zIndex: 2,
-        margin: 'auto 0'
+        position: 'relative'
       }}>
 
-        {/* LEFT COLUMN: VIP Luxury Casino Showcase & Hero Banner */}
+        {/* LEFT COLUMN: Floating VIP Casino Perks & Live Jackpot Showcase */}
         <div style={{
+          flex: '1 1 440px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
-          width: '100%'
+          gap: '1.5rem',
+          color: '#fff',
+          padding: '1rem 0'
         }}>
-          {/* Main Visual Image Card */}
+          {/* Top VIP Badge */}
           <div style={{
-            position: 'relative',
-            borderRadius: '24px',
-            overflow: 'hidden',
-            border: '2px solid rgba(255, 215, 0, 0.45)',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.9), 0 0 35px rgba(255,200,0,0.25)',
-            height: '290px',
-            width: '100%',
-            background: '#070a14'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            background: 'rgba(6, 9, 22, 0.82)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1.5px solid var(--gold-primary)',
+            borderRadius: '999px',
+            padding: '0.4rem 1.1rem',
+            width: 'fit-content',
+            boxShadow: '0 0 25px rgba(255,200,0,0.35)'
           }}>
-            <img
-              src="/casino_vip_hero.jpg"
-              alt="Winning Heaven VIP Casino"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 20%'
-              }}
-            />
-            {/* Cinematic Gradient Overlays */}
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(180deg, rgba(4,6,14,0.1) 0%, rgba(4,6,14,0.85) 100%)'
-            }} />
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(circle at top right, rgba(255,200,0,0.3) 0%, transparent 60%)'
-            }} />
+            <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#00e676', boxShadow: '0 0 10px #00e676' }} />
+            <span style={{ fontSize: '0.78rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.1em', fontFamily: 'var(--font-heading)' }}>
+              HIGH LIMIT VIP CASINO LOUNGE
+            </span>
+          </div>
 
-            {/* Floating Top VIP Badge */}
+          {/* Main Hero Headline */}
+          <div>
+            <h1 style={{
+              fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
+              fontWeight: 900,
+              fontFamily: 'var(--font-heading)',
+              lineHeight: 1.15,
+              margin: '0 0 0.75rem 0',
+              textShadow: '0 4px 20px rgba(0,0,0,0.95)'
+            }}>
+              PLAY CELESTIAL <br />
+              <span className="gold-gradient-text">VEGAS SWEEPS</span> &amp; SLOTS
+            </h1>
+            <p style={{
+              fontSize: 'clamp(0.9rem, 1.1vw, 1.05rem)',
+              color: '#e2e8f0',
+              margin: 0,
+              maxWidth: '480px',
+              lineHeight: 1.6,
+              textShadow: '0 2px 10px rgba(0,0,0,0.9)'
+            }}>
+              Join thousands of daily players enjoying certified high-payout slots, instant freeplay, and 5-minute cashouts direct to CashApp &amp; Crypto.
+            </p>
+          </div>
+
+          {/* Floating Perks Banners */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '440px' }}>
             <div style={{
-              position: 'absolute',
-              top: '1rem',
-              left: '1rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              background: 'rgba(4, 6, 14, 0.85)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid var(--gold-primary)',
-              borderRadius: '999px',
-              padding: '0.35rem 0.85rem',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.8)'
-            }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e676', boxShadow: '0 0 8px #00e676' }} />
-              <span style={{ fontSize: '0.72rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.08em', fontFamily: 'var(--font-heading)' }}>
-                VIP CELESTIAL CASINO
-              </span>
-            </div>
-
-            {/* Bottom Overlay Text on Hero Card */}
-            <div style={{
-              position: 'absolute',
-              bottom: '1rem',
-              left: '1.25rem',
-              right: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.35rem'
+              gap: '0.9rem',
+              background: 'rgba(6, 9, 22, 0.75)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(0, 230, 118, 0.4)',
+              borderRadius: '16px',
+              padding: '0.75rem 1rem',
+              boxShadow: '0 8px 25px rgba(0,0,0,0.6)'
             }}>
               <div style={{
-                fontSize: '1.45rem',
-                fontWeight: 900,
-                color: '#fff',
-                fontFamily: 'var(--font-heading)',
-                lineHeight: 1.2,
-                textShadow: '0 2px 10px rgba(0,0,0,0.9)'
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(0, 230, 118, 0.15)',
+                color: '#00e676',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem'
               }}>
-                PLAY VEGAS SLOTS &amp; <span className="gold-gradient-text">WIN REAL REWARDS</span>
-              </div>
-              <div style={{ fontSize: '0.82rem', color: '#cbd5e1', textShadow: '0 1px 6px rgba(0,0,0,0.9)' }}>
-                Instant deposit bonuses, certified RNG games &amp; lightning cashouts.
-              </div>
-            </div>
-          </div>
-
-          {/* 3 VIP Casino Benefit Cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-            gap: '0.75rem',
-            width: '100%'
-          }}>
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(14, 20, 42, 0.85) 0%, rgba(8, 11, 24, 0.85) 100%)',
-              border: '1px solid rgba(255, 215, 0, 0.25)',
-              borderRadius: '16px',
-              padding: '0.85rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem',
-              boxShadow: '0 8px 25px rgba(0,0,0,0.5)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#00e676', fontSize: '0.85rem' }}>
                 <i className="fa-solid fa-gift" />
-                <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.05em' }}>FREEPLAY</span>
               </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', fontFamily: 'var(--font-heading)' }}>
-                $3.00 FREE
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                On instant signup
+              <div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fff' }}>$3.00 Instant Freeplay</div>
+                <div style={{ fontSize: '0.74rem', color: '#00e676', fontWeight: 700 }}>Claim on signup • No deposit required</div>
               </div>
             </div>
 
             <div style={{
-              background: 'linear-gradient(135deg, rgba(14, 20, 42, 0.85) 0%, rgba(8, 11, 24, 0.85) 100%)',
-              border: '1px solid rgba(255, 215, 0, 0.25)',
-              borderRadius: '16px',
-              padding: '0.85rem',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem',
-              boxShadow: '0 8px 25px rgba(0,0,0,0.5)'
+              alignItems: 'center',
+              gap: '0.9rem',
+              background: 'rgba(6, 9, 22, 0.75)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 200, 0, 0.4)',
+              borderRadius: '16px',
+              padding: '0.75rem 1rem',
+              boxShadow: '0 8px 25px rgba(0,0,0,0.6)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--gold-primary)', fontSize: '0.85rem' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(255, 200, 0, 0.15)',
+                color: 'var(--gold-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem'
+              }}>
                 <i className="fa-solid fa-coins" />
-                <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.05em' }}>DEPOSIT MATCH</span>
               </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-heading)' }}>
-                +300% MATCH
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                On 1st deposit load
+              <div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--gold-primary)' }}>+300% First Deposit Match</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Triple your coins on your 1st reload</div>
               </div>
             </div>
 
             <div style={{
-              background: 'linear-gradient(135deg, rgba(14, 20, 42, 0.85) 0%, rgba(8, 11, 24, 0.85) 100%)',
-              border: '1px solid rgba(0, 240, 255, 0.25)',
-              borderRadius: '16px',
-              padding: '0.85rem',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem',
-              boxShadow: '0 8px 25px rgba(0,0,0,0.5)'
+              alignItems: 'center',
+              gap: '0.9rem',
+              background: 'rgba(6, 9, 22, 0.75)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(0, 240, 255, 0.4)',
+              borderRadius: '16px',
+              padding: '0.75rem 1rem',
+              boxShadow: '0 8px 25px rgba(0,0,0,0.6)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--cyan-primary)', fontSize: '0.85rem' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(0, 240, 255, 0.15)',
+                color: 'var(--cyan-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem'
+              }}>
                 <i className="fa-solid fa-bolt" />
-                <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.05em' }}>FAST CASHOUT</span>
               </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-heading)' }}>
-                5-MIN PAYOUT
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                Direct CashApp &amp; Crypto
+              <div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#38bdf8' }}>5-Minute Lightning Cashouts</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Instant payouts direct to CashApp &amp; Crypto</div>
               </div>
             </div>
           </div>
 
-          {/* Mega Jackpot Ticker Banner */}
+          {/* Live Progressive Mega Jackpot Banner */}
           <div style={{
-            background: 'linear-gradient(90deg, rgba(255, 200, 0, 0.12) 0%, rgba(255, 153, 0, 0.05) 100%)',
-            border: '1px solid rgba(255, 200, 0, 0.35)',
-            borderRadius: '16px',
-            padding: '0.75rem 1.1rem',
+            background: 'linear-gradient(90deg, rgba(255, 200, 0, 0.18) 0%, rgba(255, 153, 0, 0.08) 100%)',
+            border: '1.5px solid rgba(255, 200, 0, 0.45)',
+            borderRadius: '18px',
+            padding: '0.85rem 1.25rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '0.75rem'
+            maxWidth: '440px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8), 0 0 25px rgba(255,200,0,0.2)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{
-                width: '36px',
-                height: '36px',
+                width: '40px',
+                height: '40px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
                 color: '#000',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1rem',
-                boxShadow: '0 0 15px rgba(255,200,0,0.5)'
+                fontSize: '1.15rem',
+                boxShadow: '0 0 20px rgba(255,200,0,0.6)'
               }}>
                 <i className="fa-solid fa-trophy" />
               </div>
               <div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.08em' }}>
-                  LIVE PROGRESSIVE JACKPOT
+                <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.08em' }}>
+                  PROGRESSIVE MEGA JACKPOT
                 </div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace', letterSpacing: '1px' }}>
                   $184,950.40
                 </div>
               </div>
             </div>
             <div style={{
-              background: 'rgba(0, 230, 118, 0.15)',
-              border: '1px solid rgba(0, 230, 118, 0.4)',
+              background: 'rgba(0, 230, 118, 0.2)',
+              border: '1px solid rgba(0, 230, 118, 0.5)',
               color: '#00e676',
-              fontSize: '0.7rem',
-              fontWeight: 800,
-              padding: '0.3rem 0.65rem',
-              borderRadius: '20px',
-              whiteSpace: 'nowrap'
+              fontSize: '0.75rem',
+              fontWeight: 900,
+              padding: '0.35rem 0.75rem',
+              borderRadius: '20px'
             }}>
-              🔥 HOT SLOTS
+              🔥 HOT
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Glassmorphism Login & Sign-Up Card */}
+        {/* RIGHT COLUMN: Ultra-Sleek Glassmorphic Auth Console */}
         <div style={{
+          flex: '1 1 420px',
+          maxWidth: '460px',
           width: '100%',
-          maxWidth: '480px',
-          background: 'rgba(10, 14, 28, 0.94)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
+          background: 'rgba(8, 11, 24, 0.88)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
           border: '1.5px solid rgba(255, 215, 0, 0.35)',
-          borderRadius: '24px',
-          padding: '2rem 1.75rem',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 35px rgba(255,200,0,0.18)',
+          borderRadius: '28px',
+          padding: '2rem 1.85rem',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.95), 0 0 45px rgba(255,200,0,0.18)',
           position: 'relative',
           margin: '0 auto'
         }}>
@@ -697,19 +694,19 @@ export default function AuthPortal({
             marginBottom: '1.5rem'
           }}>
             <div style={{
-              width: '70px',
-              height: '70px',
+              width: '74px',
+              height: '74px',
               borderRadius: '50%',
               border: '2.5px solid var(--gold-primary)',
               background: '#000',
-              boxShadow: '0 0 30px rgba(255,200,0,0.45)',
+              boxShadow: '0 0 35px rgba(255,200,0,0.5)',
               overflow: 'hidden',
               marginBottom: '0.65rem'
             }}>
               <img src="/winning_heaven_logo.png" alt="Winning Heaven" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
 
-            <h1 style={{
+            <h2 style={{
               fontSize: '1.75rem',
               fontWeight: 900,
               fontFamily: 'var(--font-heading)',
@@ -718,7 +715,7 @@ export default function AuthPortal({
               margin: 0
             }}>
               WINNING<span className="gold-gradient-text">HEAVEN</span>
-            </h1>
+            </h2>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', letterSpacing: '0.08em', marginTop: '0.2rem' }}>
               PREMIER CASINO &amp; GAMING LOUNGE
             </div>
@@ -727,7 +724,7 @@ export default function AuthPortal({
           {/* Auth Tabs */}
           <div style={{
             display: 'flex',
-            background: 'rgba(6, 8, 18, 0.85)',
+            background: 'rgba(4, 6, 14, 0.9)',
             borderRadius: '14px',
             padding: '0.3rem',
             marginBottom: '1.5rem',
@@ -793,7 +790,7 @@ export default function AuthPortal({
                     placeholder="Enter email or username"
                     style={{
                       width: '100%',
-                      background: 'rgba(6, 8, 18, 0.8)',
+                      background: 'rgba(4, 6, 14, 0.85)',
                       border: '1px solid var(--border-muted)',
                       borderRadius: '12px',
                       padding: '0.75rem 1rem',
@@ -823,7 +820,7 @@ export default function AuthPortal({
                       placeholder="Enter password"
                       style={{
                         width: '100%',
-                        background: 'rgba(6, 8, 18, 0.8)',
+                        background: 'rgba(4, 6, 14, 0.85)',
                         border: '1px solid var(--border-muted)',
                         borderRadius: '12px',
                         padding: '0.75rem 2.6rem 0.75rem 1rem',
@@ -905,7 +902,7 @@ export default function AuthPortal({
                         required
                         style={{
                           width: '100%',
-                          background: 'rgba(6, 8, 18, 0.8)',
+                          background: 'rgba(4, 6, 14, 0.85)',
                           border: '1px solid var(--border-muted)',
                           borderRadius: '12px',
                           padding: '0.75rem 1rem',
@@ -926,7 +923,7 @@ export default function AuthPortal({
                         required
                         style={{
                           width: '100%',
-                          background: 'rgba(6, 8, 18, 0.8)',
+                          background: 'rgba(4, 6, 14, 0.85)',
                           border: '1px solid var(--border-muted)',
                           borderRadius: '12px',
                           padding: '0.75rem 1rem',
@@ -948,7 +945,7 @@ export default function AuthPortal({
                           required
                           style={{
                             width: '100%',
-                            background: 'rgba(6, 8, 18, 0.8)',
+                            background: 'rgba(4, 6, 14, 0.85)',
                             border: '1px solid var(--border-muted)',
                             borderRadius: '12px',
                             padding: '0.75rem 2.5rem 0.75rem 1rem',
@@ -985,7 +982,7 @@ export default function AuthPortal({
                         placeholder="Enter referral code"
                         style={{
                           width: '100%',
-                          background: 'rgba(6, 8, 18, 0.8)',
+                          background: 'rgba(4, 6, 14, 0.85)',
                           border: '1px solid var(--gold-primary)',
                           borderRadius: '12px',
                           padding: '0.75rem 1rem',
@@ -1087,7 +1084,7 @@ export default function AuthPortal({
                         required
                         style={{
                           width: '100%',
-                          background: 'rgba(6, 8, 18, 0.95)',
+                          background: 'rgba(4, 6, 14, 0.95)',
                           border: '2px solid var(--gold-primary)',
                           borderRadius: '14px',
                           padding: '0.85rem 1rem',
@@ -1164,7 +1161,7 @@ export default function AuthPortal({
                     placeholder="Enter registered email"
                     style={{
                       width: '100%',
-                      background: 'rgba(6, 8, 18, 0.8)',
+                      background: 'rgba(4, 6, 14, 0.85)',
                       border: '1px solid var(--border-muted)',
                       borderRadius: '12px',
                       padding: '0.8rem 1rem',
@@ -1185,43 +1182,43 @@ export default function AuthPortal({
               </motion.form>
             )}
           </AnimatePresence>
-        </div>
-      </div>
 
-      {/* Support Quick Contact Footer */}
-      <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem', zIndex: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Need help?</span>
-          <button
-            onClick={onOpenSupport}
-            style={{ background: 'transparent', border: 'none', color: 'var(--cyan-primary)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer' }}
-          >
-            Contact Customer Support
-          </button>
-        </div>
+          {/* Support Quick Contact Footer */}
+          <div style={{ marginTop: '1.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Need help?</span>
+              <button
+                onClick={onOpenSupport}
+                style={{ background: 'transparent', border: 'none', color: 'var(--cyan-primary)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer' }}
+              >
+                Contact Customer Support
+              </button>
+            </div>
 
-        <a
-          href="/downloads/winning-heaven.apk"
-          download
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(255, 215, 0, 0.15) 100%)',
-            border: '1px solid rgba(34, 197, 94, 0.4)',
-            borderRadius: '20px',
-            padding: '0.45rem 1rem',
-            color: '#4ade80',
-            fontSize: '0.78rem',
-            fontWeight: 800,
-            textDecoration: 'none',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.95rem' }} />
-          <span>Download Official Android APK</span>
-        </a>
+            <a
+              href="/downloads/winning-heaven.apk"
+              download
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(255, 215, 0, 0.15) 100%)',
+                border: '1px solid rgba(34, 197, 94, 0.4)',
+                borderRadius: '20px',
+                padding: '0.45rem 1rem',
+                color: '#4ade80',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.95rem' }} />
+              <span>Download Official Android APK</span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
