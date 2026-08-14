@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { shouldShowInfoOnAuth } from '../lib/infoPage';
@@ -48,8 +49,24 @@ export default function AuthPortal({
   showToast,
   onOpenSupport,
   supportUnread = false,
-  frontendSettings = {}
+  frontendSettings: initialSettings = {}
 }) {
+  // Dynamically fetch live CMS frontend settings from admin panel
+  const { data: settingsData } = useSWR('/api/settings/frontend', (url) => fetch(url).then(r => r.json()), {
+    fallbackData: initialSettings?.firstDepositBonus ? { success: true, settings: initialSettings } : undefined,
+    revalidateOnFocus: false
+  });
+
+  const settings = settingsData?.settings || initialSettings || {};
+  const freeplayAmount = settings.signupFreeplay !== undefined 
+    ? settings.signupFreeplay 
+    : (settings.lobbyFreeplayValue ? String(settings.lobbyFreeplayValue).replace(/[^0-9.]/g, '') : '3');
+  const depositBonusPercent = settings.firstDepositBonus !== undefined ? settings.firstDepositBonus : 300;
+  const minDeposit = settings.minimumDepositLimit !== undefined ? settings.minimumDepositLimit : 5;
+  const minWithdraw = settings.minimumWithdrawalLimit !== undefined ? settings.minimumWithdrawalLimit : 5;
+  const landingWelcome = settings.landingWelcome || 'PLAY CELESTIAL VEGAS SWEEPS';
+  const landingGrab = settings.landingGrab || 'Instant deposit bonuses, certified RNG games & lightning cashouts.';
+
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -521,7 +538,7 @@ export default function AuthPortal({
               lineHeight: 1.6,
               textShadow: '0 2px 10px rgba(0,0,0,0.9)'
             }}>
-              Join thousands of daily players enjoying certified high-payout slots, instant freeplay, and 5-minute cashouts direct to CashApp &amp; Crypto.
+              {landingGrab}
             </p>
           </div>
 
@@ -553,7 +570,7 @@ export default function AuthPortal({
                 <i className="fa-solid fa-gift" />
               </div>
               <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fff' }}>$3.00 Instant Freeplay</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fff' }}>${freeplayAmount} Freeplay Bonus</div>
                 <div style={{ fontSize: '0.74rem', color: '#00e676', fontWeight: 700 }}>Claim on signup • No deposit required</div>
               </div>
             </div>
@@ -584,7 +601,7 @@ export default function AuthPortal({
                 <i className="fa-solid fa-coins" />
               </div>
               <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--gold-primary)' }}>+300% First Deposit Match</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--gold-primary)' }}>+{depositBonusPercent}% First Deposit Match</div>
                 <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Triple your coins on your 1st reload</div>
               </div>
             </div>
@@ -616,7 +633,7 @@ export default function AuthPortal({
               </div>
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#38bdf8' }}>5-Minute Lightning Cashouts</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Instant payouts direct to CashApp &amp; Crypto</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Min ${minWithdraw} payout direct to CashApp &amp; Crypto</div>
               </div>
             </div>
           </div>
