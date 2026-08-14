@@ -44,9 +44,11 @@ module.exports = {
       cwd,
       script: 'node_modules/next/dist/bin/next',
       args: 'start -p 3000',
+      node_args: '--max-old-space-size=512',
       instances: 1,
       exec_mode: 'fork',
       max_memory_restart: '750M',
+      exp_backoff_restart_delay: 100,
       env: {
         NODE_ENV: 'production',
         PORT: 3000,

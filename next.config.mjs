@@ -1,11 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   compress: true,
+  poweredByHeader: false,
+  reactStrictMode: false,
   images: {
     unoptimized: true,
   },
   async headers() {
     return [
+      // 1. Optimized caching for static images, audio, and font files
+      {
+        source: '/:path*.(ico|png|jpg|jpeg|svg|webp|mp3|wav|ogg|woff|woff2|ttf)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
       {
         source: '/sw.js',
         headers: [
@@ -29,7 +38,7 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=3600' },
         ],
       },
-      // Prevent Hostinger CDN / Cloudflare edge from serving stale HTML pages
+      // 3. Prevent Hostinger CDN / Cloudflare edge from serving stale dynamic HTML pages
       {
         source: '/:path*',
         headers: [

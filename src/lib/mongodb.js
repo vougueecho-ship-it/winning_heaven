@@ -64,10 +64,12 @@ const DEFAULT_SEEDS = {
 };
 
 const clientOptions = {
-  maxPoolSize: 10,
+  maxPoolSize: 20,
   minPoolSize: 2,
-  maxIdleTimeMS: 30000,
-  connectTimeoutMS: 10000,
+  maxIdleTimeMS: 60000,
+  connectTimeoutMS: 8000,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
   tls: true,
   tlsAllowInvalidCertificates: true,
   tlsAllowInvalidHostnames: true
@@ -87,17 +89,10 @@ function createClientPromise() {
 }
 
 function getClientPromise() {
-  if (process.env.NODE_ENV === 'development') {
-    if (!global._mongoClientPromise) {
-      global._mongoClientPromise = createClientPromise();
-    }
-    return global._mongoClientPromise;
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = createClientPromise();
   }
-
-  if (!clientPromise) {
-    clientPromise = createClientPromise();
-  }
-  return clientPromise;
+  return global._mongoClientPromise;
 }
 
 // Seed empty collections once; ensure indexes at most once per process (cold starts stay fast).
