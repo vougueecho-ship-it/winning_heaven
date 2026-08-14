@@ -133,6 +133,14 @@ export async function POST(req) {
       { upsert: true }
     );
 
+    // Sync isSubscribed status on the player's account for Admin Panel Segments list
+    if (userEmail && audience === 'player') {
+      await db.collection('users').updateOne(
+        { email: userEmail },
+        { $set: { isSubscribed: true, notificationsEnabled: true, pushEnabledAt: now } }
+      ).catch(() => {});
+    }
+
     return NextResponse.json({ success: true, audience, distributorId: distributorId || undefined });
   } catch (error) {
     console.error('Push subscription save error:', error);
