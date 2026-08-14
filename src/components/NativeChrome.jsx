@@ -7,22 +7,37 @@ function isPortalApp() {
   return /WinningHeavenPortalNative/i.test(navigator.userAgent || '');
 }
 
-function probeSafeAreaTop() {
-  if (typeof document === 'undefined') return 0;
-  const el = document.createElement('div');
-  el.style.cssText =
+function isDistributorApp() {
+  if (typeof navigator === 'undefined') return false;
+  return /WinningHeavenDistributorNative/i.test(navigator.userAgent || '');
+}
+
+function isPlayerApp() {
+  if (typeof navigator === 'undefined') return false;
+  return /WinningHeavenNative/i.test(navigator.userAgent || '');
+}
+
+function probeSafeAreaInsets() {
+  if (typeof document === 'undefined') return { top: 0, bottom: 0 };
+  const topEl = document.createElement('div');
+  topEl.style.cssText =
     'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-top, 0px);';
-  document.documentElement.appendChild(el);
-  const h = el.getBoundingClientRect().height || 0;
-  el.remove();
-  return h;
+  const botEl = document.createElement('div');
+  botEl.style.cssText =
+    'position:fixed;bottom:0;left:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-bottom, 0px);';
+  document.documentElement.appendChild(topEl);
+  document.documentElement.appendChild(botEl);
+  const top = topEl.getBoundingClientRect().height || 0;
+  const bottom = botEl.getBoundingClientRect().height || 0;
+  topEl.remove();
+  botEl.remove();
+  return { top, bottom };
 }
 
 /**
- * Keep Android/iOS system bars solid so content never shows behind the clock/battery.
- * Portal: header MUST sit below the status bar. WebView padding is unreliable on
- * Android 14/15, so we always apply a real --admin-sat (never force 0).
- * Native apps: disable pinch / double-tap zoom for a stable layout.
+ * Universal Safe Area & Chrome Manager:
+ * Ensures the app content, top header bars, and bottom navigation
+ * never overlap with Android/iOS status bars, notches, or system navigation bars.
  */
 export default function NativeChrome() {
   useEffect(() => {
@@ -31,15 +46,19 @@ export default function NativeChrome() {
     if (isPortalApp()) {
       document.documentElement.classList.add('admin-native-shell');
     }
-    if (/WinningHeavenNative/i.test(navigator.userAgent || '')) {
+    if (isPlayerApp()) {
       document.documentElement.classList.add('player-native-shell');
+    }
+    if (isDistributorApp()) {
+      document.documentElement.classList.add('distributor-native-shell');
     }
 
     const lockPageZoom = () => {
       if (cancelled || typeof document === 'undefined') return;
       const native =
         isPortalApp() ||
-        /WinningHeavenNative|WinningHeavenDistributorNative/i.test(navigator.userAgent || '') ||
+        isDistributorApp() ||
+        isPlayerApp() ||
         window.Capacitor?.isNativePlatform?.() === true;
       if (!native) return;
 
@@ -62,23 +81,42 @@ export default function NativeChrome() {
       }
     };
 
-    const syncAdminSat = () => {
-      if (cancelled) return;
-      const probed = probeSafeAreaTop();
-      const onAdmin =
-        window.location.pathname.startsWith('/admin') ||
-        document.querySelector('.admin-dashboard-layout');
-      const androidNative =
-        /Android/i.test(navigator.userAgent || '') &&
-        (isPortalApp() || window.Capacitor?.isNativePlatform?.() === true);
+    const syncSafeAreaInsets = () => {
+      if (cancelled || typeof document === 'undefined') return;
+      const insets = probeSafeAreaInsets();
+      const isNative =
+        isPortalApp() ||
+        isDistributorApp() ||
+        isPlayerApp() ||
+        window.Capacitor?.isNativePlatform?.() === true ||
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
-      let px = probed;
-      // Portal / Android admin: env(safe-area) is often 0 while the status bar
-      // still overlays the WebView — force a real offset so the logo is visible.
-      if (probed < 1 && androidNative && (isPortalApp() || onAdmin)) {
-        px = 40;
+      const isAndroid = /Android/i.test(navigator.userAgent || '');
+
+      let topPx = insets.top;
+      let bottomPx = insets.bottom;
+
+      // On Android native apps / WebViews where env(safe-area) returns 0
+      // but the status bar overlays the WebView, apply safe physical defaults.
+      if (topPx < 1 && isNative) {
+        topPx = isAndroid ? 38 : 44;
+      } else if (topPx > 0) {
+        topPx = Math.max(topPx, isAndroid ? 32 : 44);
       }
-      document.documentElement.style.setProperty('--admin-sat', `${Math.round(px)}px`);
+
+      if (bottomPx < 1 && isNative && isAndroid) {
+        bottomPx = 20;
+      }
+
+      const topStr = `${Math.round(topPx)}px`;
+      const botStr = `${Math.round(bottomPx)}px`;
+
+      document.documentElement.style.setProperty('--sat', topStr);
+      document.documentElement.style.setProperty('--sab', botStr);
+      document.documentElement.style.setProperty('--admin-sat', topStr);
+      document.documentElement.style.setProperty('--admin-sab', botStr);
+      document.documentElement.style.setProperty('--safe-area-top', topStr);
+      document.documentElement.style.setProperty('--safe-area-bottom', botStr);
     };
 
     const configure = async () => {
@@ -86,52 +124,41 @@ export default function NativeChrome() {
         const { Capacitor } = await import('@capacitor/core');
         if (!Capacitor.isNativePlatform() || cancelled) return;
 
-        if (isPortalApp() || window.location.pathname.startsWith('/admin')) {
-          document.documentElement.classList.add('admin-native-shell');
-        }
-        if (
-          /WinningHeavenNative/i.test(navigator.userAgent || '') ||
-          (Capacitor.isNativePlatform() &&
-            !isPortalApp() &&
-            !/WinningHeavenDistributorNative|WinningHeavenPortalNative/i.test(navigator.userAgent || '') &&
-            !window.location.pathname.startsWith('/admin') &&
-            !window.location.pathname.startsWith('/distributor'))
-        ) {
-          document.documentElement.classList.add('player-native-shell');
-        }
-
         const { StatusBar, Style } = await import('@capacitor/status-bar');
         await StatusBar.setOverlaysWebView({ overlay: false });
         await StatusBar.setBackgroundColor({ color: '#080a11' });
         await StatusBar.setStyle({ style: Style.Dark });
-        // Plugin may settle after first paint — re-apply offset.
-        syncAdminSat();
+        syncSafeAreaInsets();
         lockPageZoom();
       } catch {
-        // Browser / missing plugin — nothing to do.
+        // Fallback for web / missing plugin
       }
-      syncAdminSat();
+      syncSafeAreaInsets();
       lockPageZoom();
     };
 
     lockPageZoom();
-    syncAdminSat();
+    syncSafeAreaInsets();
     configure();
+
     document.addEventListener('touchmove', blockGestureZoom, { passive: false });
-    const t1 = window.setTimeout(syncAdminSat, 300);
-    const t2 = window.setTimeout(syncAdminSat, 1000);
-    const t3 = window.setTimeout(syncAdminSat, 2500);
-    const z1 = window.setTimeout(lockPageZoom, 300);
-    const z2 = window.setTimeout(lockPageZoom, 1000);
+    window.addEventListener('resize', syncSafeAreaInsets);
+    window.addEventListener('orientationchange', syncSafeAreaInsets);
+
+    const t1 = window.setTimeout(syncSafeAreaInsets, 200);
+    const t2 = window.setTimeout(syncSafeAreaInsets, 600);
+    const t3 = window.setTimeout(syncSafeAreaInsets, 1500);
+    const t4 = window.setTimeout(syncSafeAreaInsets, 3000);
 
     return () => {
       cancelled = true;
       document.removeEventListener('touchmove', blockGestureZoom);
+      window.removeEventListener('resize', syncSafeAreaInsets);
+      window.removeEventListener('orientationchange', syncSafeAreaInsets);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
-      window.clearTimeout(z1);
-      window.clearTimeout(z2);
+      window.clearTimeout(t4);
     };
   }, []);
 

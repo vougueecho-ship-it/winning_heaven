@@ -417,9 +417,9 @@ export default function AuthPortal({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      position: 'relative',
-      padding: '2rem 1rem',
-      overflow: 'hidden'
+      padding: 'max(2rem, calc(2rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px)))) max(1rem, env(safe-area-inset-right, 0px)) max(2rem, calc(2rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))) max(1rem, env(safe-area-inset-left, 0px))',
+      boxSizing: 'border-box',
+      overflow: 'auto'
     }}>
       {/* Background Ambient Glow Orbs */}
       <div style={{

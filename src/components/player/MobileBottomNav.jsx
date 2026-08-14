@@ -19,9 +19,8 @@ export default function MobileBottomNav({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderTop: '1px solid rgba(255, 200, 0, 0.2)',
-      padding: '0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 1rem',
+      padding: '0.5rem max(1rem, env(safe-area-inset-right, 0px)) calc(0.5rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px))) max(1rem, env(safe-area-inset-left, 0px))',
       display: 'flex',
-      justifyContent: 'space-around',
       alignItems: 'center',
       boxShadow: '0 -10px 30px rgba(0,0,0,0.9)'
     }}>

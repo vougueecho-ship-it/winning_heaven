@@ -36,7 +36,11 @@ export default function PlayerNavbar({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderBottom: '1px solid rgba(255, 200, 0, 0.18)',
-      padding: '0.6rem 1rem'
+      paddingTop: 'max(0.6rem, calc(0.6rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px))))',
+      paddingBottom: '0.6rem',
+      paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+      paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+      boxSizing: 'border-box'
     }}>
       <div style={{
         maxWidth: '1400px',

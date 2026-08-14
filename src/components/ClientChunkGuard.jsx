@@ -8,7 +8,16 @@ export default function ClientChunkGuard() {
     const handleRejection = (event) => {
       if (isChunkLoadFailure(event?.reason)) {
         event.preventDefault();
-        window.location.reload();
+        try {
+          const lastReload = sessionStorage.getItem('chunk_reload_ts');
+          const now = Date.now();
+          if (!lastReload || now - Number(lastReload) > 8000) {
+            sessionStorage.setItem('chunk_reload_ts', String(now));
+            window.location.reload();
+          }
+        } catch {
+          window.location.reload();
+        }
       }
     };
 

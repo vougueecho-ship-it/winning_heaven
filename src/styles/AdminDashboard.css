@@ -93,9 +93,13 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    height: 60px !important;
-    padding: 0 1rem !important;
-    background: rgba(8, 11, 24, 0.95) !important;
+    min-height: calc(56px + max(env(safe-area-inset-top, 0px), var(--admin-sat, 0px))) !important;
+    height: auto !important;
+    padding-top: max(env(safe-area-inset-top, 0px), var(--admin-sat, 0px)) !important;
+    padding-bottom: 0.65rem !important;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+    background: rgba(8, 11, 24, 0.98) !important;
     border-bottom: 1px solid rgba(255, 215, 0, 0.18) !important;
     position: sticky !important;
     top: 0 !important;
@@ -103,6 +107,7 @@
     backdrop-filter: blur(16px) !important;
     width: 100% !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+    box-sizing: border-box !important;
   }
 
   .admin-sidebar-overlay {
@@ -133,6 +138,17 @@
     flex-direction: column !important;
     box-shadow: 12px 0 40px rgba(0, 0, 0, 0.9) !important;
     backdrop-filter: blur(24px) !important;
+    padding-top: max(env(safe-area-inset-top, 0px), var(--admin-sat, 0px)) !important;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)) !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-main-workspace {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)) !important;
+  }
+
+  .admin-workspace-scroll {
+    padding-bottom: calc(3rem + max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px))) !important;
   }
 
   .admin-sidebar.mobile-show {
@@ -1125,8 +1141,8 @@ input[type="checkbox"]:checked::after {
    ========================================================================= */
 .portal-support-fab {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: calc(2rem + max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)));
+  right: calc(2rem + max(env(safe-area-inset-right, 0px), var(--sar, 0px)));
   z-index: 99990;
   width: 50px;
   height: 50px;
@@ -1154,11 +1170,11 @@ input[type="checkbox"]:checked::after {
 
 @media (max-width: 768px) {
   .portal-support-fab {
-    bottom: 5.5rem;
-    right: 1.25rem;
-    width: 44px;
-    height: 44px;
+    bottom: calc(4.5rem + max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)));
+    right: calc(1.25rem + max(env(safe-area-inset-right, 0px), var(--sar, 0px)));
+    width: 46px;
+    height: 46px;
     border-radius: 12px;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
   }
 }
