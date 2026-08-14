@@ -157,17 +157,18 @@ export default function PlayerNavbar({
         </nav>
 
         {/* Right Quick Action Control Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-          {/* APK Download Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+          {/* APK Download Button (Desktop only to prevent mobile header crowding) */}
           <a
             href="/downloads/winning-heaven.apk"
             download
+            className="navbar-desktop-app-btn"
             title="Download Android App APK"
             style={{
               background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(34, 197, 94, 0.15) 100%)',
               border: '1px solid rgba(255, 215, 0, 0.4)',
               color: '#ffe566',
-              borderRadius: '8px',
+              borderRadius: '10px',
               padding: '0.42rem 0.65rem',
               fontSize: '0.74rem',
               fontWeight: 800,
@@ -179,51 +180,41 @@ export default function PlayerNavbar({
             }}
           >
             <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.85rem' }} />
-            <span className="nav-btn-text">APP</span>
+            <span>APP</span>
           </a>
 
           {/* Deposit Button */}
-          <button onClick={onOpenDeposit} className="btn-gold-glow" style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}>
-            <i className="fa-solid fa-plus-circle" /> <span className="nav-btn-text">DEPOSIT</span>
+          <button
+            onClick={onOpenDeposit}
+            className="btn-gold-glow"
+            style={{
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.76rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              borderRadius: '10px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <i className="fa-solid fa-plus-circle" /> <span>DEPOSIT</span>
           </button>
 
           {/* Cashout Button */}
-          <button onClick={onOpenWithdraw} className="btn-cyan-glow" style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}>
-            <i className="fa-solid fa-wallet" /> <span className="nav-btn-text">CASHOUT</span>
-          </button>
-
-          {/* Support Headset Button */}
           <button
-            onClick={onOpenSupport}
-            title="Support Chat"
+            onClick={onOpenWithdraw}
+            className="btn-cyan-glow"
             style={{
-              position: 'relative',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#fff',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.76rem',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0
+              gap: '0.35rem',
+              borderRadius: '10px',
+              whiteSpace: 'nowrap'
             }}
           >
-            <i className="fa-solid fa-headset" style={{ fontSize: '0.95rem', color: 'var(--cyan-primary)' }} />
-            {supportUnread && (
-              <span style={{
-                position: 'absolute',
-                top: '-2px',
-                right: '-2px',
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: 'var(--red-primary)',
-                boxShadow: '0 0 8px var(--red-primary)'
-              }} />
-            )}
+            <i className="fa-solid fa-wallet" /> <span>CASHOUT</span>
           </button>
 
           {/* User Profile Avatar */}
@@ -234,8 +225,8 @@ export default function PlayerNavbar({
                 background: 'linear-gradient(135deg, rgba(255,200,0,0.2) 0%, rgba(0,240,255,0.2) 100%)',
                 border: '1.5px solid var(--gold-primary)',
                 borderRadius: '50%',
-                width: '36px',
-                height: '36px',
+                width: '34px',
+                height: '34px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -397,6 +388,22 @@ export default function PlayerNavbar({
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 640px) {
+          .navbar-desktop-app-btn {
+            display: none !important;
+          }
+          .desktop-only-nav {
+            display: none !important;
+          }
+        }
+        @media (min-width: 641px) {
+          .desktop-only-nav {
+            display: flex !important;
+          }
+        }
+      `}</style>
     </header>
   );
 }

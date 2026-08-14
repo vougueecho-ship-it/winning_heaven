@@ -23,24 +23,23 @@ const DEFAULT_SETTINGS = {
   freeplayMaxCashout: 50,
   freeplayUnlockDeposit: 25,
   cashoutTiers: [
-    { depositRange: '$5 - $9', maxCashout: '$50.00', multiplier: '10x', note: 'Fast 5-minute payout' },
-    { depositRange: '$10 - $19', maxCashout: '$100.00', multiplier: '10x', note: 'Standard Cashout' },
-    { depositRange: '$20 - $49', maxCashout: '$250.00', multiplier: '12x', note: 'VIP Express Payout' },
-    { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'High Roller Tier' },
-    { depositRange: '$100+', maxCashout: '$2,000.00+', multiplier: '20x+', note: 'Unlimited VIP Cashout' }
+    { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
+    { depositRange: '$51 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $153.00 – $300.00', note: 'Standard Instant Payout' },
+    { depositRange: '$101 - $250', multiplier: '2x Deposit', minCashoutExample: 'Min $202.00 – $500.00', note: 'VIP Express Payout' },
+    { depositRange: '$250+', multiplier: '2x Deposit', minCashoutExample: 'Min $500.00+', note: 'Unlimited High Roller' }
   ],
   customCashoutRules: [
     {
-      title: 'Freeplay Cashout Limit',
-      description: 'Maximum cashout on $3 Freeplay winnings is $50.00. Excess balance is kept on hold and released upon a $25 deposit.'
+      title: '3x Minimum Deposit Multiplier',
+      description: 'Deposits between $5.00 and $50.00 require a minimum 3x multiplier to cash out (e.g. $5 deposit requires minimum $15 cashout, $50 deposit requires minimum $150 cashout).'
     },
     {
-      title: 'Deposit-Based Redemption Caps',
-      description: 'Cashout amounts are calculated based on your total verified deposit amount for that gaming session.'
+      title: 'Zero Maximum Caps on Real Deposits',
+      description: 'There are strictly NO maximum cashout limits on deposits. You can withdraw 100% of your winnings once your minimum session multiplier is achieved.'
     },
     {
-      title: 'Hold Balance Release',
-      description: 'Remaining hold balances can be transferred to load coins into other games or claimed during future qualified deposits.'
+      title: 'Freeplay Cashout Limit & Hold Balance',
+      description: 'Freeplay ($3 Signup) allows a maximum cashout of $50.00. Excess balance remains on hold and is unlocked upon a $25.00 deposit.'
     }
   ],
   // Withdrawal form proof requirements (Super Admin toggles)

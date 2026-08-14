@@ -29,24 +29,23 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [freeplayMaxCashout, setFreeplayMaxCashout] = useState(50);
   const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(25);
   const [cashoutTiers, setCashoutTiers] = useState([
-    { depositRange: '$5 - $9', maxCashout: '$50.00', multiplier: '10x', note: 'Fast 5-minute payout' },
-    { depositRange: '$10 - $19', maxCashout: '$100.00', multiplier: '10x', note: 'Standard Cashout' },
-    { depositRange: '$20 - $49', maxCashout: '$250.00', multiplier: '12x', note: 'VIP Express Payout' },
-    { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'High Roller Tier' },
-    { depositRange: '$100+', maxCashout: '$2,000.00+', multiplier: '20x+', note: 'Unlimited VIP Cashout' }
+    { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
+    { depositRange: '$51 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $153.00 – $300.00', note: 'Standard Instant Payout' },
+    { depositRange: '$101 - $250', multiplier: '2x Deposit', minCashoutExample: 'Min $202.00 – $500.00', note: 'VIP Express Payout' },
+    { depositRange: '$250+', multiplier: '2x Deposit', minCashoutExample: 'Min $500.00+', note: 'Unlimited High Roller' }
   ]);
   const [customCashoutRules, setCustomCashoutRules] = useState([
     {
-      title: 'Freeplay Cashout Limit',
-      description: 'Maximum cashout on $3 Freeplay winnings is $50.00. Excess balance is kept on hold and released upon a $25 deposit.'
+      title: '3x Minimum Deposit Multiplier',
+      description: 'Deposits between $5.00 and $50.00 require a minimum 3x multiplier to cash out (e.g. $5 deposit requires minimum $15 cashout, $50 deposit requires minimum $150 cashout).'
     },
     {
-      title: 'Deposit-Based Redemption Caps',
-      description: 'Cashout amounts are calculated based on your total verified deposit amount for that gaming session.'
+      title: 'Zero Maximum Caps on Real Deposits',
+      description: 'There are strictly NO maximum cashout limits on deposits. You can withdraw 100% of your winnings once your minimum session multiplier is achieved.'
     },
     {
-      title: 'Hold Balance Release',
-      description: 'Remaining hold balances can be transferred to load coins into other games or claimed during future qualified deposits.'
+      title: 'Freeplay Cashout Limit & Hold Balance',
+      description: 'Freeplay ($3 Signup) allows a maximum cashout of $50.00. Excess balance remains on hold and is unlocked upon a $25.00 deposit.'
     }
   ]);
   const [withdrawRequireGameScreenshot, setWithdrawRequireGameScreenshot] = useState(false);
@@ -242,7 +241,7 @@ export default function FrontendSettingsTab({ adminUser }) {
   const addCashoutTier = () => {
     setCashoutTiers([
       ...cashoutTiers,
-      { depositRange: '$50 - $99', maxCashout: '$500.00', multiplier: '10x', note: 'Standard Tier' }
+      { depositRange: '$50 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $150.00', note: 'Instant Payout' }
     ]);
   };
 
@@ -1059,7 +1058,7 @@ export default function FrontendSettingsTab({ adminUser }) {
                           type="text"
                           value={tier.depositRange || ''}
                           onChange={(e) => updateCashoutTier(idx, 'depositRange', e.target.value)}
-                          placeholder="$5 - $9"
+                          placeholder="$5 - $50"
                           style={{
                             width: '100%',
                             background: 'rgba(6, 8, 18, 0.8)',
@@ -1076,36 +1075,13 @@ export default function FrontendSettingsTab({ adminUser }) {
 
                       <div>
                         <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
-                          Max Cashout Limit
-                        </label>
-                        <input
-                          type="text"
-                          value={tier.maxCashout || ''}
-                          onChange={(e) => updateCashoutTier(idx, 'maxCashout', e.target.value)}
-                          placeholder="$50.00"
-                          style={{
-                            width: '100%',
-                            background: 'rgba(6, 8, 18, 0.8)',
-                            border: '1px solid var(--border-muted)',
-                            borderRadius: '8px',
-                            padding: '0.45rem 0.65rem',
-                            color: '#00e676',
-                            fontSize: '0.8rem',
-                            fontWeight: 900,
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
-                          Multiplier / Ratio
+                          Min Multiplier
                         </label>
                         <input
                           type="text"
                           value={tier.multiplier || ''}
                           onChange={(e) => updateCashoutTier(idx, 'multiplier', e.target.value)}
-                          placeholder="10x"
+                          placeholder="3x Deposit"
                           style={{
                             width: '100%',
                             background: 'rgba(6, 8, 18, 0.8)',
@@ -1122,13 +1098,36 @@ export default function FrontendSettingsTab({ adminUser }) {
 
                       <div>
                         <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
+                          Min Cashout Example
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.minCashoutExample || ''}
+                          onChange={(e) => updateCashoutTier(idx, 'minCashoutExample', e.target.value)}
+                          placeholder="Min $15.00 – $150.00"
+                          style={{
+                            width: '100%',
+                            background: 'rgba(6, 8, 18, 0.8)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '8px',
+                            padding: '0.45rem 0.65rem',
+                            color: '#00e676',
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.2rem' }}>
                           Speed Note / Tag
                         </label>
                         <input
                           type="text"
                           value={tier.note || ''}
                           onChange={(e) => updateCashoutTier(idx, 'note', e.target.value)}
-                          placeholder="Instant Cashout"
+                          placeholder="Instant Payout"
                           style={{
                             width: '100%',
                             background: 'rgba(6, 8, 18, 0.8)',
