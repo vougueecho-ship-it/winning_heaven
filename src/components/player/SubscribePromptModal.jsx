@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { subscribeToPromoPush } from '../../lib/pushClient';
+import { subscribeToPromoPush, getWebPushPromptState } from '../../lib/pushClient';
 
 export default function SubscribePromptModal({ currentUser, showToast }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,22 +11,30 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
   useEffect(() => {
     if (!currentUser || !currentUser.email) return;
 
-    // Check if user already subscribed or recently dismissed
     try {
+      // Don't show if already subscribed
       const isSubscribed = localStorage.getItem('wh_push_subscribed') === 'true' || currentUser.isSubscribed === true;
       if (isSubscribed) return;
 
+      // Check if dismissed within last 7 days
       const dismissedTs = localStorage.getItem('wh_push_dismissed_ts');
       const now = Date.now();
-      // Show once per 7 days if dismissed, or immediately on first login
       if (dismissedTs && now - Number(dismissedTs) < 7 * 24 * 60 * 60 * 1000) {
         return;
       }
 
-      // Small delay on initial login so page finishes loading smoothly
+      // Check push state
+      const state = getWebPushPromptState ? getWebPushPromptState() : { canEnable: true };
+      if (state && state.permission === 'granted') {
+        // Auto-subscribe silently
+        subscribeToPromoPush(currentUser.email).catch(() => {});
+        return;
+      }
+
+      // Display prompt after a smooth delay on lobby load
       const timer = setTimeout(() => {
         setIsOpen(true);
-      }, 1800);
+      }, 1500);
 
       return () => clearTimeout(timer);
     } catch {
@@ -36,17 +44,18 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
 
   if (!isOpen) return null;
 
-  const handleSubscribe = async () => {
+  const handleEnableNotifications = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       await subscribeToPromoPush(currentUser.email);
       try {
         localStorage.setItem('wh_push_subscribed', 'true');
       } catch {}
-      if (showToast) showToast('Push notifications enabled! You will receive lock-screen bonus drops.', 'success');
+      if (showToast) showToast('Notifications enabled! You will receive lock-screen bonus drops.', 'success');
       setIsOpen(false);
     } catch (err) {
-      console.warn('Push subscription notice:', err);
+      console.warn('Push notification enable error:', err);
       if (showToast) showToast('Notification permission was not enabled. You can enable anytime in browser settings.', 'info');
       handleDismiss();
     } finally {
@@ -85,7 +94,7 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
             background: 'linear-gradient(135deg, rgba(14, 18, 38, 0.98) 0%, rgba(8, 10, 22, 0.98) 100%)',
             border: '1.5px solid var(--gold-primary)',
             borderRadius: '24px',
-            padding: '2rem',
+            padding: '2rem 1.75rem',
             maxWidth: '440px',
             width: '90vw',
             boxShadow: '0 25px 60px rgba(0,0,0,0.95), 0 0 35px rgba(255,200,0,0.25)',
@@ -108,7 +117,8 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
               border: 'none',
               color: 'var(--text-muted)',
               fontSize: '1.4rem',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              lineHeight: 1
             }}
           >
             &times;
@@ -141,7 +151,7 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
               margin: '0 0 0.5rem 0',
               letterSpacing: '0.03em'
             }}>
-              GET INSTANT <span className="gold-gradient-text">BONUS & CASHOUT</span> ALERTS
+              ENABLE <span className="gold-gradient-text">NOTIFICATIONS</span>
             </h2>
             <p style={{
               fontSize: '0.85rem',
@@ -149,7 +159,7 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
               margin: 0,
               lineHeight: 1.5
             }}>
-              Enable lock-screen notifications to receive instant freeplay drops, 300% deposit match bonus codes, and real-time cashout approval receipts directly to your device!
+              Turn on notifications to receive instant bonus drops, freeplay announcements, reload match codes, and cashout updates directly on your device.
             </p>
           </div>
 
@@ -167,15 +177,15 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', color: '#fff' }}>
               <i className="fa-solid fa-circle-check" style={{ color: '#00e676' }} />
-              <span>Instant Signup & Freeplay bonus drops</span>
+              <span>Instant Freeplay drops &amp; reload promo codes</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', color: '#fff' }}>
               <i className="fa-solid fa-circle-check" style={{ color: '#00e676' }} />
-              <span>Real-time Cashout & Deposit approval alerts</span>
+              <span>Live Cashout &amp; Deposit approval updates</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', color: '#fff' }}>
               <i className="fa-solid fa-circle-check" style={{ color: '#00e676' }} />
-              <span>VIP weekend match promos & reload codes</span>
+              <span>VIP 300% weekend deposit matches</span>
             </div>
           </div>
 
@@ -184,19 +194,21 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
             <button
               type="button"
               disabled={loading}
-              onClick={handleSubscribe}
+              onClick={handleEnableNotifications}
               className="btn-gold-glow"
               style={{
                 width: '100%',
-                padding: '0.9rem',
+                padding: '0.88rem',
                 fontSize: '0.92rem',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                fontWeight: 900,
+                borderRadius: '12px'
               }}
             >
               {loading ? (
-                <span><i className="fa-solid fa-spinner fa-spin" /> Enabling Notifications...</span>
+                <span><i className="fa-solid fa-spinner fa-spin" /> Enabling...</span>
               ) : (
-                <span><i className="fa-solid fa-bell" style={{ marginRight: '6px' }} /> ENABLE INSTANT NOTIFICATIONS</span>
+                <span><i className="fa-solid fa-bell" style={{ marginRight: '6px' }} /> ENABLE NOTIFICATIONS</span>
               )}
             </button>
 
@@ -210,7 +222,7 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                padding: '0.4rem'
+                padding: '0.35rem'
               }}
             >
               Maybe Later

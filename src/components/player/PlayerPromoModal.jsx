@@ -14,6 +14,7 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
   );
 
   const [activePromo, setActivePromo] = useState(null);
+  const [claimLoading, setClaimLoading] = useState(false);
 
   useEffect(() => {
     if (!data?.promotions || data.promotions.length === 0) {
@@ -21,43 +22,84 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
       return;
     }
 
-    // Find first active promotion not yet dismissed this session
-    const unviewed = data.promotions.find((p) => {
-      const pId = p.id || p._id;
-      try {
-        return sessionStorage.getItem(`wh_promo_seen_${pId}`) !== 'true';
-      } catch {
-        return true;
-      }
-    });
+    try {
+      const dismissedRaw = localStorage.getItem('dismissed_promotions');
+      const dismissedIds = dismissedRaw ? JSON.parse(dismissedRaw) : [];
 
-    if (unviewed) {
-      const timer = setTimeout(() => {
-        setActivePromo(unviewed);
-      }, 2500);
-      return () => clearTimeout(timer);
+      const unviewed = data.promotions.find((p) => {
+        const pId = p.id || p._id;
+        return !dismissedIds.includes(pId);
+      });
+
+      if (unviewed) {
+        const timer = setTimeout(() => {
+          setActivePromo(unviewed);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // Storage unavailable
     }
   }, [data]);
 
   if (!activePromo) return null;
 
-  const handleDismiss = () => {
+  const dismissPromo = (permanent = true) => {
     const pId = activePromo.id || activePromo._id;
-    try {
-      sessionStorage.setItem(`wh_promo_seen_${pId}`, 'true');
-    } catch {}
+    if (permanent && pId) {
+      try {
+        const dismissedRaw = localStorage.getItem('dismissed_promotions');
+        const dismissedIds = dismissedRaw ? JSON.parse(dismissedRaw) : [];
+        if (!dismissedIds.includes(pId)) {
+          dismissedIds.push(pId);
+        }
+        localStorage.setItem('dismissed_promotions', JSON.stringify(dismissedIds));
+      } catch {}
+    }
     setActivePromo(null);
   };
 
-  const handleClaim = () => {
-    handleDismiss();
-    if (onOpenDeposit) {
-      onOpenDeposit();
-    }
-    if (showToast) {
-      showToast(`Promo "${activePromo.title}" selected! Complete deposit to apply bonus.`, 'success');
+  const handleClaim = async () => {
+    const promoType = activePromo.promoType || 'message';
+    const pId = activePromo.id || activePromo._id;
+
+    if (promoType === 'deposit_bonus') {
+      setClaimLoading(true);
+      try {
+        const res = await fetch('/api/promotions/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentUser?.email, promoId: pId })
+        });
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+          if (showToast) showToast(resData.message || 'Bonus armed! Make a deposit to receive extra bonus coins.', 'success');
+          dismissPromo(true);
+          if (onOpenDeposit) onOpenDeposit();
+        } else {
+          if (showToast) showToast(resData.message || 'Could not claim this promotion.', 'error');
+        }
+      } catch (err) {
+        console.error('Promotion claim error:', err);
+        if (showToast) showToast('Error claiming promotion. Please try again.', 'error');
+      } finally {
+        setClaimLoading(false);
+      }
+    } else if (promoType === 'freeplay') {
+      dismissPromo(true);
+      if (showToast) {
+        showToast(`Freeplay offer "${activePromo.title}" claimed! Select a game to play.`, 'success');
+      }
+    } else {
+      // General message promo
+      dismissPromo(true);
+      if (onOpenDeposit) onOpenDeposit();
     }
   };
+
+  const pType = activePromo.promoType || 'message';
+  const fpAmount = Number(activePromo.freeplayAmount || 0);
+  const bpPercent = Number(activePromo.bonusPercent || 0);
 
   return (
     <AnimatePresence>
@@ -94,7 +136,7 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
         >
           {/* Close Button */}
           <button
-            onClick={handleDismiss}
+            onClick={() => dismissPromo(false)}
             style={{
               position: 'absolute',
               top: '0.85rem',
@@ -134,17 +176,18 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
             <div style={{
               width: '100%',
               padding: '2rem 1rem 1rem 1rem',
-              background: 'linear-gradient(135deg, rgba(255,200,0,0.15) 0%, rgba(0,240,255,0.1) 100%)',
+              background: 'linear-gradient(135deg, rgba(255,200,0,0.18) 0%, rgba(0,240,255,0.12) 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: '68px',
+                height: '68px',
                 borderRadius: '50%',
                 background: 'rgba(255,200,0,0.2)',
                 border: '2px solid var(--gold-primary)',
+                boxShadow: '0 0 20px rgba(255,200,0,0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -194,7 +237,7 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
             </div>
 
             {/* Bonus Highlights */}
-            {(activePromo.bonusPercent > 0 || activePromo.freeplayAmount > 0) && (
+            {(bpPercent > 0 || fpAmount > 0) && (
               <div style={{
                 background: 'rgba(6, 8, 18, 0.8)',
                 border: '1px dashed var(--gold-primary)',
@@ -205,19 +248,19 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
                 justifyContent: 'center',
                 gap: '1rem'
               }}>
-                {activePromo.bonusPercent > 0 && (
+                {bpPercent > 0 && (
                   <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>DEPOSIT MATCH</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>DEPOSIT MATCH</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-heading)' }}>
-                      +{activePromo.bonusPercent}%
+                      +{bpPercent}% BONUS
                     </div>
                   </div>
                 )}
-                {activePromo.freeplayAmount > 0 && (
+                {fpAmount > 0 && (
                   <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>FREEPLAY BONUS</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>FREEPLAY BONUS</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#00e676', fontFamily: 'var(--font-heading)' }}>
-                      ${activePromo.freeplayAmount}.00
+                      ${fpAmount.toFixed(2)} FREE
                     </div>
                   </div>
                 )}
@@ -226,18 +269,36 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <button
-                type="button"
-                onClick={handleClaim}
-                className="btn-gold-glow"
-                style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem', justifyContent: 'center' }}
-              >
-                <i className="fa-solid fa-coins" style={{ marginRight: '6px' }} /> CLAIM & LOAD COINS &rarr;
-              </button>
+              {pType === 'message' ? (
+                <button
+                  type="button"
+                  onClick={() => dismissPromo(true)}
+                  className="btn-gold-glow"
+                  style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem', justifyContent: 'center', fontWeight: 900 }}
+                >
+                  GOT IT
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={claimLoading}
+                  onClick={handleClaim}
+                  className="btn-gold-glow"
+                  style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem', justifyContent: 'center', fontWeight: 900 }}
+                >
+                  {claimLoading ? (
+                    <span><i className="fa-solid fa-spinner fa-spin" /> Claiming...</span>
+                  ) : pType === 'freeplay' ? (
+                    <span><i className="fa-solid fa-gift" style={{ marginRight: '6px' }} /> CLAIM FREEPLAY</span>
+                  ) : (
+                    <span><i className="fa-solid fa-coins" style={{ marginRight: '6px' }} /> CLAIM DEPOSIT BONUS &rarr;</span>
+                  )}
+                </button>
+              )}
 
               <button
                 type="button"
-                onClick={handleDismiss}
+                onClick={() => dismissPromo(false)}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -248,7 +309,7 @@ export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast
                   padding: '0.35rem'
                 }}
               >
-                Dismiss
+                Maybe Later
               </button>
             </div>
           </div>
