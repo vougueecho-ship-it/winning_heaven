@@ -6,7 +6,7 @@ import { compressDataUrlIfNeeded } from '../../../../lib/serverImageCompress';
 const DEFAULT_SETTINGS = {
   id: 'frontend_settings',
   logoUrl: '/winning_heaven_logo.png',
-  loginBgUrl: '/heavenly_auth_bg.png',
+  loginBgUrl: '/casino_vip_hero.jpg',
   notificationSoundUrl: 'https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/notification.mp3',
   withdrawNotice: 'Fastest Withdrawals inside 5 Minutes!',
   cashoutNotice: 'Standard cashout processing hours: 24/7 Instant Processing',

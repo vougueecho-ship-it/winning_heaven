@@ -9,7 +9,7 @@ import { shouldShowInfoOnAuth } from '../lib/infoPage';
 import { trackCompleteRegistration } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage, isNativePlatform } from '../lib/safeFetch';
 
-const DEFAULT_LOGIN_BG = '/heavenly_auth_bg.png';
+const DEFAULT_LOGIN_BG = '/casino_vip_hero.jpg';
 const DEFAULT_GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
   '1007065363081-r4bv8hn10586g1v6n2as7j9eh10rtgnc.apps.googleusercontent.com';
@@ -41,6 +41,15 @@ async function loginWithGoogleProfile(accessToken) {
   return googleRes.data;
 }
 
+function getDepositBonusSubtitle(percent) {
+  const num = Number(percent);
+  if (num === 300) return 'Triple your coins on your 1st reload';
+  if (num === 200) return 'Get +200% bonus coins on 1st reload';
+  if (num === 100) return 'Double your coins on your 1st reload';
+  if (num > 0) return `Get +${num}% bonus coins on 1st reload`;
+  return 'Instant bonus on your 1st reload';
+}
+
 export default function AuthPortal({
   onLoginSuccess,
   onRegisterSuccess,
@@ -58,10 +67,13 @@ export default function AuthPortal({
   });
 
   const settings = settingsData?.settings || initialSettings || {};
+  const loginBg = (settings.loginBgUrl && settings.loginBgUrl.trim() !== '' && !settings.loginBgUrl.includes('/brand/')) 
+    ? settings.loginBgUrl 
+    : DEFAULT_LOGIN_BG;
   const freeplayAmount = settings.signupFreeplay !== undefined 
     ? settings.signupFreeplay 
     : (settings.lobbyFreeplayValue ? String(settings.lobbyFreeplayValue).replace(/[^0-9.]/g, '') : '3');
-  const depositBonusPercent = settings.firstDepositBonus !== undefined ? settings.firstDepositBonus : 300;
+  const depositBonusPercent = settings.firstDepositBonus !== undefined ? Number(settings.firstDepositBonus) : 200;
   const minDeposit = settings.minimumDepositLimit !== undefined ? settings.minimumDepositLimit : 5;
   const minWithdraw = settings.minimumWithdrawalLimit !== undefined ? settings.minimumWithdrawalLimit : 5;
   const landingWelcome = settings.landingWelcome || 'PLAY CELESTIAL VEGAS SWEEPS';
@@ -434,13 +446,16 @@ export default function AuthPortal({
       minHeight: '100vh',
       width: '100vw',
       position: 'relative',
-      background: '#04060e',
       overflowX: 'hidden',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '2.5rem 1.25rem',
-      background: '#04060e'
+      backgroundImage: `linear-gradient(135deg, rgba(4, 6, 14, 0.45) 0%, rgba(4, 6, 14, 0.75) 100%), radial-gradient(circle at center, rgba(255, 200, 0, 0.1) 0%, rgba(4, 6, 14, 0.6) 80%), url("${loginBg}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center center',
+      backgroundAttachment: 'fixed',
+      backgroundRepeat: 'no-repeat'
     }}>
       <style>{`
         .auth-portal-grid {
@@ -519,25 +534,6 @@ export default function AuthPortal({
           }
         }
       `}</style>
-
-      {/* Cinematic Casino Background Graphic */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundImage: `url(${loginBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center 20%',
-        backgroundRepeat: 'no-repeat',
-        zIndex: 0
-      }} />
-
-      {/* Cinematic Dark Gradient Overlays */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'radial-gradient(circle at top right, rgba(255,200,0,0.15) 0%, transparent 50%), linear-gradient(105deg, rgba(4,6,14,0.4) 0%, rgba(4,6,14,0.85) 45%, rgba(4,6,14,0.96) 100%)',
-        zIndex: 1
-      }} />
 
       {/* Ambient Lighting Orbs */}
       <div style={{
