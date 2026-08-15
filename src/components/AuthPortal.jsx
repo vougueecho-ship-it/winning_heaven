@@ -435,18 +435,96 @@ export default function AuthPortal({
       width: '100vw',
       position: 'relative',
       background: '#04060e',
+      overflowX: 'hidden',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 'max(1.25rem, calc(1.25rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px)))) max(1.25rem, env(safe-area-inset-right, 0px)) max(1.25rem, calc(1.25rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)))) max(1.25rem, env(safe-area-inset-left, 0px))',
-      boxSizing: 'border-box',
-      overflowX: 'hidden'
+      padding: '2.5rem 1.25rem',
+      background: '#04060e'
     }}>
-      {/* FULL-SCREEN IMMERSIVE CASINO BACKGROUND IMAGE */}
+      <style>{`
+        .auth-portal-grid {
+          width: 100%;
+          max-width: 1240px;
+          min-height: 85vh;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 2.5rem;
+          z-index: 2;
+          position: relative;
+        }
+        .auth-portal-desktop-left {
+          flex: 1 1 440px;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          color: #fff;
+          padding: 1rem 0;
+        }
+        .auth-portal-card {
+          flex: 1 1 420px;
+          max-width: 460px;
+          width: 100%;
+          background: rgba(8, 11, 24, 0.88);
+          backdrop-filter: blur(28px);
+          -webkit-backdrop-filter: blur(28px);
+          border: 1.5px solid rgba(255, 215, 0, 0.35);
+          border-radius: 28px;
+          padding: 2rem 1.85rem;
+          box-shadow: 0 30px 80px rgba(0,0,0,0.95), 0 0 45px rgba(255,200,0,0.18);
+          position: relative;
+          margin: 0 auto;
+        }
+        .auth-portal-mobile-top {
+          display: none;
+        }
+        .auth-portal-mobile-bottom {
+          display: none;
+        }
+
+        @media (max-width: 960px) {
+          .auth-portal-grid {
+            flex-direction: column;
+            gap: 1.25rem;
+            min-height: auto;
+            padding: 0.5rem 0 1.5rem 0;
+            max-width: 480px;
+            margin: 0 auto;
+          }
+          .auth-portal-desktop-left {
+            display: none !important;
+          }
+          .auth-portal-mobile-top {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.85rem;
+            width: 100%;
+          }
+          .auth-portal-card {
+            padding: 1.6rem 1.2rem;
+            border-radius: 22px;
+            max-width: 100%;
+            margin: 0;
+          }
+          .auth-portal-mobile-bottom {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 1rem;
+            margin-top: 0.5rem;
+          }
+        }
+      `}</style>
+
+      {/* Cinematic Casino Background Graphic */}
       <div style={{
         position: 'fixed',
         inset: 0,
-        backgroundImage: 'url(/heavenly_auth_bg.jpg)',
+        backgroundImage: `url(${loginBg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center 20%',
         backgroundRepeat: 'no-repeat',
@@ -474,29 +552,107 @@ export default function AuthPortal({
         zIndex: 1
       }} />
 
-      {/* Full-Screen Content Wrapper */}
-      <div style={{
-        width: '100%',
-        maxWidth: '1240px',
-        minHeight: '85vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '2.5rem',
-        zIndex: 2,
-        position: 'relative'
-      }}>
+      {/* Content Wrapper */}
+      <div className="auth-portal-grid">
 
-        {/* LEFT COLUMN: Floating VIP Casino Perks & Live Jackpot Showcase */}
-        <div style={{
-          flex: '1 1 440px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.5rem',
-          color: '#fff',
-          padding: '1rem 0'
-        }}>
+        {/* MOBILE TOP SECTION: Appears at top on mobile */}
+        <div className="auth-portal-mobile-top">
+          {/* Top VIP Lounge Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'rgba(6, 9, 22, 0.85)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1.5px solid var(--gold-primary)',
+            borderRadius: '999px',
+            padding: '0.35rem 0.95rem',
+            boxShadow: '0 0 20px rgba(255,200,0,0.35)'
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e676', boxShadow: '0 0 8px #00e676' }} />
+            <span style={{ fontSize: '0.74rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.1em', fontFamily: 'var(--font-heading)' }}>
+              HIGH LIMIT VIP CASINO
+            </span>
+          </div>
+
+          <h1 style={{
+            fontSize: '1.55rem',
+            fontWeight: 900,
+            fontFamily: 'var(--font-heading)',
+            lineHeight: 1.2,
+            margin: '0.1rem 0 0.3rem 0',
+            color: '#fff',
+            textShadow: '0 4px 20px rgba(0,0,0,0.95)'
+          }}>
+            PLAY CELESTIAL <span className="gold-gradient-text">VEGAS SWEEPS</span>
+          </h1>
+
+          {/* Compact Perks Badges Row on Mobile */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '0.45rem',
+            width: '100%'
+          }}>
+            <div style={{
+              background: 'rgba(6, 9, 22, 0.85)',
+              border: '1px solid rgba(0, 230, 118, 0.45)',
+              borderRadius: '12px',
+              padding: '0.55rem 0.4rem',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.15rem',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+            }}>
+              <i className="fa-solid fa-gift" style={{ color: '#00e676', fontSize: '0.95rem' }} />
+              <div style={{ fontSize: '0.78rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>${freeplayAmount} Freeplay</div>
+              <div style={{ fontSize: '0.62rem', color: '#00e676', fontWeight: 700 }}>No Deposit</div>
+            </div>
+
+            <div style={{
+              background: 'rgba(6, 9, 22, 0.85)',
+              border: '1px solid rgba(255, 200, 0, 0.45)',
+              borderRadius: '12px',
+              padding: '0.55rem 0.4rem',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.15rem',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+            }}>
+              <i className="fa-solid fa-coins" style={{ color: 'var(--gold-primary)', fontSize: '0.95rem' }} />
+              <div style={{ fontSize: '0.78rem', fontWeight: 900, color: 'var(--gold-primary)', lineHeight: 1.1 }}>+{depositBonusPercent}% Match</div>
+              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700 }}>1st Reload</div>
+            </div>
+
+            <div style={{
+              background: 'rgba(6, 9, 22, 0.85)',
+              border: '1px solid rgba(0, 240, 255, 0.45)',
+              borderRadius: '12px',
+              padding: '0.55rem 0.4rem',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.15rem',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+            }}>
+              <i className="fa-solid fa-bolt" style={{ color: '#38bdf8', fontSize: '0.95rem' }} />
+              <div style={{ fontSize: '0.78rem', fontWeight: 900, color: '#38bdf8', lineHeight: 1.1 }}>5-Min Cashout</div>
+              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700 }}>Min ${minWithdraw}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* LEFT COLUMN: Floating VIP Casino Perks & Live Jackpot Showcase (Desktop Only) */}
+        <div className="auth-portal-desktop-left">
           {/* Top VIP Badge */}
           <div style={{
             display: 'inline-flex',
@@ -602,7 +758,7 @@ export default function AuthPortal({
               </div>
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--gold-primary)' }}>+{depositBonusPercent}% First Deposit Match</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Triple your coins on your 1st reload</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{getDepositBonusSubtitle(depositBonusPercent)}</div>
               </div>
             </div>
 
@@ -656,14 +812,14 @@ export default function AuthPortal({
                 height: '40px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
-                color: '#000',
+                color: '#00e676',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.15rem',
                 boxShadow: '0 0 20px rgba(255,200,0,0.6)'
               }}>
-                <i className="fa-solid fa-trophy" />
+                <i className="fa-solid fa-trophy" style={{ color: '#000' }} />
               </div>
               <div>
                 <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.08em' }}>
@@ -688,21 +844,8 @@ export default function AuthPortal({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Ultra-Sleek Glassmorphic Auth Console */}
-        <div style={{
-          flex: '1 1 420px',
-          maxWidth: '460px',
-          width: '100%',
-          background: 'rgba(8, 11, 24, 0.88)',
-          backdropFilter: 'blur(28px)',
-          WebkitBackdropFilter: 'blur(28px)',
-          border: '1.5px solid rgba(255, 215, 0, 0.35)',
-          borderRadius: '28px',
-          padding: '2rem 1.85rem',
-          boxShadow: '0 30px 80px rgba(0,0,0,0.95), 0 0 45px rgba(255,200,0,0.18)',
-          position: 'relative',
-          margin: '0 auto'
-        }}>
+        {/* AUTH CONSOLE CARD (Immediately in view below top perks on mobile, Right column on desktop) */}
+        <div className="auth-portal-card">
           {/* Brand Header Logo */}
           <div style={{
             display: 'flex',
@@ -1234,6 +1377,56 @@ export default function AuthPortal({
               <i className="fa-brands fa-android" style={{ color: '#22c55e', fontSize: '0.95rem' }} />
               <span>Download Official Android APK</span>
             </a>
+          </div>
+        </div>
+
+        {/* MOBILE BOTTOM SECTION: Appears below auth card on mobile */}
+        <div className="auth-portal-mobile-bottom">
+          <div style={{
+            background: 'linear-gradient(90deg, rgba(255, 200, 0, 0.18) 0%, rgba(255, 153, 0, 0.08) 100%)',
+            border: '1.5px solid rgba(255, 200, 0, 0.45)',
+            borderRadius: '18px',
+            padding: '0.75rem 1.15rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8), 0 0 25px rgba(255,200,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.05rem',
+                boxShadow: '0 0 15px rgba(255,200,0,0.6)'
+              }}>
+                <i className="fa-solid fa-trophy" style={{ color: '#000' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.08em' }}>
+                  PROGRESSIVE MEGA JACKPOT
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace', letterSpacing: '1px' }}>
+                  $184,950.40
+                </div>
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(0, 230, 118, 0.2)',
+              border: '1px solid rgba(0, 230, 118, 0.5)',
+              color: '#00e676',
+              fontSize: '0.72rem',
+              fontWeight: 900,
+              padding: '0.3rem 0.65rem',
+              borderRadius: '20px'
+            }}>
+              🔥 HOT
+            </div>
           </div>
         </div>
       </div>

@@ -143,6 +143,15 @@ export async function PUT(req) {
       { upsert: true }
     );
 
+    if (updateFields.firstDepositBonus !== undefined) {
+      await settingsCollection.updateOne(
+        { id: 'frontend_settings' },
+        { $set: { firstDepositBonus: Number(updateFields.firstDepositBonus) } },
+        { upsert: true }
+      );
+      cache.del('frontend_settings_all');
+    }
+
     // Invalidate caches
     cache.del('settings_all');
     cache.del('admin_stats'); // Settings can affect statistics/allotments

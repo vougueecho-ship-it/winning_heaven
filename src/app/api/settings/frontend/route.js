@@ -212,6 +212,16 @@ export async function PUT(req) {
       { upsert: true }
     );
 
+    if (updateFields.firstDepositBonus !== undefined) {
+      await settingsCollection.updateOne(
+        { id: 'global_settings' },
+        { $set: { firstDepositBonus: Number(updateFields.firstDepositBonus) } },
+        { upsert: true }
+      );
+      cache.del('settings_all');
+      cache.del('admin_stats');
+    }
+
     // Invalidate cache
     cache.del('frontend_settings_all');
 
