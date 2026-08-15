@@ -69,6 +69,11 @@ export async function GET() {
         settings.adBudgetLimit = 6000;
         needsUpdate = true;
       }
+      if (settings.enforceDeviceLimit === undefined) {
+        updates.enforceDeviceLimit = true;
+        settings.enforceDeviceLimit = true;
+        needsUpdate = true;
+      }
       if (needsUpdate) {
         await settingsCollection.updateOne({ id: 'global_settings' }, { $set: updates });
       }
@@ -85,7 +90,7 @@ export async function GET() {
 // PUT / POST update settings (Super Admin only)
 export async function PUT(req) {
   try {
-    const { firstDepositBonus, regularDepositBonus, referralBonus, usdtAddress, usdtQrCode, affiliatePayoutNetwork, affiliatePayoutWallet, affiliatePayoutQrCode, affiliatePayoutWalletBEP20, affiliatePayoutQrBEP20, affiliatePlatformCommissionRate, adPaymentNetwork, adPaymentWallet, adPaymentQrCode, adBudgetLimit } = await req.json();
+    const { firstDepositBonus, regularDepositBonus, referralBonus, usdtAddress, usdtQrCode, affiliatePayoutNetwork, affiliatePayoutWallet, affiliatePayoutQrCode, affiliatePayoutWalletBEP20, affiliatePayoutQrBEP20, affiliatePlatformCommissionRate, adPaymentNetwork, adPaymentWallet, adPaymentQrCode, adBudgetLimit, enforceDeviceLimit } = await req.json();
 
     const db = await getDb();
     const settingsCollection = db.collection('settings');
@@ -135,6 +140,9 @@ export async function PUT(req) {
     }
     if (adBudgetLimit !== undefined) {
       updateFields.adBudgetLimit = Math.max(0, Number(adBudgetLimit) || 6000);
+    }
+    if (enforceDeviceLimit !== undefined) {
+      updateFields.enforceDeviceLimit = Boolean(enforceDeviceLimit);
     }
 
     await settingsCollection.updateOne(

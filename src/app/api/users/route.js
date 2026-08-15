@@ -163,6 +163,9 @@ export async function PUT(req) {
     if (status !== undefined) {
       updateFields.status = status;
     }
+    if (deviceId !== undefined) {
+      updateFields.deviceId = deviceId ? String(deviceId).trim() : '';
+    }
     if (allowedGameIds !== undefined) {
       const roleToCheck = role !== undefined ? role : currentUser.role;
       if (isCoinsAdminRole(roleToCheck)) {

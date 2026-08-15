@@ -23,6 +23,7 @@ export default function SettingsTab({ onUpdateSettings }) {
   const [adPaymentWallet, setAdPaymentWallet] = useState('');
   const [adPaymentQrCode, setAdPaymentQrCode] = useState('');
   const [adBudgetLimit, setAdBudgetLimit] = useState(6000);
+  const [enforceDeviceLimitInput, setEnforceDeviceLimitInput] = useState(true);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -45,6 +46,7 @@ export default function SettingsTab({ onUpdateSettings }) {
       setAdPaymentWallet(settingsData.settings.adPaymentWallet || '');
       setAdPaymentQrCode(settingsData.settings.adPaymentQrCode || '');
       setAdBudgetLimit(settingsData.settings.adBudgetLimit ?? 6000);
+      setEnforceDeviceLimitInput(settingsData.settings.enforceDeviceLimit !== false);
     }
   }, [settingsData]);
 
@@ -90,7 +92,8 @@ export default function SettingsTab({ onUpdateSettings }) {
           adPaymentNetwork,
           adPaymentWallet: adPaymentWallet.trim(),
           adPaymentQrCode,
-          adBudgetLimit: Number(adBudgetLimit)
+          adBudgetLimit: Number(adBudgetLimit),
+          enforceDeviceLimit: Boolean(enforceDeviceLimitInput)
         })
       });
       const data = await res.json();
@@ -708,6 +711,81 @@ export default function SettingsTab({ onUpdateSettings }) {
               </div>
             </div>
 
+          </div>
+        </section>
+
+        {/* SECTION 6: SECURITY & DEVICE MULTI-ACCOUNT RESTRICTIONS */}
+        <section style={{
+          background: 'rgba(14, 18, 36, 0.85)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: '20px',
+          padding: '1.75rem',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, margin: 0, fontFamily: 'var(--font-heading, "Outfit", sans-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fa-solid fa-shield-halved" style={{ color: '#ef4444' }} />
+              <span>Anti-Fraud &amp; Device Restriction Policy</span>
+            </h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
+              Enforce one account per mobile device / browser to prevent bonus abuse and duplicate registrations.
+            </span>
+          </div>
+
+          <div style={{
+            background: 'rgba(6, 8, 18, 0.8)',
+            border: '1.5px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '16px',
+            padding: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>Enforce 1 Account Per Device</span>
+                {enforceDeviceLimitInput ? (
+                  <span style={{ fontSize: '0.68rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'rgba(0,230,118,0.15)', color: '#00e676', border: '1px solid rgba(0,230,118,0.3)', fontWeight: 800 }}>
+                    ACTIVE
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.68rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', fontWeight: 800 }}>
+                    DISABLED
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', margin: '0.35rem 0 0 0' }}>
+                When enabled, if a user attempts to create another account from the same mobile/device, registration will be rejected with: <em>"You already have an account from this device."</em>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setEnforceDeviceLimitInput(!enforceDeviceLimitInput)}
+              style={{
+                background: enforceDeviceLimitInput ? 'linear-gradient(135deg, #00e676 0%, #00b359 100%)' : 'rgba(255,255,255,0.1)',
+                border: enforceDeviceLimitInput ? '1.5px solid #00e676' : '1.5px solid rgba(255,255,255,0.2)',
+                color: enforceDeviceLimitInput ? '#000' : '#fff',
+                padding: '0.6rem 1.25rem',
+                borderRadius: '12px',
+                fontWeight: 900,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className={enforceDeviceLimitInput ? 'fa-solid fa-lock' : 'fa-solid fa-lock-open'} />
+              <span>{enforceDeviceLimitInput ? 'Enabled (Restricted)' : 'Disabled (Allow Multi)'}</span>
+            </button>
           </div>
         </section>
 

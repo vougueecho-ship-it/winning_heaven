@@ -461,223 +461,415 @@ export function PlayerDepositModal({
           )}
 
           {/* Step 3: Confirm Note Code & Upload Proof */}
-          {step === 3 && (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Admin Gateway QR & Payment Details Box */}
-              {selectedGateway && (
+          {step === 3 && (() => {
+            const rawTag = (selectedGateway?.accountNumber || selectedGateway?.recipientTag || selectedGateway?.tag || selectedGateway?.handle || selectedGateway?.accountName || '').trim();
+            const isTagAUrl = rawTag.startsWith('http://') || rawTag.startsWith('https://');
+            const isGenericPlaceholder = isTagAUrl || ['stripe-checkout', 'stripe-pay', 'cashapp-pay', 'none', 'n/a'].includes(rawTag.toLowerCase());
+
+            let payUrl = (selectedGateway?.redirectUrl || selectedGateway?.payUrl || selectedGateway?.link || '').trim();
+            if (!payUrl && isTagAUrl) {
+              payUrl = rawTag;
+            }
+
+            const nameLower = (selectedGateway?.name || '').toLowerCase();
+            const themeLower = (selectedGateway?.theme || '').toLowerCase();
+            const isCashApp = themeLower === 'cashapp' || nameLower.includes('cash app') || nameLower.includes('cashapp');
+            const isStripe = themeLower === 'stripe' || nameLower.includes('stripe');
+
+            if (isCashApp && !payUrl && rawTag && !isGenericPlaceholder) {
+              const cleanCashtag = rawTag.replace(/[^a-zA-Z0-9_-]/g, '');
+              if (cleanCashtag) {
+                const amtNum = parseFloat(amount || 0).toFixed(2);
+                payUrl = `https://cash.app/$${cleanCashtag}/${amtNum}`;
+              }
+            }
+
+            if (payUrl) {
+              payUrl = payUrl
+                .replace(/\{amount\}/gi, encodeURIComponent(amount || ''))
+                .replace(/\{code\}/gi, encodeURIComponent(noteCode || ''))
+                .replace(/\{note\}/gi, encodeURIComponent(noteCode || ''));
+            }
+
+            const handleOpenPayLink = async (e) => {
+              if (e && e.preventDefault) e.preventDefault();
+              if (!payUrl) return;
+              try {
+                const { Capacitor } = await import('@capacitor/core');
+                if (Capacitor.isNativePlatform()) {
+                  const { Browser } = await import('@capacitor/browser');
+                  await Browser.open({ url: payUrl, presentationStyle: 'popover' });
+                  return;
+                }
+              } catch {}
+              window.open(payUrl, '_blank', 'noopener,noreferrer');
+            };
+
+            const tagLabel = isCashApp
+              ? 'CASH APP CASHTAG ($TAG)'
+              : themeLower === 'zelle'
+              ? 'ZELLE RECIPIENT'
+              : themeLower === 'chime'
+              ? 'CHIME HANDLE'
+              : themeLower === 'crypto'
+              ? 'CRYPTO WALLET ADDRESS'
+              : 'RECIPIENT PAY TAG / PHONE / ACCOUNT';
+
+            return (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Admin Gateway QR & Payment Details Box */}
+                {selectedGateway && (
+                  <div style={{
+                    background: 'rgba(12, 16, 32, 0.95)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '16px',
+                    padding: '1.15rem 1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.85rem',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontWeight: 800, color: 'var(--gold-primary)', fontSize: '0.92rem', fontFamily: 'var(--font-heading)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <i className="fa-solid fa-credit-card" /> PAYMENT METHOD: {selectedGateway.name?.toUpperCase()}
+                    </div>
+
+                    {/* Direct 1-Click Pay Now Button (For Stripe, Cash App, and any link gateways) */}
+                    {payUrl && (
+                      <div style={{ width: '100%' }}>
+                        <button
+                          type="button"
+                          onClick={handleOpenPayLink}
+                          style={{
+                            width: '100%',
+                            padding: '0.95rem 1.1rem',
+                            borderRadius: '14px',
+                            border: isStripe ? '1.5px solid #635bff' : isCashApp ? '1.5px solid #00d632' : '1.5px solid var(--gold-primary)',
+                            background: isStripe ? 'linear-gradient(135deg, #635bff 0%, #4338ca 100%)' : isCashApp ? 'linear-gradient(135deg, #00d632 0%, #009922 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
+                            color: isStripe ? '#ffffff' : '#000000',
+                            fontWeight: 900,
+                            fontFamily: 'var(--font-heading)',
+                            fontSize: '0.95rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.6rem',
+                            cursor: 'pointer',
+                            boxShadow: isStripe ? '0 0 25px rgba(99, 91, 255, 0.45)' : isCashApp ? '0 0 25px rgba(0, 214, 50, 0.45)' : '0 0 25px rgba(255, 200, 0, 0.45)',
+                            transition: 'all 0.2s ease',
+                            letterSpacing: '0.02em'
+                          }}
+                        >
+                          <i className={isStripe ? 'fa-brands fa-stripe' : isCashApp ? 'fa-solid fa-dollar-sign' : 'fa-solid fa-arrow-up-right-from-square'} style={{ fontSize: '1.2rem' }} />
+                          <span>OPEN &amp; PAY ${parseFloat(amount || 0).toFixed(2)} ON {selectedGateway.name?.toUpperCase()} &rarr;</span>
+                        </button>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                          <i className="fa-solid fa-circle-check" /> Tap button above to open secure checkout link
+                        </div>
+                      </div>
+                    )}
+
+                    {/* QR Code Image display */}
+                    {(selectedGateway.qrCode || selectedGateway.qrCodeUrl || selectedGateway.imageUrl || selectedGateway.qrImage || selectedGateway.qr || selectedGateway.image) && (
+                      <div style={{
+                        background: '#fff',
+                        padding: '0.65rem',
+                        borderRadius: '14px',
+                        border: '2px solid var(--gold-primary)',
+                        boxShadow: '0 0 20px rgba(255,200,0,0.3)',
+                        maxWidth: '180px'
+                      }}>
+                        <img
+                          src={selectedGateway.qrCode || selectedGateway.qrCodeUrl || selectedGateway.imageUrl || selectedGateway.qrImage || selectedGateway.qr || selectedGateway.image}
+                          alt={`${selectedGateway.name} QR Code`}
+                          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px' }}
+                        />
+                        <div style={{ fontSize: '0.68rem', color: '#000', fontWeight: 900, marginTop: '0.35rem' }}>
+                          SCAN TO PAY WITH {selectedGateway.name.toUpperCase()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Account Tag / Cashtag / Handle (Only shown if not a generic placeholder like 'stripe-checkout') */}
+                    {rawTag && !isGenericPlaceholder && (
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          {tagLabel}
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <input
+                            readOnly
+                            value={rawTag}
+                            style={{
+                              flex: 1,
+                              background: 'rgba(6, 8, 18, 0.9)',
+                              border: '1px solid var(--gold-primary)',
+                              borderRadius: '10px',
+                              padding: '0.6rem 0.85rem',
+                              color: 'var(--cyan-primary)',
+                              fontSize: '0.9rem',
+                              fontFamily: 'monospace',
+                              fontWeight: 800,
+                              outline: 'none',
+                              textAlign: 'center'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(rawTag);
+                              if (showToast) showToast(`${tagLabel} copied to clipboard!`, 'success');
+                            }}
+                            className="btn-gold-glow"
+                            style={{ padding: '0.6rem 0.9rem', fontSize: '0.78rem' }}
+                          >
+                            <i className="fa-solid fa-copy" /> COPY
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Phone / Contact info if available */}
+                    {selectedGateway.phone && (
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          PHONE / SMS CONTACT
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <input
+                            readOnly
+                            value={selectedGateway.phone}
+                            style={{
+                              flex: 1,
+                              background: 'rgba(6, 8, 18, 0.9)',
+                              border: '1px solid var(--border-muted)',
+                              borderRadius: '10px',
+                              padding: '0.55rem 0.85rem',
+                              color: '#fff',
+                              fontSize: '0.85rem',
+                              fontFamily: 'monospace',
+                              fontWeight: 700,
+                              outline: 'none',
+                              textAlign: 'center'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedGateway.phone);
+                              if (showToast) showToast('Phone copied to clipboard!', 'success');
+                            }}
+                            className="btn-glass-secondary"
+                            style={{ padding: '0.55rem 0.85rem', fontSize: '0.75rem' }}
+                          >
+                            <i className="fa-solid fa-copy" /> COPY
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1-2-3 Step-by-Step Payment Instructions Guide */}
+                    <div style={{
+                      background: 'rgba(255, 200, 0, 0.05)',
+                      border: '1px solid rgba(255, 200, 0, 0.2)',
+                      borderRadius: '12px',
+                      padding: '0.75rem 0.9rem',
+                      width: '100%',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.45rem'
+                    }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 900, color: 'var(--gold-primary)', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <i className="fa-solid fa-list-check" /> 3-STEP PAYMENT GUIDE:
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.35 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+                          <span style={{ background: 'var(--gold-primary)', color: '#000', borderRadius: '50%', width: '17px', height: '17px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 900, flexShrink: 0 }}>1</span>
+                          <span>{payUrl ? <>Tap <strong>&ldquo;OPEN &amp; PAY&rdquo;</strong> button above.</> : <>Copy the payment handle or scan QR above.</>}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+                          <span style={{ background: 'var(--gold-primary)', color: '#000', borderRadius: '50%', width: '17px', height: '17px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 900, flexShrink: 0 }}>2</span>
+                          <span>Send exact <strong>${parseFloat(amount || 0).toFixed(2)}</strong> and write Note Code <strong style={{ color: 'var(--cyan-primary)', fontFamily: 'monospace' }}>{noteCode}</strong> in memo.</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+                          <span style={{ background: 'var(--gold-primary)', color: '#000', borderRadius: '50%', width: '17px', height: '17px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 900, flexShrink: 0 }}>3</span>
+                          <span>Upload payment screenshot proof below and submit for instant verification!</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedGateway.instructions && (
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'left', width: '100%', borderLeft: '2px solid var(--gold-primary)', paddingLeft: '0.6rem' }}>
+                        {selectedGateway.instructions}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Total Coin Load & Note Code Highlight Box */}
                 <div style={{
-                  background: 'rgba(12, 16, 32, 0.95)',
-                  border: '1px solid var(--card-border)',
+                  background: 'rgba(6, 8, 18, 0.9)',
+                  border: '1.5px dashed var(--gold-primary)',
                   borderRadius: '16px',
                   padding: '1rem',
+                  textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '0.75rem',
-                  textAlign: 'center'
+                  gap: '0.45rem'
                 }}>
-                  <div style={{ fontWeight: 800, color: 'var(--gold-primary)', fontSize: '0.9rem', fontFamily: 'var(--font-heading)' }}>
-                    PAYMENT METHOD: {selectedGateway.name?.toUpperCase()}
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TOTAL COIN LOAD</div>
+                  <div style={{ fontSize: '2.1rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+                    ${parseFloat(amount || 0).toFixed(2)}
                   </div>
 
-                  {/* QR Code Image display */}
-                  {(selectedGateway.qrCode || selectedGateway.qrCodeUrl || selectedGateway.imageUrl || selectedGateway.qrImage || selectedGateway.qr || selectedGateway.image) && (
-                    <div style={{
-                      background: '#fff',
-                      padding: '0.65rem',
-                      borderRadius: '14px',
-                      border: '2px solid var(--gold-primary)',
-                      boxShadow: '0 0 20px rgba(255,200,0,0.3)',
-                      maxWidth: '180px'
-                    }}>
-                      <img
-                        src={selectedGateway.qrCode || selectedGateway.qrCodeUrl || selectedGateway.imageUrl || selectedGateway.qrImage || selectedGateway.qr || selectedGateway.image}
-                        alt={`${selectedGateway.name} QR Code`}
-                        style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px' }}
-                      />
-                      <div style={{ fontSize: '0.68rem', color: '#000', fontWeight: 900, marginTop: '0.35rem' }}>
-                        SCAN TO PAY WITH {selectedGateway.name.toUpperCase()}
-                      </div>
-                    </div>
-                  )}
+                  <div style={{
+                    marginTop: '0.25rem',
+                    background: 'rgba(0, 240, 255, 0.08)',
+                    border: '1px solid rgba(0, 240, 255, 0.35)',
+                    borderRadius: '12px',
+                    padding: '0.45rem 0.85rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.6rem'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      NOTE CODE:
+                    </span>
+                    <span style={{ fontSize: '1rem', color: 'var(--cyan-primary)', fontWeight: 900, fontFamily: 'monospace', letterSpacing: '1px' }}>
+                      {noteCode}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(noteCode);
+                        if (showToast) showToast(`Note code "${noteCode}" copied to clipboard!`, 'success');
+                      }}
+                      className="btn-gold-glow"
+                      style={{ padding: '0.25rem 0.6rem', fontSize: '0.68rem', fontWeight: 900, borderRadius: '6px' }}
+                    >
+                      <i className="fa-solid fa-copy" /> COPY
+                    </button>
+                  </div>
 
-                  {/* Account Tag / Phone / Handle */}
-                  {(selectedGateway.accountNumber || selectedGateway.recipientTag || selectedGateway.tag || selectedGateway.accountName || selectedGateway.handle) && (
-                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        RECIPIENT PAY TAG / PHONE / ACCOUNT
-                      </label>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <input
-                          readOnly
-                          value={selectedGateway.accountNumber || selectedGateway.recipientTag || selectedGateway.tag || selectedGateway.handle || selectedGateway.accountName || ''}
-                          style={{
-                            flex: 1,
-                            background: 'rgba(6, 8, 18, 0.9)',
-                            border: '1px solid var(--gold-primary)',
-                            borderRadius: '10px',
-                            padding: '0.6rem 0.85rem',
-                            color: 'var(--cyan-primary)',
-                            fontSize: '0.9rem',
-                            fontFamily: 'monospace',
-                            fontWeight: 800,
-                            outline: 'none',
-                            textAlign: 'center'
-                          }}
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    <i className="fa-regular fa-clock" style={{ marginRight: '4px' }} /> Timer: <strong>{minutes}:{seconds}</strong> remaining
+                  </div>
+                </div>
+
+                {/* Upload Screenshot with Live Preview */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+
+                  {screenshot ? (
+                    <div style={{
+                      background: 'rgba(6, 8, 18, 0.95)',
+                      border: '1.5px solid #00e676',
+                      borderRadius: '16px',
+                      padding: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <img
+                          src={screenshot}
+                          alt="Payment Proof Preview"
+                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '10px', border: '1.5px solid #00e676' }}
                         />
+                        <div>
+                          <div style={{ color: '#00e676', fontSize: '0.82rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className="fa-solid fa-circle-check" /> Proof Attached
+                          </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                            Ready for submission
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
                           type="button"
-                          onClick={() => {
-                            const tag = selectedGateway.accountNumber || selectedGateway.recipientTag || selectedGateway.tag || selectedGateway.handle || selectedGateway.accountName;
-                            if (tag) {
-                              navigator.clipboard.writeText(tag);
-                              if (showToast) showToast('Payment Tag copied to clipboard!', 'success');
-                            }
-                          }}
-                          className="btn-gold-glow"
-                          style={{ padding: '0.6rem 0.9rem', fontSize: '0.78rem' }}
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{ background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)', color: '#ffd700', borderRadius: '8px', padding: '0.4rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
                         >
-                          <i className="fa-solid fa-copy" /> COPY
+                          Change
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScreenshot('')}
+                          style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '8px', padding: '0.4rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          &times; Remove
                         </button>
                       </div>
                     </div>
-                  )}
-
-                  {selectedGateway.instructions && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      {selectedGateway.instructions}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{
-                background: 'rgba(6, 8, 18, 0.8)',
-                border: '1px dashed var(--gold-primary)',
-                borderRadius: '16px',
-                padding: '1rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>TOTAL COIN LOAD</div>
-                <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'var(--font-heading)' }}>
-                  ${parseFloat(amount || 0).toFixed(2)}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--cyan-primary)', marginTop: '0.2rem', fontFamily: 'monospace' }}>
-                  UNIQUE NOTE CODE: <strong>{noteCode}</strong>
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                  Timer: {minutes}:{seconds} remaining
-                </div>
-              </div>
-
-              {/* Upload Screenshot with Live Preview */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  style={{ display: 'none' }}
-                />
-
-                {screenshot ? (
-                  <div style={{
-                    background: 'rgba(6, 8, 18, 0.95)',
-                    border: '1.5px solid #00e676',
-                    borderRadius: '16px',
-                    padding: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.75rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <img
-                        src={screenshot}
-                        alt="Payment Proof Preview"
-                        style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '10px', border: '1.5px solid #00e676' }}
-                      />
-                      <div>
-                        <div style={{ color: '#00e676', fontSize: '0.82rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <i className="fa-solid fa-circle-check" /> Proof Attached
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                          Ready for submission
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  ) : (
+                    <div>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>
+                        UPLOAD PAYMENT SCREENSHOT PROOF <span style={{ color: 'var(--red-primary)' }}>*</span>
+                      </label>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        style={{ background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)', color: '#ffd700', borderRadius: '8px', padding: '0.4rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                        className="btn-glass-secondary"
+                        style={{ width: '100%', padding: '0.85rem', justifyContent: 'center', fontSize: '0.85rem' }}
                       >
-                        Change
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setScreenshot('')}
-                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '8px', padding: '0.4rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        &times; Remove
+                        {uploading ? (
+                          <span><i className="fa-solid fa-spinner fa-spin" /> Attaching Proof...</span>
+                        ) : (
+                          <span><i className="fa-solid fa-cloud-arrow-up" style={{ color: '#ffd700', marginRight: '6px' }} /> SELECT PAYMENT SCREENSHOT</span>
+                        )}
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>
-                      UPLOAD PAYMENT SCREENSHOT PROOF <span style={{ color: 'var(--red-primary)' }}>*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn-glass-secondary"
-                      style={{ width: '100%', padding: '0.85rem', justifyContent: 'center', fontSize: '0.85rem' }}
-                    >
-                      {uploading ? (
-                        <span><i className="fa-solid fa-spinner fa-spin" /> Attaching Proof...</span>
-                      ) : (
-                        <span><i className="fa-solid fa-cloud-arrow-up" style={{ color: '#ffd700', marginRight: '6px' }} /> SELECT PAYMENT SCREENSHOT</span>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <button
-                type="submit"
-                disabled={submitting || !screenshot}
-                className="btn-gold-glow"
-                style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem', marginTop: '0.4rem' }}
-              >
-                {submitting ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paper-plane" />} SUBMIT COIN LOAD FOR VERIFICATION
-              </button>
+                <button
+                  type="submit"
+                  disabled={submitting || !screenshot}
+                  className="btn-gold-glow"
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem',
+                    fontSize: '0.92rem',
+                    opacity: submitting || !screenshot ? 0.5 : 1,
+                    cursor: submitting || !screenshot ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {submitting ? (
+                    <span><i className="fa-solid fa-spinner fa-spin" /> Submitting Deposit...</span>
+                  ) : (
+                    <span><i className="fa-solid fa-paper-plane" /> SUBMIT COIN LOAD FOR VERIFICATION</span>
+                  )}
+                </button>
 
-              <button
-                type="button"
-                onClick={handleCancelDeposit}
-                style={{
-                  width: '100%',
-                  padding: '0.65rem',
-                  background: 'transparent',
-                  border: '1px solid rgba(239,68,68,0.4)',
-                  borderRadius: '14px',
-                  color: 'var(--red-primary)',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.4rem',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <i className="fa-solid fa-ban" /> CANCEL &amp; GENERATE NEW CODE
-              </button>
-            </form>
-          )}
+                <button
+                  type="button"
+                  onClick={handleCancelSession}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--red-primary)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '0.4rem'
+                  }}
+                >
+                  <i className="fa-solid fa-ban" /> CANCEL &amp; GENERATE NEW CODE
+                </button>
+              </form>
+            );
+          })()}
         </motion.div>
       </div>
     </PanelModalBackdrop>

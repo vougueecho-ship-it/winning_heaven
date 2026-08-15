@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getDeviceFingerprint } from '../../../../lib/deviceId';
 
 async function completeGoogleFromToken(accessToken, sid) {
   const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -11,6 +12,8 @@ async function completeGoogleFromToken(accessToken, sid) {
     throw new Error('Google profile email was missing.');
   }
 
+  const deviceId = await getDeviceFingerprint().catch(() => '');
+
   const googleRes = await fetch('/api/auth/google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,7 +23,8 @@ async function completeGoogleFromToken(accessToken, sid) {
       referredBy: localStorage.getItem('winning_heaven_ref_code') || '',
       distributorId: localStorage.getItem('winning_heaven_distributor_id') || '',
       agentCode: localStorage.getItem('winning_heaven_agent_code') || '',
-      campaign: localStorage.getItem('winning_heaven_campaign') || ''
+      campaign: localStorage.getItem('winning_heaven_campaign') || '',
+      deviceId
     })
   });
   const googleData = await googleRes.json();

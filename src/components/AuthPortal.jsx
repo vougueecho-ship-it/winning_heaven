@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { shouldShowInfoOnAuth } from '../lib/infoPage';
 import { trackCompleteRegistration } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage, isNativePlatform } from '../lib/safeFetch';
+import { getDeviceFingerprint } from '../lib/deviceId';
 
 const DEFAULT_LOGIN_BG = '/casino_vip_hero.jpg';
 const DEFAULT_GOOGLE_CLIENT_ID =
@@ -23,6 +24,8 @@ async function loginWithGoogleProfile(accessToken) {
     throw new Error('Failed to fetch email profile from Google.');
   }
 
+  const deviceId = await getDeviceFingerprint().catch(() => '');
+
   const googleRes = await safeFetchJson('/api/auth/google', {
     method: 'POST',
     body: JSON.stringify({
@@ -31,7 +34,8 @@ async function loginWithGoogleProfile(accessToken) {
       referredBy: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_ref_code') || '' : '',
       distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : '',
       agentCode: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_agent_code') || '' : '',
-      campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : ''
+      campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : '',
+      deviceId
     })
   });
 
@@ -83,6 +87,7 @@ export default function AuthPortal({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   // Form Fields
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -251,11 +256,14 @@ export default function AuthPortal({
     onSuccess: async (tokenResponse) => {
       triggerLoading(1500, async () => {
         try {
+          setAuthError('');
           const googleData = await loginWithGoogleProfile(tokenResponse.access_token);
           finishGoogleLogin(googleData);
         } catch (err) {
           console.error('Google Login Error:', err);
-          showToast(cleanErrorMessage(err, 'Google Sign-In failed.'), 'error');
+          const errMsg = cleanErrorMessage(err, 'Google Sign-In failed.');
+          setAuthError(errMsg);
+          showToast(errMsg, 'error');
         }
       });
     },
@@ -267,6 +275,7 @@ export default function AuthPortal({
   });
 
   const handleGoogleClick = () => {
+    setAuthError('');
     if (isNativePlatform()) {
       startGoogleBrowserFlow();
     } else {
@@ -280,6 +289,7 @@ export default function AuthPortal({
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setAuthError('');
     if (!loginIdentifier.trim() || !loginPassword) {
       showToast('Please enter your email and password.', 'error');
       return;
@@ -293,14 +303,18 @@ export default function AuthPortal({
       });
 
       if (!res.ok || !res.data?.success) {
-        showToast(cleanErrorMessage(res.data?.message, 'Invalid email or password.'), 'error');
+        const errMsg = cleanErrorMessage(res.data?.message, 'Invalid email or password.');
+        setAuthError(errMsg);
+        showToast(errMsg, 'error');
         return;
       }
 
       showToast(`Welcome back, ${res.data.user?.name || 'Player'}!`, 'success');
       onLoginSuccess(res.data.user);
     } catch (err) {
-      showToast(cleanErrorMessage(err, 'Login failed. Please check your credentials.'), 'error');
+      const errMsg = cleanErrorMessage(err, 'Login failed. Please check your credentials.');
+      setAuthError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -309,6 +323,7 @@ export default function AuthPortal({
   // Step 1: Send OTP to email
   const handleRequestOtp = async (e) => {
     e.preventDefault();
+    setAuthError('');
     if (!regName.trim()) {
       showToast('Please enter your full name.', 'error');
       return;
@@ -324,17 +339,21 @@ export default function AuthPortal({
 
     setSendingOtp(true);
     try {
+      const deviceId = await getDeviceFingerprint().catch(() => '');
       const res = await safeFetchJson('/api/send-otp', {
         method: 'POST',
         body: JSON.stringify({
           email: regEmail.toLowerCase().trim(),
           name: regName.trim(),
-          purpose: 'register'
+          purpose: 'register',
+          deviceId
         })
       });
 
       if (!res.ok || !res.data?.success) {
-        showToast(cleanErrorMessage(res.data?.message, 'Failed to send verification code.'), 'error');
+        const errMsg = cleanErrorMessage(res.data?.message, 'Failed to send verification code.');
+        setAuthError(errMsg);
+        showToast(errMsg, 'error');
         return;
       }
 
@@ -342,7 +361,9 @@ export default function AuthPortal({
       setOtpTimer(60);
       showToast('Verification code sent to your email inbox!', 'success');
     } catch (err) {
-      showToast(cleanErrorMessage(err, 'Failed to send verification email.'), 'error');
+      const errMsg = cleanErrorMessage(err, 'Failed to send verification email.');
+      setAuthError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setSendingOtp(false);
     }
@@ -352,25 +373,32 @@ export default function AuthPortal({
   const handleResendOtp = async () => {
     if (otpTimer > 0 || sendingOtp) return;
     setSendingOtp(true);
+    setAuthError('');
     try {
+      const deviceId = await getDeviceFingerprint().catch(() => '');
       const res = await safeFetchJson('/api/send-otp', {
         method: 'POST',
         body: JSON.stringify({
           email: regEmail.toLowerCase().trim(),
           name: regName.trim(),
-          purpose: 'register'
+          purpose: 'register',
+          deviceId
         })
       });
 
       if (!res.ok || !res.data?.success) {
-        showToast(cleanErrorMessage(res.data?.message, 'Failed to resend verification code.'), 'error');
+        const errMsg = cleanErrorMessage(res.data?.message, 'Failed to resend verification code.');
+        setAuthError(errMsg);
+        showToast(errMsg, 'error');
         return;
       }
 
       setOtpTimer(60);
       showToast('New verification code sent to your inbox!', 'success');
     } catch (err) {
-      showToast(cleanErrorMessage(err, 'Resend failed. Please try again.'), 'error');
+      const errMsg = cleanErrorMessage(err, 'Resend failed. Please try again.');
+      setAuthError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setSendingOtp(false);
     }
@@ -379,6 +407,7 @@ export default function AuthPortal({
   // Step 2: Verify OTP and Register Account
   const handleVerifyAndRegister = async (e) => {
     e.preventDefault();
+    setAuthError('');
     if (!regOtp.trim() || regOtp.trim().length !== 6) {
       showToast('Please enter the complete 6-digit verification code.', 'error');
       return;
@@ -386,6 +415,7 @@ export default function AuthPortal({
 
     setLoading(true);
     try {
+      const deviceId = await getDeviceFingerprint().catch(() => '');
       const res = await safeFetchJson('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({
@@ -396,12 +426,15 @@ export default function AuthPortal({
           referredBy: regRefCode.trim(),
           distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : '',
           agentCode: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_agent_code') || '' : '',
-          campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : ''
+          campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : '',
+          deviceId
         })
       });
 
       if (!res.ok || !res.data?.success) {
-        showToast(cleanErrorMessage(res.data?.message, 'Registration failed.'), 'error');
+        const errMsg = cleanErrorMessage(res.data?.message, 'Registration failed.');
+        setAuthError(errMsg);
+        showToast(errMsg, 'error');
         return;
       }
 
@@ -409,7 +442,9 @@ export default function AuthPortal({
       showToast(`Welcome to Winning Heaven, ${res.data.user?.name || 'Player'}!`, 'success');
       onRegisterSuccess(res.data.user);
     } catch (err) {
-      showToast(cleanErrorMessage(err, 'Registration failed.'), 'error');
+      const errMsg = cleanErrorMessage(err, 'Registration failed.');
+      setAuthError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -887,7 +922,7 @@ export default function AuthPortal({
             border: '1px solid rgba(255,255,255,0.08)'
           }}>
             <button
-              onClick={() => setTab('login')}
+              onClick={() => { setTab('login'); setAuthError(''); }}
               style={{
                 flex: 1,
                 background: tab === 'login' ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'transparent',
@@ -905,7 +940,7 @@ export default function AuthPortal({
               LOGIN
             </button>
             <button
-              onClick={() => setTab('register')}
+              onClick={() => { setTab('register'); setAuthError(''); }}
               style={{
                 flex: 1,
                 background: tab === 'register' ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'transparent',
@@ -923,6 +958,45 @@ export default function AuthPortal({
               REGISTER
             </button>
           </div>
+
+          {/* Prominent Error Banner matching Screenshot style */}
+          <AnimatePresence>
+            {authError && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.55)',
+                  borderRadius: '14px',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
+                  boxShadow: '0 8px 25px rgba(239, 68, 68, 0.2)'
+                }}
+              >
+                <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '1.1rem', marginTop: '0.15rem', color: '#ef4444' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Please fix the errors below:
+                  </div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#ffffff', marginTop: '0.15rem', lineHeight: 1.3 }}>
+                    {authError}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAuthError('')}
+                  style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: '0 0.25rem', fontSize: '0.9rem' }}
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tab Forms */}
           <AnimatePresence mode="wait">

@@ -4,7 +4,7 @@ import { getDb } from '../../../lib/mongodb';
 
 export async function POST(req) {
   try {
-    const { email, name, purpose = 'register' } = await req.json();
+    const { email, name, purpose = 'register', deviceId } = await req.json();
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
@@ -14,10 +14,11 @@ export async function POST(req) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
     const db = await getDb();
     const usersCollection = db.collection('users');
 
-    // If registering, check if email is already taken
+    // If registering, check if email is already taken or device is already registered
     if (purpose === 'register') {
       const existing = await usersCollection.findOne({ email: cleanEmail });
       if (existing) {
@@ -25,6 +26,23 @@ export async function POST(req) {
           { success: false, message: 'An account with this email already exists. Please sign in.' },
           { status: 400 }
         );
+      }
+
+      if (cleanDeviceId) {
+        const settings = await db.collection('settings').findOne({ id: 'global_settings' });
+        const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
+        if (enforceDeviceLimit) {
+          const existingDevice = await usersCollection.findOne({
+            deviceId: cleanDeviceId,
+            email: { $ne: cleanEmail }
+          });
+          if (existingDevice) {
+            return NextResponse.json(
+              { success: false, message: 'You already have an account from this device.' },
+              { status: 400 }
+            );
+          }
+        }
       }
     }
 

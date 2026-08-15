@@ -86,6 +86,35 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
     }
   };
 
+  const handleResetDevice = async (user) => {
+    if (!window.confirm(`Are you sure you want to unlink the registered device for "${user.email}"? This will allow them to register or bind a different device.`)) {
+      return;
+    }
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          deviceId: ''
+        })
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        alert('Device successfully unlinked!');
+        if (inspectedUser && inspectedUser.email === user.email) {
+          setInspectedUser({ ...inspectedUser, deviceId: '' });
+        }
+        mutate();
+      } else {
+        alert(resData.message || 'Failed to unlink device.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error unlinking device.');
+    }
+  };
+
   const handleManualRegister = async (e) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) {
@@ -453,6 +482,32 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                   <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Email: <strong>{inspectedUser.email}</strong>
                   </p>
+                  <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      Device: <strong style={{ color: inspectedUser.deviceId ? '#38bdf8' : '#94a3b8', fontFamily: 'monospace' }}>
+                        {inspectedUser.deviceId ? `${inspectedUser.deviceId.substring(0, 16)}...` : 'Not bound'}
+                      </strong>
+                    </span>
+                    {inspectedUser.deviceId && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetDevice(inspectedUser)}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          color: '#ef4444',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                        title="Unlink device to let user register on a new phone"
+                      >
+                        <i className="fa-solid fa-unlink" /> Unlink Device
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>

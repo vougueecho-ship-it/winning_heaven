@@ -46,7 +46,7 @@ export async function GET(req) {
 // POST registers a new user
 export async function POST(req) {
   try {
-    const { email, password, name, otp, role, referredBy, distributorId, agentCode, campaign, allowedGameIds } = await req.json();
+    const { email, password, name, otp, role, referredBy, distributorId, agentCode, campaign, allowedGameIds, deviceId } = await req.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -56,6 +56,7 @@ export async function POST(req) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
     const db = await getDb();
     const usersCollection = db.collection('users');
 
@@ -68,8 +69,29 @@ export async function POST(req) {
       );
     }
 
-    // Verify OTP for standard player registrations
     const isStaffRole = role && role !== 'user';
+
+    // Anti-Multi-Account check: Prevent duplicate registrations from the same device
+    if (!isStaffRole && cleanDeviceId) {
+      const settings = await db.collection('settings').findOne({ id: 'global_settings' });
+      const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
+
+      if (enforceDeviceLimit) {
+        const existingDeviceUser = await usersCollection.findOne({
+          deviceId: cleanDeviceId,
+          email: { $ne: cleanEmail }
+        });
+
+        if (existingDeviceUser) {
+          return NextResponse.json(
+            { success: false, message: 'You already have an account from this device.' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Verify OTP for standard player registrations
     if (!isStaffRole) {
       if (!otp) {
         return NextResponse.json(
@@ -120,6 +142,10 @@ export async function POST(req) {
       }
     }
 
+    // Extract client IP if available
+    const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '';
+    const registrationIp = forwarded.split(',')[0].trim();
+
     const newUser = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -131,6 +157,8 @@ export async function POST(req) {
       distributorId: distributorId || inheritedDistributorId || '',
       agentCode: agentCode || inheritedAgentCode || '',
       campaign: campaign || 'organic',
+      deviceId: cleanDeviceId || '',
+      registrationIp: registrationIp || '',
       createdAt: new Date().toISOString()
     };
 
