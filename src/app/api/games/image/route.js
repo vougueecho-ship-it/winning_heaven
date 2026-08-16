@@ -60,7 +60,7 @@ export async function GET(req) {
       status: 200,
       headers: {
         'Content-Type': parsed.mime,
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
   } catch (err) {

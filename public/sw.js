@@ -1,9 +1,14 @@
-const SW_VERSION = 'winning-heaven-static-v6';
+const SW_VERSION = 'winning-heaven-static-v7';
 const APP_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/winning_heaven_logo.png',
+  '/winning_heaven_banner.png',
+  '/casino_vip_hero.jpg',
+  '/heavenly_lobby_bg.png',
+  '/falcon_emblem.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -18,7 +23,11 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== SW_VERSION).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== SW_VERSION && k !== 'winning-heaven-game-covers')
+          .map((k) => caches.delete(k))
+      )
     ).then(() => self.clients.claim())
   );
 });
@@ -36,8 +45,50 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // API routes always go to network
+  // Game cover binary images: Cache-first so images load instantly with 0ms network latency
+  if (url.pathname.startsWith('/api/games/image')) {
+    e.respondWith(
+      caches.open('winning-heaven-game-covers').then(async (cache) => {
+        const cached = await cache.match(e.request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(e.request);
+          if (response.ok && response.status === 200) {
+            cache.put(e.request, response.clone());
+          }
+          return response;
+        } catch (err) {
+          if (cached) return cached;
+          throw err;
+        }
+      })
+    );
+    return;
+  }
+
+  // Other API routes always go directly to network
   if (url.pathname.startsWith('/api')) {
+    return;
+  }
+
+  // Static images (png, jpg, webp, svg, ico): Cache-first
+  if (/\.(png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname) && url.origin === self.location.origin) {
+    e.respondWith(
+      caches.open(SW_VERSION).then(async (cache) => {
+        const cached = await cache.match(e.request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(e.request);
+          if (response.ok && response.status === 200) {
+            cache.put(e.request, response.clone());
+          }
+          return response;
+        } catch (err) {
+          if (cached) return cached;
+          throw err;
+        }
+      })
+    );
     return;
   }
 

@@ -61,6 +61,8 @@ export default function GameCard({
         <img
           src={game.image || game.logoUrl || '/winning_heaven_logo.png'}
           alt={game.title}
+          loading="lazy"
+          decoding="async"
           style={{
             position: 'absolute',
             top: 0,

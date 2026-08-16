@@ -299,43 +299,36 @@ export default function UserLobby({
           flex: 1,
           boxSizing: 'border-box'
         }}>
+          {/* Main Game Lobby View — Persisted in DOM so images, cards, and state never re-render or reload */}
+          <div style={{ display: activeTab === 'main' ? 'block' : 'none' }}>
+            {/* 12-Card Live Approved Cashout Stream Marquee Ticker */}
+            <LivePayoutsMarquee liveTransactions={transactions} />
+
+            {/* Hero Banner Carousel */}
+            <PlayerHeroBanner
+              frontendSettings={frontendSettings}
+              onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
+              onOpenReferrals={() => setActiveTab('referrals')}
+            />
+
+            {/* Game Catalog & Categories */}
+            <GameGrid
+              games={games}
+              gameAccounts={gameAccounts}
+              accountRequests={accountRequests}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
+              onPlayGame={handlePlayGame}
+              onRequestAccount={(game) => handlePlayGame(game, null)}
+              onViewCredentials={handleViewCredentials}
+              onDepositToGame={(game) => handleOpenDepositForGame(game.title)}
+            />
+
+            {/* Platform Rules & Player Guidelines Accordion */}
+            <CasinoRulesAccordion frontendSettings={frontendSettings} />
+          </div>
+
           <AnimatePresence mode="wait">
-            {activeTab === 'main' && (
-              <motion.div
-                key="main"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
-              >
-                {/* 12-Card Live Approved Cashout Stream Marquee Ticker */}
-                <LivePayoutsMarquee liveTransactions={transactions} />
-
-                {/* Hero Banner Carousel */}
-                <PlayerHeroBanner
-                  frontendSettings={frontendSettings}
-                  onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
-                  onOpenReferrals={() => setActiveTab('referrals')}
-                />
-
-                {/* Game Catalog & Categories */}
-                <GameGrid
-                  games={games}
-                  gameAccounts={gameAccounts}
-                  accountRequests={accountRequests}
-                  favorites={favorites}
-                  onToggleFavorite={toggleFavorite}
-                  onPlayGame={handlePlayGame}
-                  onRequestAccount={(game) => handlePlayGame(game, null)}
-                  onViewCredentials={handleViewCredentials}
-                  onDepositToGame={(game) => handleOpenDepositForGame(game.title)}
-                />
-
-                {/* Platform Rules & Player Guidelines Accordion */}
-                <CasinoRulesAccordion frontendSettings={frontendSettings} />
-              </motion.div>
-            )}
-
             {activeTab === 'game_hub' && selectedGameHub && (
               <GameHubPage
                 key="game_hub"
