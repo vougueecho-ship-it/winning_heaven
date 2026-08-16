@@ -854,7 +854,7 @@ export function PlayerDepositModal({
 
                 <button
                   type="button"
-                  onClick={handleCancelSession}
+                  onClick={handleCancelDeposit}
                   style={{
                     background: 'transparent',
                     border: 'none',
