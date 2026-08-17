@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import { playNotificationSound, initAudioUnlock } from '../../lib/notificationSound';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 const DEFAULT_LOGIN_BG = '/heavenly_auth_bg.png';
@@ -194,22 +195,49 @@ export default function FrontendSettingsTab({ adminUser }) {
     reader.readAsDataURL(file);
   };
 
-  const handleAudioUpload = (e) => {
+  const [audioUploading, setAudioUploading] = useState(false);
+
+  const handleAudioUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Audio file size must be less than 5MB.');
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Audio file size must be less than 8MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      let result = reader.result;
-      if (typeof result === 'string') {
-        result = result.replace(/^data:video\/[^;]+;/, 'data:audio/mpeg;');
-      }
-      setNotificationSoundUrl(result);
-    };
-    reader.readAsDataURL(file);
+    setAudioUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        let result = reader.result;
+        if (typeof result === 'string') {
+          result = result.replace(/^data:video\/[^;]+;/, 'data:audio/mpeg;');
+        }
+        setNotificationSoundUrl(result);
+        
+        try {
+          const res = await fetch('/api/settings/audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: result })
+          });
+          const resData = await res.json();
+          if (resData.success) {
+            setNotificationSoundUrl(resData.url || result);
+            mutate();
+          }
+        } catch (postErr) {
+          console.warn('Direct audio save:', postErr);
+        }
+        
+        initAudioUnlock();
+        playNotificationSound(result);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Audio upload error:', err);
+    } finally {
+      setAudioUploading(false);
+    }
   };
 
   // Hero Announcement Banner List Handlers
@@ -1533,26 +1561,23 @@ export default function FrontendSettingsTab({ adminUser }) {
                       borderRadius: '12px',
                       fontSize: '0.8rem',
                       fontWeight: 800,
-                      cursor: 'pointer',
+                      cursor: audioUploading ? 'wait' : 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '0.4rem'
+                      gap: '0.4rem',
+                      opacity: audioUploading ? 0.7 : 1
                     }}>
-                      <i className="fa-solid fa-music" />
-                      <span>Upload MP3</span>
-                      <input type="file" accept="audio/*" onChange={handleAudioUpload} style={{ display: 'none' }} />
+                      <i className={audioUploading ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-music"} />
+                      <span>{audioUploading ? 'Uploading MP3...' : 'Upload MP3'}</span>
+                      <input type="file" accept="audio/*" onChange={handleAudioUpload} disabled={audioUploading} style={{ display: 'none' }} />
                     </label>
 
                     {notificationSoundUrl && (
                       <button
                         type="button"
                         onClick={() => {
-                          try {
-                            const snd = new Audio(notificationSoundUrl);
-                            snd.play();
-                          } catch (e) {
-                            console.error(e);
-                          }
+                          initAudioUnlock();
+                          playNotificationSound(notificationSoundUrl);
                         }}
                         style={{
                           background: 'rgba(0, 230, 118, 0.15)',
@@ -1569,7 +1594,7 @@ export default function FrontendSettingsTab({ adminUser }) {
                         }}
                       >
                         <i className="fa-solid fa-volume-high" />
-                        <span>Play Chime</span>
+                        <span>Test Play Sound</span>
                       </button>
                     )}
                   </div>

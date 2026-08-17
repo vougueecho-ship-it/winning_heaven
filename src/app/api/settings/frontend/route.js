@@ -160,8 +160,15 @@ export async function GET() {
       }
     }
     
-    cache.set('frontend_settings_all', settings, 60);
-    return NextResponse.json({ success: true, settings });
+    const publicSettings = {
+      ...settings,
+      notificationSoundUrl: typeof settings.notificationSoundUrl === 'string' && settings.notificationSoundUrl.startsWith('data:')
+        ? `/api/settings/audio?v=${settings.notificationSoundUrl.length}`
+        : (settings.notificationSoundUrl || DEFAULT_SETTINGS.notificationSoundUrl)
+    };
+
+    cache.set('frontend_settings_all', publicSettings, 60);
+    return NextResponse.json({ success: true, settings: publicSettings });
   } catch (err) {
     console.error('Fetch Frontend Settings API Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
@@ -205,6 +212,9 @@ export async function PUT(req) {
         quality: 75
       });
     }
+    if (typeof updateFields.notificationSoundUrl === 'string' && updateFields.notificationSoundUrl.startsWith('/api/settings/audio')) {
+      delete updateFields.notificationSoundUrl;
+    }
 
     await settingsCollection.updateOne(
       { id: 'frontend_settings' },
@@ -224,6 +234,7 @@ export async function PUT(req) {
 
     // Invalidate cache
     cache.del('frontend_settings_all');
+    cache.del('notification_audio_binary');
 
     return NextResponse.json({ success: true, message: 'Frontend settings updated successfully!' });
   } catch (err) {

@@ -411,3 +411,22 @@ export async function unsubscribeFromPromoPush(userEmail) {
   });
   await subscription.unsubscribe();
 }
+
+/** Listen for Service Worker broadcast messages to play notification sound when push arrives */
+export function initPushAudioListener(customSoundUrl) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (window.__swPushAudioBound) return;
+  window.__swPushAudioBound = true;
+
+  navigator.serviceWorker.addEventListener('message', async (event) => {
+    if (event.data?.type === 'PUSH_RECEIVED') {
+      try {
+        const { playNotificationSound } = await import('./notificationSound');
+        playNotificationSound(event.data?.soundUrl || customSoundUrl || '/api/settings/audio');
+      } catch (_) {
+        // ignore
+      }
+    }
+  });
+}
+

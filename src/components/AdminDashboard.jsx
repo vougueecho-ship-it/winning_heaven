@@ -11,7 +11,7 @@ import { lazyWithRetry } from '../lib/lazyWithRetry';
 import TabErrorBoundary from './TabErrorBoundary';
 import { initAudioUnlock, playNotificationSound } from '../lib/notificationSound';
 import { initDesktopNotifications, notifyStaffActivity } from '../lib/desktopNotify';
-import { subscribeToStaffPush } from '../lib/pushClient';
+import { subscribeToStaffPush, initPushAudioListener } from '../lib/pushClient';
 import { registerNativeBackHandler } from '../lib/nativeBack';
 import OfflineBanner from './OfflineBanner';
 
@@ -150,6 +150,7 @@ export default function AdminDashboard({
   useEffect(() => {
     initAudioUnlock();
     initDesktopNotifications();
+    initPushAudioListener('/api/settings/audio');
   }, []);
 
   // Portal / Capacitor admin: avoid double safe-area inset. Retry briefly because

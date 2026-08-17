@@ -133,16 +133,33 @@ self.addEventListener('push', (event) => {
     badge: data.badge || '/icon-192.png',
     tag: data.tag || 'winning-heaven-promo',
     renotify: true,
-    vibrate: [120, 60, 120],
+    silent: false,
+    vibrate: [200, 100, 200],
     requireInteraction: false,
     ...(data.image ? { image: data.image } : {}),
     data: {
       url: data.url || '/lobby',
-      promotionId: data.promotionId || null
+      promotionId: data.promotionId || null,
+      soundUrl: data.soundUrl || '/api/settings/audio'
     }
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Broadcast to all open client tabs so active/background windows play the sound tone immediately
+  const broadcastPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      client.postMessage({
+        type: 'PUSH_RECEIVED',
+        title,
+        body: options.body,
+        soundUrl: data.soundUrl || '/api/settings/audio'
+      });
+    }
+  }).catch(() => {});
+
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    broadcastPromise
+  ]));
 });
 
 self.addEventListener('notificationclick', (event) => {

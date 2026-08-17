@@ -19,7 +19,7 @@ import PanelModalBackdrop from '../../components/PanelModalBackdrop';
 import ParticlesBackground from '../../components/ParticlesBackground';
 import { initAudioUnlock, playNotificationSound } from '../../lib/notificationSound';
 import { initDesktopNotifications, notifyStaffActivity } from '../../lib/desktopNotify';
-import { subscribeToDistributorPush } from '../../lib/pushClient';
+import { subscribeToDistributorPush, initPushAudioListener } from '../../lib/pushClient';
 import useSessionGuard from '../../hooks/useSessionGuard';
 import { formatDeviceDateTime } from '../../lib/formatDateTime';
 import PullToRefresh from '../../components/PullToRefresh';
@@ -150,6 +150,7 @@ export default function DistributorPortal() {
   useEffect(() => {
     initAudioUnlock();
     initDesktopNotifications();
+    initPushAudioListener('/api/settings/audio');
   }, []);
 
   // Capacitor Distributor APK: safe-area shell (same as Portal /admin)

@@ -15,6 +15,8 @@ import useSessionGuard from '../hooks/useSessionGuard';
 import { compressDataUrl } from '../lib/imageCompress';
 import { trackCompleteRegistration, trackDepositPurchase } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage } from '../lib/safeFetch';
+import { initAudioUnlock, playNotificationSound } from '../lib/notificationSound';
+import { initPushAudioListener } from '../lib/pushClient';
 
 const fetcher = async (...args) => {
   try {
@@ -233,6 +235,24 @@ export default function Home() {
   const transactions = transactionsData?.transactions || [];
   const coinsNotifications = notificationsData?.coinsNotifications || [];
 
+  const soundUrl = frontendSettings?.notificationSoundUrl || '/api/settings/audio';
+  const soundUrlRef = useRef(soundUrl);
+  useEffect(() => {
+    soundUrlRef.current = frontendSettings?.notificationSoundUrl || '/api/settings/audio';
+  }, [frontendSettings]);
+
+  const prevCoinsCountRef = useRef(null);
+  useEffect(() => {
+    if (!notificationsData?.coinsNotifications) return;
+    const count = notificationsData.coinsNotifications.length;
+    if (prevCoinsCountRef.current !== null && count > prevCoinsCountRef.current) {
+      try {
+        playNotificationSound(soundUrlRef.current);
+      } catch (_) {}
+    }
+    prevCoinsCountRef.current = count;
+  }, [notificationsData]);
+
   // Persist credentials in localStorage when fetched
   useEffect(() => {
     if (credentialsData?.gameAccounts?.length) {
@@ -247,6 +267,8 @@ export default function Home() {
   // Initialize session
   useEffect(() => {
     setMounted(true);
+    initAudioUnlock();
+    initPushAudioListener('/api/settings/audio');
 
     const handleInstallPrompt = (e) => {
       e.preventDefault();
