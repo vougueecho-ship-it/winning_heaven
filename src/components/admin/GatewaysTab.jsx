@@ -101,9 +101,18 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
                     )}
                   </td>
                   <td>
-                    <a href={gt.qrImage} target="_blank" rel="noopener noreferrer" className="gold-text" style={{ fontSize: '0.7rem', textDecoration: 'none' }} title={gt.qrImage}>
-                      {(gt.qrImage || '').slice(0, 30)}...
-                    </a>
+                    {gt.qrImage ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <img
+                          src={gt.qrImage}
+                          alt="QR"
+                          style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'contain', background: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                        <span style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 600 }}>Active</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>—</span>
+                    )}
                   </td>
                   <td>
                     <div className="table-actions">

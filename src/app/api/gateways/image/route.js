@@ -17,26 +17,35 @@ export async function GET(req) {
     const perKey = `gateway_image_${id}`;
     let image = cache.get(perKey);
 
+    const db = await getDb();
+
     if (!image) {
-      const db = await getDb();
       const gateway = await db.collection('gateways').findOne(
         { id: String(id) },
-        { projection: { _id: 0, qrImage: 1 } }
+        { projection: { _id: 0, qrImage: 1, tag: 1, name: 1 } }
       );
       image = gateway?.qrImage || null;
       if (image) cache.set(perKey, image, 300);
     }
 
-    if (!image) {
-      return NextResponse.json({ success: false, message: 'Image not found.' }, { status: 404 });
+    // Detect circular/self-referential redirects or missing image and provide dynamic QR fallback
+    if (!image || (typeof image === 'string' && image.includes('/api/gateways/image'))) {
+      const gateway = await db.collection('gateways').findOne(
+        { id: String(id) },
+        { projection: { _id: 0, tag: 1, name: 1 } }
+      );
+      const text = gateway?.tag || gateway?.name || 'Payment';
+      return NextResponse.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`, 302);
     }
 
     if (!String(image).startsWith('data:')) {
       if (
         String(image).startsWith('http://') ||
-        String(image).startsWith('https://') ||
-        String(image).startsWith('/')
+        String(image).startsWith('https://')
       ) {
+        return NextResponse.redirect(image, 302);
+      }
+      if (String(image).startsWith('/')) {
         return NextResponse.redirect(new URL(image, req.url), 302);
       }
       return NextResponse.redirect(new URL('/' + String(image).replace(/^\//, ''), req.url), 302);
@@ -44,7 +53,12 @@ export async function GET(req) {
 
     const parsed = parseDataUrlImage(image);
     if (!parsed) {
-      return NextResponse.json({ success: false, message: 'Invalid image data.' }, { status: 500 });
+      const gateway = await db.collection('gateways').findOne(
+        { id: String(id) },
+        { projection: { _id: 0, tag: 1, name: 1 } }
+      );
+      const text = gateway?.tag || gateway?.name || 'Payment';
+      return NextResponse.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`, 302);
     }
 
     return new NextResponse(parsed.buffer, {
@@ -59,3 +73,4 @@ export async function GET(req) {
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
   }
 }
+

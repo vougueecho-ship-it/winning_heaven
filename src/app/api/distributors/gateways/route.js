@@ -21,17 +21,9 @@ export async function GET(req) {
     }
 
     const gateways = await gatewaysCollection.find({ distributorId }).toArray();
-    // Same lean QR proxy as /api/gateways — list JSON stays small
-    const lean = gateways.map((g) => {
-      const qr = g.qrImage || '';
-      if (typeof qr === 'string' && qr.startsWith('data:image') && g.id) {
-        return { ...g, qrImage: `/api/gateways/image?id=${encodeURIComponent(g.id)}` };
-      }
-      return g;
-    });
-    cache.set(cacheKey, lean, 60);
+    cache.set(cacheKey, gateways, 30);
 
-    return NextResponse.json({ success: true, gateways: lean });
+    return NextResponse.json({ success: true, gateways });
   } catch (err) {
     console.error('Fetch Distributor Gateways API Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
@@ -74,7 +66,11 @@ export async function POST(req) {
       theme: resolvedTheme,
       qrImage: isLinkPay
         ? ''
-        : (qrImage || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(name + '-' + resolvedTag)}`),
+        : (
+            (qrImage && !qrImage.includes('/api/gateways/image'))
+              ? qrImage
+              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(name + '-' + resolvedTag)}`
+          ),
       redirectUrl: resolvedRedirect,
       isWithdrawActive: Boolean(isWithdrawActive),
       requireNameOnTag: isWithdrawActive ? requireNameOnTag !== false : false,
@@ -121,6 +117,10 @@ export async function PUT(req) {
       requirePhoneOnTag: requirePhoneOnTag !== undefined ? Boolean(requirePhoneOnTag) : undefined,
       requireEmailOnTag: requireEmailOnTag !== undefined ? Boolean(requireEmailOnTag) : undefined
     };
+
+    if (typeof updateFields.qrImage === 'string' && updateFields.qrImage.includes('/api/gateways/image')) {
+      delete updateFields.qrImage;
+    }
 
     // Clean undefined fields
     Object.keys(updateFields).forEach(key => updateFields[key] === undefined && delete updateFields[key]);

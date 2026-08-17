@@ -582,6 +582,11 @@ export function PlayerDepositModal({
                         <img
                           src={selectedGateway.qrCode || selectedGateway.qrCodeUrl || selectedGateway.imageUrl || selectedGateway.qrImage || selectedGateway.qr || selectedGateway.image}
                           alt={`${selectedGateway.name} QR Code`}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            const fallbackData = rawTag || selectedGateway.name || 'Pay';
+                            e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fallbackData)}`;
+                          }}
                           style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '8px' }}
                         />
                         <div style={{ fontSize: '0.68rem', color: '#000', fontWeight: 900, marginTop: '0.35rem' }}>

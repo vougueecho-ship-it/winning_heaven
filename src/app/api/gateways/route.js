@@ -55,17 +55,8 @@ export async function GET(req) {
 
     const gateways = await gatewaysCollection.find(query).toArray();
 
-    // Swap inline base64 QRs for a cached image proxy — same UI, much smaller JSON
-    const lean = gateways.map((g) => {
-      const qr = g.qrImage || '';
-      if (typeof qr === 'string' && qr.startsWith('data:image') && g.id) {
-        return { ...g, qrImage: `/api/gateways/image?id=${encodeURIComponent(g.id)}` };
-      }
-      return g;
-    });
-
-    cache.set(cacheKey, lean, 60);
-    return NextResponse.json({ success: true, gateways: lean });
+    cache.set(cacheKey, gateways, 30);
+    return NextResponse.json({ success: true, gateways });
   } catch (err) {
     console.error('Fetch Gateways API Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
@@ -102,7 +93,11 @@ export async function POST(req) {
       theme,
       qrImage: isLinkPay
         ? ''
-        : (gateway.qrImage || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gateway.name + '-' + tag)}`),
+        : (
+            (gateway.qrImage && !gateway.qrImage.includes('/api/gateways/image'))
+              ? gateway.qrImage
+              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(tag || gateway.name)}`
+          ),
       redirectUrl: String(gateway.redirectUrl || '').trim(),
       isWithdrawActive: Boolean(gateway.isWithdrawActive),
       requireNameOnTag: Boolean(gateway.requireNameOnTag),
@@ -149,6 +144,12 @@ export async function PUT(req) {
       requirePhoneOnTag: gateway.requirePhoneOnTag !== undefined ? Boolean(gateway.requirePhoneOnTag) : undefined,
       requireEmailOnTag: gateway.requireEmailOnTag !== undefined ? Boolean(gateway.requireEmailOnTag) : undefined
     };
+
+    // Admin edit form sends public proxy URL (/api/gateways/image?id=...) if not re-uploaded.
+    // Never overwrite stored Mongo image with the proxy URL string.
+    if (typeof updateFields.qrImage === 'string' && updateFields.qrImage.includes('/api/gateways/image')) {
+      delete updateFields.qrImage;
+    }
 
     // Clean undefined fields
     Object.keys(updateFields).forEach(key => updateFields[key] === undefined && delete updateFields[key]);

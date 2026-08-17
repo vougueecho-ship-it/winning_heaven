@@ -571,32 +571,8 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const img = new Image();
-      img.src = reader.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const max_size = 350; // High resolution but low payload footprint
-        if (width > height) {
-          if (width > max_size) {
-            height *= max_size / width;
-            width = max_size;
-          }
-        } else {
-          if (height > max_size) {
-            width *= max_size / height;
-            height = max_size;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); // 70% quality JPEG is tiny!
-        setQrImage(compressedBase64);
-        setQrError('');
-      };
+      setQrImage(reader.result);
+      setQrError('');
     };
     reader.readAsDataURL(file);
   };
