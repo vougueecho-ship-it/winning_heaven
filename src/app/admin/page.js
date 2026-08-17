@@ -274,9 +274,17 @@ export default function AdminPage({ portalName, forcedRole }) {
   };
 
   const handleUpdateCoinsNotification = async (id, status, read, holdNote) => {
-    // Instant queue clear — rollback if API fails
-    if (status === 'COMPLETED' || status === 'HOLD') {
+    // Instant queue clear — only for COMPLETED or CANCELLED, NEVER for HOLD
+    if (status === 'COMPLETED' || status === 'CANCELLED') {
       setCompletedActionIds(prev => ({ ...prev, [id]: true }));
+    } else {
+      setCompletedActionIds(prev => {
+        if (!prev[id] && !prev[String(id)]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        delete next[String(id)];
+        return next;
+      });
     }
     try {
       const response = await fetch('/api/coins-notifications', {
@@ -299,7 +307,7 @@ export default function AdminPage({ portalName, forcedRole }) {
         mutate((key) => typeof key === 'string' && key.startsWith('/api/coins-notifications'));
         mutate((key) => typeof key === 'string' && key.startsWith('/api/transactions'));
       } else {
-        if (status === 'COMPLETED' || status === 'HOLD') {
+        if (status === 'COMPLETED' || status === 'CANCELLED') {
           setCompletedActionIds(prev => {
             const next = { ...prev };
             delete next[id];
@@ -309,7 +317,7 @@ export default function AdminPage({ portalName, forcedRole }) {
         showToast(data.message || 'Failed to update notification.', 'error');
       }
     } catch (err) {
-      if (status === 'COMPLETED' || status === 'HOLD') {
+      if (status === 'COMPLETED' || status === 'CANCELLED') {
         setCompletedActionIds(prev => {
           const next = { ...prev };
           delete next[id];

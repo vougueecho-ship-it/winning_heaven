@@ -39,7 +39,10 @@ export async function GET(req) {
       const searchCriteria = {
         $or: [
           { userEmail: { $regex: cleanSearch, $options: 'i' } },
-          { gameTitle: { $regex: cleanSearch, $options: 'i' } }
+          { gameTitle: { $regex: cleanSearch, $options: 'i' } },
+          { gameUsername: { $regex: cleanSearch, $options: 'i' } },
+          { holdNote: { $regex: cleanSearch, $options: 'i' } },
+          { note: { $regex: cleanSearch, $options: 'i' } }
         ]
       };
       // Always AND with existing filters (keeps Type B exclusion for HQ admin)
@@ -47,7 +50,7 @@ export async function GET(req) {
     }
 
     const statusParam = searchParams.get('status');
-    if (statusParam) {
+    if (statusParam && statusParam.toUpperCase() !== 'ALL') {
       const statuses = statusParam.split(',').map(s => s.toUpperCase().trim()).filter(Boolean);
       const statusFilter = statuses.length > 1 ? { $in: statuses } : statuses[0];
       if (query.$and) {
@@ -217,12 +220,31 @@ export async function GET(req) {
       });
     }
     
+    // Compute live status counts for filter tabs
+    let statusCounts = { all: totalNotifications, pending: 0, hold: 0, completed: 0, cancelled: 0 };
+    try {
+      const countsAggregation = await notificationsCollection.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]).toArray();
+      for (const c of countsAggregation) {
+        const s = String(c._id || '').toUpperCase();
+        if (s === 'PENDING' || s === 'CLAIM_REQUESTED') statusCounts.pending += c.count;
+        else if (s === 'HOLD') statusCounts.hold += c.count;
+        else if (s === 'COMPLETED') statusCounts.completed += c.count;
+        else if (s === 'CANCELLED' || s === 'FAILED') statusCounts.cancelled += c.count;
+      }
+      statusCounts.all = statusCounts.pending + statusCounts.hold + statusCounts.completed + statusCounts.cancelled;
+    } catch {
+      /* ignore counts error */
+    }
+
     return NextResponse.json({
       success: true,
       coinsNotifications: notifications,
       totalNotifications,
-      totalPages: Math.ceil(totalNotifications / limit),
-      currentPage: page
+      totalPages: Math.max(1, Math.ceil(totalNotifications / limit)),
+      currentPage: page,
+      statusCounts
     });
   } catch (err) {
     console.error('Fetch Coins Notifications Error:', err);
