@@ -44,6 +44,7 @@ export function writePendingDeposit(payload) {
         amount: payload.amount,
         gateway: payload.gateway,
         noteCode: payload.noteCode,
+        senderTag: payload.senderTag || '',
         expiresAt: payload.expiresAt
       })
     );

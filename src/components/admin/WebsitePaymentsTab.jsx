@@ -337,14 +337,27 @@ export default function WebsitePaymentsTab({
                         <tr key={tx.id}>
                           <td>{(page - 1) * limit + idx + 1}</td>
                           <td><strong>{tx.userEmail}</strong></td>
-                          <td><span className="admin-badge-preview b-hot">{tx.gateway}</span></td>
-                          <td><code style={{ fontSize: '0.7rem' }}>{tx.code}</code></td>
+                          <td>
+                            {tx.noteCode && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
+                                Note: {tx.noteCode}
+                              </div>
+                            )}
+                            {(tx.senderTag || tx.senderName) && (
+                              <div style={{ fontSize: '0.7rem', color: '#ffd700', fontWeight: 700 }}>
+                                Tag: {tx.senderTag || tx.senderName}
+                              </div>
+                            )}
+                            {!tx.noteCode && !tx.senderTag && !tx.senderName && (
+                              <code style={{ fontSize: '0.7rem' }}>{tx.code || '—'}</code>
+                            )}
+                          </td>
                           <td><strong style={{ color: '#00ff66' }}>${parseFloat(tx.amount).toFixed(2)}</strong></td>
                           <td style={{ fontSize: '0.7rem' }}>{formatDeviceDateTime(tx.createdAt, tx.date)}</td>
                           <td>
                             {tx.screenshot ? (
                               <button
-                                onClick={() => onInspectProof(tx.screenshot, tx.id)}
+                                onClick={() => onInspectProof(tx.screenshot, tx.id, null, tx)}
                                 className="submit-btn"
                                 style={{ background: '#3498db', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}
                               >

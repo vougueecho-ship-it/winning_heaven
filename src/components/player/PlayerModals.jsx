@@ -33,6 +33,7 @@ export function PlayerDepositModal({
   const [targetGameTitle, setTargetGameTitle] = useState(defaultGameTitle);
   const [selectedGateway, setSelectedGateway] = useState(null);
   const [noteCode, setNoteCode] = useState('');
+  const [senderTag, setSenderTag] = useState('');
   const [screenshot, setScreenshot] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,6 +64,7 @@ export function PlayerDepositModal({
     if (pending && remainingSeconds(pending.expiresAt) > 0) {
       // Restore previous session
       setNoteCode(pending.noteCode);
+      if (pending.senderTag) setSenderTag(pending.senderTag);
       setTimeLeft(remainingSeconds(pending.expiresAt));
       if (pending.amount) setAmount(String(pending.amount));
       if (pending.gameTitle) setTargetGameTitle(pending.gameTitle);
@@ -111,11 +113,14 @@ export function PlayerDepositModal({
       amount: parseFloat(amount) || 0,
       gateway: g,
       noteCode: code,
+      senderTag,
       expiresAt
     });
 
     setStep(3);
-  };  const handleFileChange = async (e) => {
+  };
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -143,6 +148,10 @@ export function PlayerDepositModal({
       if (showToast) showToast('Minimum deposit amount is $5.00.', 'error');
       return;
     }
+    if (!senderTag.trim()) {
+      if (showToast) showToast('Please enter your sender tag/account name used to send payment.', 'error');
+      return;
+    }
     if (!screenshot) {
       if (showToast) showToast('Payment screenshot receipt is required for deposit verification.', 'error');
       return;
@@ -157,6 +166,8 @@ export function PlayerDepositModal({
         gateway: selectedGateway?.name || 'Payment Gateway',
         gatewayName: selectedGateway?.name || 'Payment Gateway',
         noteCode,
+        senderTag: senderTag.trim(),
+        senderName: senderTag.trim(),
         screenshot
       });
       // Clear pending deposit on successful submit
@@ -173,6 +184,7 @@ export function PlayerDepositModal({
   const handleCancelDeposit = () => {
     clearPendingDeposit();
     setNoteCode('');
+    setSenderTag('');
     setScreenshot('');
     setSelectedGateway(null);
     setStep(1);
@@ -760,6 +772,53 @@ export function PlayerDepositModal({
 
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                     <i className="fa-regular fa-clock" style={{ marginRight: '4px' }} /> Timer: <strong>{minutes}:{seconds}</strong> remaining
+                  </div>
+                </div>
+
+                {/* Sender Payment Tag / Name Input */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>YOUR SENDER PAYMENT TAG / NAME <span style={{ color: 'var(--red-primary)' }}>*</span></span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--gold-primary)', fontWeight: 600 }}>Used to match payment</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      required
+                      placeholder={
+                        selectedGateway?.name?.toLowerCase().includes('cash')
+                          ? 'e.g. $your_cashtag or Name on Cash App'
+                          : selectedGateway?.name?.toLowerCase().includes('chime')
+                          ? 'e.g. Chime handle / Name on Chime'
+                          : selectedGateway?.name?.toLowerCase().includes('stripe')
+                          ? 'e.g. Cardholder Name / Email'
+                          : 'e.g. $cashtag, account name, or phone number'
+                      }
+                      value={senderTag}
+                      onChange={(e) => setSenderTag(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(6, 8, 18, 0.95)',
+                        border: '1.5px solid var(--gold-primary)',
+                        borderRadius: '12px',
+                        padding: '0.75rem 0.95rem 0.75rem 2.4rem',
+                        color: '#fff',
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        outline: 'none'
+                      }}
+                    />
+                    <i
+                      className="fa-solid fa-user-tag"
+                      style={{
+                        position: 'absolute',
+                        left: '0.9rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--gold-primary)',
+                        fontSize: '0.85rem'
+                      }}
+                    />
                   </div>
                 </div>
 

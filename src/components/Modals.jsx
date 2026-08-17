@@ -859,36 +859,117 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
 }
 
 // --- G) VIEW RECEIPT PROOF MODAL ---
-export function ViewProofModal({ isOpen, onClose, proofUrl }) {
+// --- G) VIEW RECEIPT PROOF MODAL ---
+export function ViewProofModal({ isOpen, onClose, proofUrl, proofMeta }) {
   const [enlarged, setEnlarged] = useState(false);
+  const [copiedField, setCopiedField] = useState('');
 
   useEffect(() => {
-    if (!isOpen) setEnlarged(false);
+    if (!isOpen) {
+      setEnlarged(false);
+      setCopiedField('');
+    }
   }, [isOpen]);
+
+  const copyToClipboard = (text, fieldName) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(''), 2000);
+  };
 
   if (!isOpen) return null;
 
   return (
     <>
       <PanelModalBackdrop onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(720px, 96vw)', width: '100%', border: '1px solid var(--gold-primary)' }}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(760px, 96vw)', width: '100%', border: '1px solid var(--gold-primary)' }}>
           <div className="modal-header">
             <h3>
-              <i className="fa-solid fa-receipt gold-text"></i> Payment Screenshot Receipt
+              <i className="fa-solid fa-receipt gold-text"></i> Payment Verification & Receipt Inspector
             </h3>
             <button type="button" className="close-modal" onClick={onClose}>
               &times;
             </button>
           </div>
-          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
-            <div style={{ width: '100%', minHeight: '180px', maxHeight: '70vh', overflowY: 'auto', borderRadius: '12px', background: '#090a10', border: '1px solid rgba(255,255,255,0.05)', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
+            
+            {/* Auto Code & Sender Tag Verification Box */}
+            {(proofMeta?.noteCode || proofMeta?.senderTag || proofMeta?.code || proofMeta?.gateway) && (
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.95)',
+                border: '1.5px solid rgba(255, 215, 0, 0.35)',
+                borderRadius: '14px',
+                padding: '0.85rem 1rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '0.75rem',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+              }}>
+                {proofMeta.noteCode && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <i className="fa-solid fa-hashtag" style={{ color: 'var(--cyan-primary)', marginRight: '4px' }} /> Auto Note Code:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '1.05rem', color: 'var(--cyan-primary)', fontWeight: 900, fontFamily: 'monospace', background: 'rgba(0, 240, 255, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.3)' }}>
+                        {proofMeta.noteCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(proofMeta.noteCode, 'noteCode')}
+                        className="btn-gold-glow"
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px' }}
+                      >
+                        {copiedField === 'noteCode' ? 'COPIED!' : 'COPY'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {(proofMeta.senderTag || proofMeta.senderName) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <i className="fa-solid fa-user-tag" style={{ color: '#ffd700', marginRight: '4px' }} /> Sender Tag / Name:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.95rem', color: '#ffd700', fontWeight: 800, background: 'rgba(255, 215, 0, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                        {proofMeta.senderTag || proofMeta.senderName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(proofMeta.senderTag || proofMeta.senderName, 'senderTag')}
+                        className="btn-gold-glow"
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px' }}
+                      >
+                        {copiedField === 'senderTag' ? 'COPIED!' : 'COPY'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {proofMeta.gateway && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <i className="fa-solid fa-credit-card" style={{ color: '#a855f7', marginRight: '4px' }} /> Gateway & Amount:
+                    </span>
+                    <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 700, padding: '0.25rem 0' }}>
+                      {proofMeta.gateway} {proofMeta.amount ? `• $${parseFloat(proofMeta.amount).toFixed(2)}` : ''}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Proof Screenshot Image */}
+            <div style={{ width: '100%', minHeight: '180px', maxHeight: '62vh', overflowY: 'auto', borderRadius: '12px', background: '#090a10', border: '1px solid rgba(255,255,255,0.05)', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {proofUrl ? (
                 <img
                   src={proofUrl}
                   alt="Payment Screenshot Receipt proof"
                   onClick={() => setEnlarged(true)}
                   title="Click to enlarge"
-                  style={{ width: '100%', height: 'auto', maxHeight: '68vh', display: 'block', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
+                  style={{ width: '100%', height: 'auto', maxHeight: '60vh', display: 'block', borderRadius: '8px', objectFit: 'contain', cursor: 'zoom-in' }}
                 />
               ) : (
                 <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>
@@ -897,7 +978,7 @@ export function ViewProofModal({ isOpen, onClose, proofUrl }) {
                 </div>
               )}
             </div>
-            <button type="button" className="submit-btn" onClick={onClose} style={{ marginTop: '0.5rem' }}>
+            <button type="button" className="submit-btn" onClick={onClose} style={{ marginTop: '0.25rem' }}>
               <span>CLOSE INSPECTOR</span>
             </button>
           </div>

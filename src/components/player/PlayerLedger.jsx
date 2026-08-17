@@ -209,8 +209,13 @@ export default function PlayerLedger({
                       {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
                     </div>
                     {tx.noteCode && (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
                         Code: {tx.noteCode}
+                      </div>
+                    )}
+                    {(tx.senderTag || tx.senderName) && (
+                      <div style={{ fontSize: '0.7rem', color: '#ffd700', fontWeight: 600 }}>
+                        Tag: {tx.senderTag || tx.senderName}
                       </div>
                     )}
                   </div>

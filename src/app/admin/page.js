@@ -36,6 +36,7 @@ export default function AdminPage({ portalName, forcedRole }) {
 
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
+  const [proofMeta, setProofMeta] = useState(null);
 
   // If this staff account is deleted while they are still online, kick them out.
   const staffLoginPath =
@@ -539,45 +540,48 @@ export default function AdminPage({ portalName, forcedRole }) {
   };
 
   // View Screenshot proof trigger
-  const handleInspectProof = async (imgUrl, txId, preferredField = null) => {
-    if (typeof imgUrl === 'string' && imgUrl.startsWith('data:')) {
-      setProofImageUrl(imgUrl);
-      setProofModalOpen(true);
-      return;
-    }
+  const handleInspectProof = async (imgUrl, txId, preferredField = null, txData = null) => {
+    setProofMeta(txData || null);
 
-    if (typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
+    if (typeof imgUrl === 'string' && (imgUrl.startsWith('data:') || imgUrl.startsWith('http'))) {
       setProofImageUrl(imgUrl);
       setProofModalOpen(true);
-      return;
+      if (!txId) return;
     }
 
     if (txId) {
-      setProofImageUrl('');
-      setProofModalOpen(true);
+      if (!imgUrl) {
+        setProofImageUrl('');
+        setProofModalOpen(true);
+      }
       try {
         const res = await fetch(`/api/transactions?id=${txId}&adminRole=admin`);
         const data = await res.json();
-        let proof;
-        if (preferredField === 'tagQrScreenshot') {
-          proof = data.transaction?.tagQrScreenshot;
-        } else if (preferredField === 'screenshot') {
-          proof = data.transaction?.screenshot;
-        } else if (preferredField === 'payoutProof') {
-          proof = data.transaction?.payoutProof;
-        } else {
-          proof = data.transaction?.payoutProof || data.transaction?.screenshot || data.transaction?.paymentProof || data.transaction?.tagQrScreenshot;
-        }
-        if (data.success && proof && proof !== true) {
-          setProofImageUrl(proof);
-        } else {
-          alert('Failed to load payment receipt screenshot.');
-          setProofModalOpen(false);
+        if (data.success && data.transaction) {
+          setProofMeta(data.transaction);
+          let proof;
+          if (preferredField === 'tagQrScreenshot') {
+            proof = data.transaction?.tagQrScreenshot;
+          } else if (preferredField === 'screenshot') {
+            proof = data.transaction?.screenshot;
+          } else if (preferredField === 'payoutProof') {
+            proof = data.transaction?.payoutProof;
+          } else {
+            proof = data.transaction?.payoutProof || data.transaction?.screenshot || data.transaction?.paymentProof || data.transaction?.tagQrScreenshot;
+          }
+          if (proof && proof !== true) {
+            setProofImageUrl(proof);
+          } else if (!imgUrl) {
+            alert('Failed to load payment receipt screenshot.');
+            setProofModalOpen(false);
+          }
         }
       } catch (err) {
         console.error(err);
-        alert('Error fetching payment proof.');
-        setProofModalOpen(false);
+        if (!imgUrl) {
+          alert('Error fetching payment proof.');
+          setProofModalOpen(false);
+        }
       }
       return;
     }
@@ -998,6 +1002,7 @@ export default function AdminPage({ portalName, forcedRole }) {
         isOpen={proofModalOpen}
         onClose={() => setProofModalOpen(false)}
         proofUrl={proofImageUrl}
+        proofMeta={proofMeta}
       />
 
       {authenticated && !supportOpen && (

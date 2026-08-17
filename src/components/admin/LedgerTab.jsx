@@ -317,9 +317,19 @@ export default function LedgerTab({
                       </td>
                       <td><strong>${parseFloat(tx.amount).toFixed(2)}</strong></td>
                       <td>
-                        <span style={{ fontSize: '0.725rem', opacity: 0.9 }}>
-                          {tx.gateway} ({tx.code})
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
+                          {tx.gateway} {tx.code ? `(${tx.code})` : ''}
                         </span>
+                        {tx.noteCode && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <i className="fa-solid fa-hashtag" /> Note: <span>{tx.noteCode}</span>
+                          </div>
+                        )}
+                        {(tx.senderTag || tx.senderName) && (
+                          <div style={{ fontSize: '0.7rem', color: '#ffd700', fontWeight: 700, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <i className="fa-solid fa-user-tag" /> Sender: <span>{tx.senderTag || tx.senderName}</span>
+                          </div>
+                        )}
                         {tx.nameOnTag && (
                           <div style={{ marginTop: '0.25rem', padding: '0.25rem 0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', border: '1px solid rgba(255,255,255,0.03)' }}>
                             <span style={{ color: '#ffd700' }}>Name: {tx.nameOnTag}</span>
@@ -337,7 +347,7 @@ export default function LedgerTab({
                       <td>
                         {tx.screenshot ? (
                           <button
-                            onClick={() => onInspectProof(tx.screenshot, tx.id, 'screenshot')}
+                            onClick={() => onInspectProof(tx.screenshot, tx.id, 'screenshot', tx)}
                             className="submit-btn"
                             style={{ background: '#3498db', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}
                           >

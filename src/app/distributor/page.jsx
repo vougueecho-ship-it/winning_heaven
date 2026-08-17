@@ -31,6 +31,7 @@ export default function DistributorPortal() {
   const [mounted, setMounted] = useState(false);
   const [distSession, setDistSession] = useState(null);
   const [proofModalUrl, setProofModalUrl] = useState('');
+  const [proofMeta, setProofMeta] = useState(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -40,16 +41,23 @@ export default function DistributorPortal() {
     intervalMs: 2000
   });
 
-  const handleInspectProof = async (url, txId, preferredField = null) => {
+  const handleInspectProof = async (url, txId, preferredField = null, txData = null) => {
+    setProofMeta(txData || null);
     const isValidUrl = typeof url === 'string' && (url.startsWith('data:') || url.startsWith('http') || url.startsWith('/'));
     if (isValidUrl) {
       setProofModalUrl(url);
-    } else if (txId) {
-      setProofModalUrl('LOADING');
+      if (!txId) return;
+    }
+    
+    if (txId) {
+      if (!isValidUrl) {
+        setProofModalUrl('LOADING');
+      }
       try {
         const res = await fetch(`/api/transactions?id=${txId}&adminRole=distributor&email=${encodeURIComponent(distSession?.email || '')}`);
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.transaction) {
+          setProofMeta(data.transaction);
           let targetImage;
           if (preferredField === 'tagQrScreenshot') {
             targetImage = data.transaction?.tagQrScreenshot || '';
@@ -63,18 +71,20 @@ export default function DistributorPortal() {
           }
           if (targetImage && targetImage !== true) {
             setProofModalUrl(targetImage);
-          } else {
+          } else if (!isValidUrl) {
             alert('No screenshot proof found for this transaction.');
             setProofModalUrl('');
           }
-        } else {
+        } else if (!isValidUrl) {
           alert('Failed to load transaction details.');
           setProofModalUrl('');
         }
       } catch (err) {
         console.error(err);
-        alert('Error loading receipt image.');
-        setProofModalUrl('');
+        if (!isValidUrl) {
+          alert('Error loading receipt image.');
+          setProofModalUrl('');
+        }
       }
     }
   };
@@ -2891,31 +2901,102 @@ export default function DistributorPortal() {
       </PullToRefresh>
 
       {proofModalUrl && (
-        <PanelModalBackdrop onClick={() => setProofModalUrl('')} className="panel-modal-overlay" style={{ cursor: 'pointer' }}>
-          <div className="panel-modal-dialog panel-modal-dialog--proof" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        <PanelModalBackdrop onClick={() => { setProofModalUrl(''); setProofMeta(null); }} className="panel-modal-overlay" style={{ cursor: 'pointer' }}>
+          <div className="panel-modal-dialog panel-modal-dialog--proof" style={{ position: 'relative', maxWidth: 'min(760px, 96vw)', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: 'var(--gold-primary)' }}>
+                <i className="fa-solid fa-receipt" style={{ marginRight: '6px' }} /> Payment Verification & Proof
+              </h3>
+              <button 
+                onClick={() => { setProofModalUrl(''); setProofMeta(null); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {(proofMeta?.noteCode || proofMeta?.senderTag || proofMeta?.senderName || proofMeta?.gateway) && (
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.95)',
+                border: '1.5px solid rgba(255, 215, 0, 0.35)',
+                borderRadius: '12px',
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '0.65rem'
+              }}>
+                {proofMeta.noteCode && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>
+                      <i className="fa-solid fa-hashtag" style={{ color: 'var(--cyan-primary)', marginRight: '4px' }} /> Note Code:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.95rem', color: 'var(--cyan-primary)', fontWeight: 900, fontFamily: 'monospace' }}>
+                        {proofMeta.noteCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(proofMeta.noteCode)}
+                        className="btn-gold-glow"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontWeight: 800, borderRadius: '4px' }}
+                      >
+                        COPY
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {(proofMeta.senderTag || proofMeta.senderName) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>
+                      <i className="fa-solid fa-user-tag" style={{ color: '#ffd700', marginRight: '4px' }} /> Sender Tag:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.9rem', color: '#ffd700', fontWeight: 800 }}>
+                        {proofMeta.senderTag || proofMeta.senderName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(proofMeta.senderTag || proofMeta.senderName)}
+                        className="btn-gold-glow"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontWeight: 800, borderRadius: '4px' }}
+                      >
+                        COPY
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {proofMeta.gateway && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>
+                      <i className="fa-solid fa-credit-card" style={{ color: '#a855f7', marginRight: '4px' }} /> Method & Amount:
+                    </span>
+                    <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 700 }}>
+                      {proofMeta.gateway} {proofMeta.amount ? `• $${parseFloat(proofMeta.amount).toFixed(2)}` : ''}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {proofModalUrl === 'LOADING' ? (
               <div style={{ padding: '3rem', textAlign: 'center', background: '#0e111d', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '2.5rem', color: 'var(--gold-primary)', marginBottom: '1rem', display: 'block' }}></i>
                 <p style={{ color: '#fff', fontSize: '0.8rem', margin: 0 }}>Fetching proof image from secure server...</p>
               </div>
             ) : (
-              <img src={proofModalUrl} alt="Deposit Proof" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', border: '2px solid var(--gold-primary)' }} />
+              <div style={{ width: '100%', maxHeight: '65vh', overflowY: 'auto', textAlign: 'center' }}>
+                <img src={proofModalUrl} alt="Deposit Proof" style={{ maxWidth: '100%', maxHeight: '62vh', objectFit: 'contain', borderRadius: '8px', border: '1.5px solid var(--gold-primary)' }} />
+              </div>
             )}
-            <button 
-              onClick={() => setProofModalUrl('')}
-              style={{
-                position: 'absolute',
-                top: '-2rem',
-                right: 0,
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                fontSize: '1.5rem',
-                cursor: 'pointer'
-              }}
-            >
-              &times;
-            </button>
           </div>
         </PanelModalBackdrop>
       )}

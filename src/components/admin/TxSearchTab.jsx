@@ -143,9 +143,19 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
                   </td>
                   <td><strong>${parseFloat(tx.amount).toFixed(2)}</strong></td>
                   <td>
-                    <span style={{ fontSize: '0.725rem', opacity: 0.9 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
                       {tx.gateway || '—'} {tx.code ? `(${tx.code})` : ''}
                     </span>
+                    {tx.noteCode && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <i className="fa-solid fa-hashtag" /> Note: <span>{tx.noteCode}</span>
+                      </div>
+                    )}
+                    {(tx.senderTag || tx.senderName) && (
+                      <div style={{ fontSize: '0.7rem', color: '#ffd700', fontWeight: 700, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <i className="fa-solid fa-user-tag" /> Sender: <span>{tx.senderTag || tx.senderName}</span>
+                      </div>
+                    )}
                     {tx.note && <p style={{ fontSize: '0.675rem', color: '#ffb703', margin: '0.2rem 0 0 0' }}>{tx.note}</p>}
                     
                     {/* Action Logger details */}
@@ -180,7 +190,7 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
                       {tx.screenshot ? (
                         <button
-                          onClick={() => onInspectProof(tx.screenshot, tx.id, tx.type === 'WITHDRAW' ? 'screenshot' : null)}
+                          onClick={() => onInspectProof(tx.screenshot, tx.id, tx.type === 'WITHDRAW' ? 'screenshot' : null, tx)}
                           className="submit-btn"
                           style={{ background: tx.type === 'WITHDRAW' ? '#eab308' : '#3498db', color: tx.type === 'WITHDRAW' ? '#000' : '#fff', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}
                         >
@@ -190,7 +200,7 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
                       ) : null}
                       {tx.type === 'WITHDRAW' && tx.tagQrScreenshot ? (
                         <button
-                          onClick={() => onInspectProof(tx.tagQrScreenshot, tx.id, 'tagQrScreenshot')}
+                          onClick={() => onInspectProof(tx.tagQrScreenshot, tx.id, 'tagQrScreenshot', tx)}
                           className="submit-btn"
                           style={{ background: '#a855f7', color: '#fff', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}
                         >
@@ -199,7 +209,7 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
                       ) : null}
                       {tx.type === 'WITHDRAW' && tx.payoutProof ? (
                         <button
-                          onClick={() => onInspectProof(tx.payoutProof, tx.id, 'payoutProof')}
+                          onClick={() => onInspectProof(tx.payoutProof, tx.id, 'payoutProof', tx)}
                           className="submit-btn"
                           style={{ background: '#10b981', color: '#fff', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}
                         >
