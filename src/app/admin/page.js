@@ -551,17 +551,18 @@ export default function AdminPage({ portalName, forcedRole }) {
   const handleInspectProof = async (imgUrl, txId, preferredField = null, txData = null) => {
     setProofMeta(txData || null);
 
-    if (typeof imgUrl === 'string' && (imgUrl.startsWith('data:') || imgUrl.startsWith('http'))) {
+    const isDirectImg = typeof imgUrl === 'string' && (imgUrl.startsWith('data:') || imgUrl.startsWith('http') || imgUrl.startsWith('/'));
+
+    if (isDirectImg) {
       setProofImageUrl(imgUrl);
       setProofModalOpen(true);
       if (!txId) return;
+    } else {
+      setProofImageUrl('');
+      setProofModalOpen(true);
     }
 
     if (txId) {
-      if (!imgUrl) {
-        setProofImageUrl('');
-        setProofModalOpen(true);
-      }
       try {
         const res = await fetch(`/api/transactions?id=${txId}&adminRole=admin`);
         const data = await res.json();
@@ -575,26 +576,30 @@ export default function AdminPage({ portalName, forcedRole }) {
           } else if (preferredField === 'payoutProof') {
             proof = data.transaction?.payoutProof;
           } else {
-            proof = data.transaction?.payoutProof || data.transaction?.screenshot || data.transaction?.paymentProof || data.transaction?.tagQrScreenshot;
+            proof = data.transaction?.screenshot || data.transaction?.payoutProof || data.transaction?.paymentProof || data.transaction?.tagQrScreenshot;
           }
-          if (proof && proof !== true) {
+          if (typeof proof === 'string' && proof.length > 5) {
             setProofImageUrl(proof);
-          } else if (!imgUrl) {
-            alert('Failed to load payment receipt screenshot.');
+            setProofModalOpen(true);
+          } else if (!isDirectImg) {
+            showToast('No screenshot proof found for this transaction.', 'info');
             setProofModalOpen(false);
           }
+        } else if (!isDirectImg) {
+          showToast('Failed to load payment receipt screenshot.', 'error');
+          setProofModalOpen(false);
         }
       } catch (err) {
-        console.error(err);
-        if (!imgUrl) {
-          alert('Error fetching payment proof.');
+        console.error('Error fetching proof:', err);
+        if (!isDirectImg) {
+          showToast('Error fetching payment proof.', 'error');
           setProofModalOpen(false);
         }
       }
       return;
     }
 
-    if (imgUrl) {
+    if (imgUrl && isDirectImg) {
       setProofImageUrl(imgUrl);
       setProofModalOpen(true);
     }

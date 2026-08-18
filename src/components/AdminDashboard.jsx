@@ -1131,6 +1131,7 @@ export default function AdminDashboard({
               {activeTab === 'coins' && hasAccess('coins') && (
                 <CoinsAllotmentTab
                   onUpdateCoinsNotification={onUpdateCoinsNotification}
+                  onInspectProof={onInspectProof}
                   completedActionIds={completedActionIds}
                   processingIds={processingIds}
                   wrapAction={wrapAction}
@@ -1182,7 +1183,7 @@ export default function AdminDashboard({
                 <ShiftReportsTab />
               )}
               {activeTab === 'shift_dashboard' && hasAccess('shift_dashboard') && (
-                <ShiftDashboardTab adminUser={adminUser} />
+                <ShiftDashboardTab adminUser={adminUser} onInspectProof={onInspectProof} />
               )}
               {activeTab === 'promotions' && hasAccess('promotions') && (
                 <PromotionsTab adminUser={adminUser} />

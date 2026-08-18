@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import usePollingSWR from '../../hooks/usePollingSWR';
 import { POLL } from '../../lib/pollingConfig';
 
-export default function ShiftDashboardTab({ adminUser }) {
+export default function ShiftDashboardTab({ adminUser, onInspectProof }) {
   const { data: reqData, mutate: mutateRequests } = usePollingSWR(
     `/api/account-requests?status=PENDING&limit=50&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`,
     POLL.LIVE,
@@ -654,6 +654,17 @@ export default function ShiftDashboardTab({ adminUser }) {
                             >
                               Loaded
                             </button>
+                            {onInspectProof && (noti.transactionId || noti.screenshot) && (
+                              <button
+                                type="button"
+                                onClick={() => onInspectProof(noti.screenshot, noti.transactionId, 'screenshot')}
+                                className="submit-btn"
+                                style={{ background: '#6366f1', color: '#fff', margin: 0, padding: '0.35rem 0.65rem', width: 'auto', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', gap: '3px', alignItems: 'center' }}
+                                title="View payment receipt proof"
+                              >
+                                <i className="fa-solid fa-receipt" /> Proof
+                              </button>
+                            )}
                             <input
                               type="text"
                               placeholder="Reason (required)"

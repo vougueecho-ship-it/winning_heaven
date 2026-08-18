@@ -7,6 +7,7 @@ import { formatDeviceDateTime } from '../../lib/formatDateTime';
 
 export default function CoinsAllotmentTab({
   onUpdateCoinsNotification,
+  onInspectProof,
   completedActionIds = {},
   processingIds = {},
   wrapAction,
@@ -527,6 +528,38 @@ export default function CoinsAllotmentTab({
                               {isProcessing ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-circle-check" />}
                               <span>DONE (LOADED)</span>
                             </button>
+
+                            {/* View Proof Button */}
+                            {onInspectProof && (noti.transactionId || noti.screenshot) && (
+                              <button
+                                type="button"
+                                onClick={() => onInspectProof(noti.screenshot, noti.transactionId, 'screenshot', {
+                                  userEmail: noti.userEmail,
+                                  amount: noti.depositAmount,
+                                  gameTitle: noti.gameTitle,
+                                  gateway: noti.gateway || 'Deposit Proof',
+                                  noteCode: noti.noteCode
+                                })}
+                                className="submit-btn"
+                                style={{
+                                  background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+                                  color: '#fff',
+                                  margin: 0,
+                                  padding: '0.35rem 0.55rem',
+                                  width: 'auto',
+                                  display: 'inline-flex',
+                                  gap: '0.25rem',
+                                  alignItems: 'center',
+                                  fontWeight: 800,
+                                  fontSize: '0.68rem',
+                                  borderRadius: '6px'
+                                }}
+                                title="View payment screenshot proof"
+                              >
+                                <i className="fa-solid fa-receipt" />
+                                <span>PROOF</span>
+                              </button>
+                            )}
 
                             {/* HOLD / EDIT NOTE Button */}
                             <button

@@ -66,8 +66,8 @@ export default function DistributorPortal() {
           } else if (preferredField === 'payoutProof') {
             targetImage = data.transaction?.payoutProof || '';
           } else {
-            // If transaction has payoutProof (admin payout receipt) load it, otherwise fallback to user upload proof
-            targetImage = data.transaction?.payoutProof || data.transaction?.screenshot || data.transaction?.tagQrScreenshot || '';
+            // For deposits load user screenshot, otherwise payoutProof or tagQr
+            targetImage = data.transaction?.screenshot || data.transaction?.payoutProof || data.transaction?.tagQrScreenshot || '';
           }
           if (targetImage && targetImage !== true) {
             setProofModalUrl(targetImage);
