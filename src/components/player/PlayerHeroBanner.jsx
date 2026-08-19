@@ -42,7 +42,7 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
       overflow: 'hidden',
       border: '1px solid var(--card-border)',
       boxShadow: 'var(--card-glow-shadow)',
-      margin: '1.25rem 0'
+      margin: '0.85rem 0 1.25rem 0'
     }}>
       <AnimatePresence mode="wait">
         <motion.div
@@ -53,9 +53,9 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
           transition={{ duration: 0.4 }}
           style={{
             background: current.bg,
-            padding: '2.25rem 2rem',
+            padding: 'clamp(1.25rem, 4vw, 2.25rem) clamp(1rem, 3.5vw, 2rem)',
             position: 'relative',
-            minHeight: '180px',
+            minHeight: '160px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -83,8 +83,8 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
           }} />
 
           {/* Badge */}
-          <div style={{ marginBottom: '0.75rem' }}>
-            <span className="badge-gold">
+          <div style={{ marginBottom: '0.6rem' }}>
+            <span className="badge-gold" style={{ fontSize: '0.72rem', padding: '0.25rem 0.65rem' }}>
               <i className="fa-solid fa-bolt" style={{ marginRight: '0.3rem' }} />
               {current.badge || 'SPECIAL OFFER'}
             </span>
@@ -92,34 +92,34 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
 
           {/* Headline & Text */}
           <h1 style={{
-            fontSize: 'clamp(1.4rem, 3.5vw, 2.4rem)',
+            fontSize: 'clamp(1.25rem, 4vw, 2.2rem)',
             fontWeight: 900,
             fontFamily: 'var(--font-heading)',
             color: '#fff',
-            margin: '0 0 0.5rem 0',
+            margin: '0 0 0.4rem 0',
             lineHeight: 1.15
           }}>
             {current.title}
           </h1>
 
           <p style={{
-            fontSize: '0.9rem',
+            fontSize: 'clamp(0.78rem, 2.2vw, 0.9rem)',
             color: 'var(--text-muted)',
-            lineHeight: 1.5,
+            lineHeight: 1.45,
             maxWidth: '650px',
-            margin: '0 0 1.25rem 0'
+            margin: '0 0 1rem 0'
           }}>
             {current.subtitle}
           </p>
 
           {/* Action Trigger */}
-          <div style={{ display: 'flex', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             {current.action === 'referrals' ? (
-              <button onClick={onOpenReferrals} className="btn-cyan-glow">
+              <button onClick={onOpenReferrals} className="btn-cyan-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>
                 <i className="fa-solid fa-users-viewfinder" /> {current.cta || 'REFER FRIENDS'}
               </button>
             ) : (
-              <button onClick={onOpenDeposit} className="btn-gold-glow">
+              <button onClick={onOpenDeposit} className="btn-gold-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>
                 <i className="fa-solid fa-coins" /> {current.cta || 'CLAIM BONUS NOW'}
               </button>
             )}
@@ -131,10 +131,10 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
       {announcements.length > 1 && (
         <div style={{
           position: 'absolute',
-          bottom: '12px',
-          right: '20px',
+          bottom: '10px',
+          right: '16px',
           display: 'flex',
-          gap: '6px',
+          gap: '5px',
           zIndex: 10
         }}>
           {announcements.map((_, idx) => (
@@ -142,8 +142,8 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               style={{
-                width: idx === currentIndex ? '24px' : '8px',
-                height: '8px',
+                width: idx === currentIndex ? '20px' : '7px',
+                height: '7px',
                 borderRadius: '999px',
                 background: idx === currentIndex ? 'var(--gold-primary)' : 'rgba(255,255,255,0.25)',
                 border: 'none',

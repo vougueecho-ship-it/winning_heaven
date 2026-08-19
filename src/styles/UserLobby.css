@@ -10,7 +10,13 @@
   position: relative;
   background: radial-gradient(ellipse at 50% 0%, #0d1330 0%, #040612 75%);
   color: var(--text-light);
-  padding-bottom: calc(5.5rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
+  padding-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .player-lobby-shell {
+    padding-bottom: calc(4.8rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
+  }
 }
 
 /* Sticky Header Bar */
@@ -28,6 +34,12 @@
   justify-content: space-between;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
   box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .dashboard-header {
+    padding: max(0.5rem, calc(0.5rem + max(env(safe-area-inset-top, 0px), var(--sat, 0px)))) 0.75rem 0.5rem 0.75rem;
+  }
 }
 
 .lobby-brand {
@@ -51,6 +63,13 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 480px) {
+  .lobby-brand-logo-frame {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 .lobby-brand-logo-frame img {
   width: 88%;
   height: 88%;
@@ -65,6 +84,12 @@
   color: #fff;
   letter-spacing: 0.04em;
   margin: 0;
+}
+
+@media (max-width: 480px) {
+  .lobby-brand-title {
+    font-size: 1.05rem;
+  }
 }
 
 .lobby-brand-tagline {
@@ -103,13 +128,21 @@
 }
 
 .lobby-content-container {
-  max-width: 1280px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: 1.5rem 1.25rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .lobby-content-container {
+    padding: 0.85rem 0.75rem 2rem;
+    gap: 1.25rem;
+  }
 }
 
 /* Celestial Hero Section */
@@ -128,6 +161,14 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+  .winning-heaven-hero {
+    padding: 1.5rem 1.2rem;
+    border-radius: 18px;
+    gap: 1.25rem;
+  }
+}
+
 .winning-heaven-hero-overlay {
   position: absolute;
   top: -80px;
@@ -142,11 +183,12 @@
   position: relative;
   z-index: 2;
   max-width: 580px;
+  width: 100%;
 }
 
 .winning-heaven-hero-title {
   font-family: var(--font-heading);
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-size: clamp(1.4rem, 4vw, 2.5rem);
   font-weight: 900;
   color: #fff;
   line-height: 1.15;
@@ -163,6 +205,13 @@
   position: relative;
   z-index: 2;
   flex-shrink: 0;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .hero-badge-block {
+    width: auto;
+  }
 }
 
 /* Freeplay & Promo Card inside Hero */
@@ -173,13 +222,21 @@
   border-radius: 20px;
   padding: 1.5rem;
   text-align: center;
-  min-width: 260px;
+  min-width: 240px;
   box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .freeplay-card {
+    width: auto;
+  }
 }
 
 .freeplay-value {
   font-family: var(--font-heading);
-  font-size: 2.5rem;
+  font-size: clamp(2rem, 5vw, 2.5rem);
   font-weight: 900;
   color: var(--gold-primary);
   margin: 0;
@@ -205,8 +262,15 @@
 /* Wallet Metrics Cards Grid */
 .balance-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .balance-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+  }
 }
 
 .balance-card {
@@ -220,6 +284,14 @@
   gap: 1rem;
   box-shadow: 0 8px 25px rgba(0,0,0,0.4);
   transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+@media (max-width: 480px) {
+  .balance-card {
+    padding: 0.85rem 0.9rem;
+    border-radius: 14px;
+    gap: 0.65rem;
+  }
 }
 
 .balance-card:hover {
@@ -238,9 +310,18 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 480px) {
+  .balance-card-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+    border-radius: 10px;
+  }
+}
+
 .balance-card-val {
   font-family: var(--font-heading);
-  font-size: 1.6rem;
+  font-size: clamp(1.2rem, 3.5vw, 1.6rem);
   font-weight: 900;
   color: #fff;
   line-height: 1;
@@ -258,8 +339,15 @@
 /* Quick Action Tiles */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
 }
 
 .quick-action-btn {
@@ -279,6 +367,14 @@
   font-size: 0.85rem;
 }
 
+@media (max-width: 480px) {
+  .quick-action-btn {
+    padding: 0.85rem 0.65rem;
+    font-size: 0.78rem;
+    border-radius: 12px;
+  }
+}
+
 .quick-action-btn:hover {
   background: rgba(255, 200, 0, 0.1);
   border-color: var(--gold-primary);
@@ -296,6 +392,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  width: 100%;
 }
 
 .category-filter-pills {
@@ -304,6 +401,11 @@
   overflow-x: auto;
   padding-bottom: 0.4rem;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-filter-pills::-webkit-scrollbar {
+  display: none;
 }
 
 .category-pill {
@@ -318,6 +420,15 @@
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .category-pill {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.75rem;
+    border-radius: 10px;
+  }
 }
 
 .category-pill.active,
@@ -328,11 +439,19 @@
   box-shadow: 0 4px 18px rgba(255, 200, 0, 0.35);
 }
 
-/* 3D Game Cards Matrix */
+/* 3D Game Cards Matrix - High-Performance Responsive Grid */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 1.25rem;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .games-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
 }
 
 .game-card-cyber {
@@ -345,6 +464,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 600px) {
+  .game-card-cyber {
+    border-radius: 16px;
+  }
 }
 
 .game-card-cyber:hover {
@@ -380,6 +505,13 @@
   flex: 1;
 }
 
+@media (max-width: 600px) {
+  .game-card-info {
+    padding: 0.75rem 0.65rem;
+    gap: 0.45rem;
+  }
+}
+
 .game-card-title {
   font-family: var(--font-heading);
   font-size: 1.05rem;
@@ -388,93 +520,56 @@
   margin: 0;
 }
 
-/* Ticker & Cashout Proofs Slider */
-.ticker-wrapper {
-  background: rgba(4, 6, 18, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 0.75rem;
-  overflow: hidden;
+@media (max-width: 600px) {
+  .game-card-title {
+    font-size: 0.88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
-.ticker-mover {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.ticker-item {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 0.5rem 0.85rem;
-  flex-shrink: 0;
-}
-
-.ticker-info {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.75rem;
-}
-
-.ticker-name {
-  color: #fff;
-  font-weight: 700;
-}
-
-.ticker-amount {
-  color: var(--emerald-primary);
-  font-weight: 800;
-}
-
-.ticker-badge {
-  background: rgba(0, 230, 118, 0.15);
-  color: var(--emerald-primary);
-  border: 1px solid rgba(0, 230, 118, 0.3);
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-}
-
-/* Mobile Bottom Navigation Dock */
+/* Mobile Bottom Navigation Dock (Hidden on Desktop) */
 .bottom-nav-dock {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 999;
+  z-index: 9999;
   background: rgba(4, 6, 18, 0.96);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255, 200, 0, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 200, 0, 0.2);
   display: flex;
   justify-content: space-around;
-  padding: 0.65rem 0.5rem;
+  padding: 0.5rem 0.5rem calc(0.5rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
   box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+}
+
+@media (min-width: 769px) {
+  .bottom-nav-dock {
+    display: none !important;
+  }
 }
 
 .nav-dock-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
   transition: color 0.2s ease;
   position: relative;
+  padding: 0.25rem 0.5rem;
 }
 
 .nav-dock-item i {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .nav-dock-item.active,

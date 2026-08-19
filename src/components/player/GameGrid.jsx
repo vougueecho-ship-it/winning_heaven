@@ -79,11 +79,11 @@ export default function GameGrid({
         gap: '1rem'
       }}>
         {/* Search Bar Row */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="game-filter-row" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{
             position: 'relative',
             flex: 1,
-            minWidth: '260px'
+            minWidth: '220px'
           }}>
             <i className="fa-solid fa-magnifying-glass" style={{
               position: 'absolute',
@@ -91,21 +91,21 @@ export default function GameGrid({
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-muted)',
-              fontSize: '0.9rem'
+              fontSize: '0.85rem'
             }} />
             <input
               type="text"
-              placeholder="Search games by title or platform..."
+              placeholder="Search games by title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                background: 'rgba(10, 14, 28, 0.8)',
+                background: 'rgba(10, 14, 28, 0.85)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '14px',
-                padding: '0.75rem 1rem 0.75rem 2.6rem',
+                padding: '0.7rem 1rem 0.7rem 2.4rem',
                 color: '#fff',
-                fontSize: '0.88rem',
+                fontSize: '0.85rem',
                 outline: 'none',
                 transition: 'border-color 0.25s ease'
               }}
@@ -122,7 +122,7 @@ export default function GameGrid({
                   border: 'none',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.85rem'
                 }}
               >
                 <i className="fa-solid fa-xmark" />
@@ -138,14 +138,15 @@ export default function GameGrid({
               border: onlyFavorites ? '1px solid var(--gold-primary)' : '1px solid rgba(255,255,255,0.15)',
               color: onlyFavorites ? 'var(--gold-primary)' : 'var(--text-muted)',
               borderRadius: '14px',
-              padding: '0.75rem 1.1rem',
-              fontWeight: 700,
-              fontSize: '0.82rem',
+              padding: '0.7rem 0.95rem',
+              fontWeight: 800,
+              fontSize: '0.78rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s ease'
+              gap: '0.4rem',
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap'
             }}
           >
             <i className="fa-solid fa-star" style={{ color: onlyFavorites ? 'var(--gold-primary)' : 'inherit' }} />
@@ -154,34 +155,19 @@ export default function GameGrid({
         </div>
 
         {/* Categories Bar */}
-        <div style={{
+        <div className="category-filter-pills" style={{
           display: 'flex',
-          gap: '0.5rem',
+          gap: '0.45rem',
           overflowX: 'auto',
-          paddingBottom: '0.5rem',
-          scrollbarWidth: 'none'
+          paddingBottom: '0.35rem',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch'
         }}>
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              style={{
-                background: selectedCategory === cat
-                  ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)'
-                  : 'rgba(255, 255, 255, 0.05)',
-                color: selectedCategory === cat ? '#000' : 'var(--text-muted)',
-                border: selectedCategory === cat ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                fontWeight: 800,
-                fontFamily: 'var(--font-heading)',
-                fontSize: '0.78rem',
-                borderRadius: '12px',
-                padding: '0.55rem 1rem',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                letterSpacing: '0.04em',
-                transition: 'all 0.2s ease',
-                boxShadow: selectedCategory === cat ? '0 0 15px rgba(255,200,0,0.35)' : 'none'
-              }}
+              className={`category-pill ${selectedCategory === cat ? 'active' : ''}`}
             >
               {cat}
             </button>
@@ -193,9 +179,9 @@ export default function GameGrid({
       {filteredGames.length === 0 ? (
         <div style={{
           background: 'rgba(10, 14, 28, 0.6)',
-          border: '1px border var(--card-border)',
+          border: '1px solid var(--card-border)',
           borderRadius: '18px',
-          padding: '3rem 2rem',
+          padding: '3rem 1.5rem',
           textAlign: 'center',
           color: 'var(--text-muted)'
         }}>
@@ -204,11 +190,7 @@ export default function GameGrid({
           <p style={{ fontSize: '0.85rem' }}>Try searching with a different title or select another category.</p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-          gap: '1.25rem'
-        }}>
+        <div className="games-grid">
           {filteredGames.map((game) => {
             const titleKey = (game.title || '').toLowerCase().trim();
             const userAccount = accountMap[titleKey] || null;

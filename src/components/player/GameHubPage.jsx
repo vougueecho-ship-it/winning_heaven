@@ -144,17 +144,17 @@ export default function GameHubPage({
       </div>
 
       {/* Hero Showcase Card */}
-      <div style={{
+      <div className="game-hub-hero-card" style={{
         position: 'relative',
         background: 'linear-gradient(135deg, rgba(20,16,40,0.96) 0%, rgba(10,12,24,0.96) 100%)',
         border: isLinked ? '1.5px solid rgba(255,215,0,0.4)' : isPending ? '1.5px solid rgba(255,170,0,0.35)' : '1px solid rgba(255,255,255,0.15)',
         borderRadius: '24px',
-        padding: '2.5rem 2rem',
+        padding: 'clamp(1.25rem, 3.5vw, 2.5rem) clamp(1rem, 3vw, 2rem)',
         overflow: 'hidden',
         boxShadow: '0 15px 40px rgba(0,0,0,0.8), 0 0 30px rgba(255,200,0,0.15)',
         display: 'flex',
         alignItems: 'center',
-        gap: '2rem',
+        gap: '1.5rem',
         flexWrap: 'wrap'
       }}>
         {/* Ambient Glow */}
@@ -173,13 +173,13 @@ export default function GameHubPage({
         }} />
 
         {/* Artwork Image */}
-        <div style={{
-          width: '120px',
-          height: '120px',
-          borderRadius: '22px',
+        <div className="game-hub-hero-art" style={{
+          width: '100px',
+          height: '100px',
+          borderRadius: '18px',
           border: '2px solid rgba(255,215,0,0.4)',
           overflow: 'hidden',
-          boxShadow: '0 0 30px rgba(255,200,0,0.35)',
+          boxShadow: '0 0 25px rgba(255,200,0,0.35)',
           flexShrink: 0,
           background: '#04050b'
         }}>
@@ -187,23 +187,23 @@ export default function GameHubPage({
         </div>
 
         {/* Info & Launch Button */}
-        <div style={{ flex: 1, minWidth: '260px' }}>
-          <div className="badge-gold" style={{ marginBottom: '0.6rem', display: 'inline-flex' }}>
+        <div style={{ flex: 1, minWidth: '240px' }}>
+          <div className="badge-gold" style={{ marginBottom: '0.5rem', display: 'inline-flex', fontSize: '0.72rem' }}>
             {game.category || 'SLOTS & FISH'}
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
+            fontSize: 'clamp(1.4rem, 4vw, 2.3rem)',
             fontWeight: 900,
             fontFamily: 'var(--font-heading)',
             color: '#fff',
-            margin: '0 0 0.5rem 0',
+            margin: '0 0 0.4rem 0',
             lineHeight: 1.15
           }}>
             {game.title}
           </h1>
 
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 1.25rem 0', maxWidth: '650px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1.1rem 0', maxWidth: '650px', lineHeight: 1.45 }}>
             {isLinked
               ? `Your personal ${game.title} gaming account is active. Launch the platform to play or manage your coins below.`
               : isPending
@@ -212,14 +212,14 @@ export default function GameHubPage({
           </p>
 
           {isLinked ? (
-            <button onClick={handleLaunch} className="btn-gold-glow" style={{ padding: '0.85rem 1.8rem', fontSize: '0.95rem' }}>
+            <button onClick={handleLaunch} className="btn-gold-glow" style={{ padding: '0.75rem 1.4rem', fontSize: '0.88rem' }}>
               <i className="fa-solid fa-rocket" /> PLAY ON {game.title.toUpperCase()} PLATFORM
             </button>
           ) : isPending ? (
             <button
               onClick={() => onOpenDepositForGame(game.title)}
               className="btn-gold-glow"
-              style={{ padding: '0.85rem 1.8rem', fontSize: '0.95rem' }}
+              style={{ padding: '0.75rem 1.4rem', fontSize: '0.88rem' }}
             >
               <i className="fa-solid fa-coins" /> PRE-LOAD COINS WHILE WAITING &rarr;
             </button>
@@ -228,7 +228,7 @@ export default function GameHubPage({
               onClick={handleRequestClick}
               disabled={isSubmittingRequest}
               className="btn-cyan-glow"
-              style={{ padding: '0.85rem 1.8rem', fontSize: '0.95rem' }}
+              style={{ padding: '0.75rem 1.4rem', fontSize: '0.88rem' }}
             >
               {isSubmittingRequest ? (
                 <span><i className="fa-solid fa-spinner fa-spin" /> REQUESTING ACCOUNT...</span>
@@ -245,7 +245,7 @@ export default function GameHubPage({
           ========================================================================= */}
       {isLinked && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
             
             {/* Game Login Credentials Card */}
             <div style={{
@@ -253,20 +253,20 @@ export default function GameHubPage({
               backdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 215, 0, 0.25)',
               borderRadius: '20px',
-              padding: '1.75rem',
+              padding: '1.25rem 1.4rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '1.1rem',
+              gap: '1rem',
               boxShadow: '0 8px 30px rgba(0,0,0,0.5)'
             }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <i className="fa-solid fa-key" />
                 <span>PLATFORM LOGIN CREDENTIALS</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>GAME USERNAME</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>GAME USERNAME</label>
+                <div style={{ display: 'flex', gap: '0.45rem' }}>
                   <input
                     readOnly
                     value={userAccount.username || ''}
@@ -275,23 +275,24 @@ export default function GameHubPage({
                       background: 'rgba(6,8,18,0.9)',
                       border: '1.5px solid rgba(0, 240, 255, 0.3)',
                       borderRadius: '12px',
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.95rem',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
                       color: 'var(--cyan-primary)',
                       fontFamily: 'monospace',
                       fontWeight: 800,
-                      outline: 'none'
+                      outline: 'none',
+                      minWidth: 0
                     }}
                   />
-                  <button onClick={() => copyText(userAccount.username, 'user')} className="btn-gold-glow" style={{ padding: '0.75rem 1.1rem', fontSize: '0.82rem' }}>
+                  <button onClick={() => copyText(userAccount.username, 'user')} className="btn-gold-glow" style={{ padding: '0.65rem 0.95rem', fontSize: '0.8rem' }}>
                     {copiedUser ? <i className="fa-solid fa-check" /> : <i className="fa-solid fa-copy" />}
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>GAME PASSWORD</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>GAME PASSWORD</label>
+                <div style={{ display: 'flex', gap: '0.45rem' }}>
                   <input
                     readOnly
                     value={userAccount.password || ''}
@@ -300,15 +301,16 @@ export default function GameHubPage({
                       background: 'rgba(6,8,18,0.9)',
                       border: '1.5px solid rgba(255, 215, 0, 0.3)',
                       borderRadius: '12px',
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.95rem',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.9rem',
                       color: 'var(--gold-primary)',
                       fontFamily: 'monospace',
                       fontWeight: 800,
-                      outline: 'none'
+                      outline: 'none',
+                      minWidth: 0
                     }}
                   />
-                  <button onClick={() => copyText(userAccount.password, 'pass')} className="btn-gold-glow" style={{ padding: '0.75rem 1.1rem', fontSize: '0.82rem' }}>
+                  <button onClick={() => copyText(userAccount.password, 'pass')} className="btn-gold-glow" style={{ padding: '0.65rem 0.95rem', fontSize: '0.8rem' }}>
                     {copiedPass ? <i className="fa-solid fa-check" /> : <i className="fa-solid fa-copy" />}
                   </button>
                 </div>
@@ -321,39 +323,39 @@ export default function GameHubPage({
               backdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 215, 0, 0.25)',
               borderRadius: '20px',
-              padding: '1.75rem',
+              padding: '1.25rem 1.4rem',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              gap: '1.1rem',
+              gap: '1rem',
               boxShadow: '0 8px 30px rgba(0,0,0,0.5)'
             }}>
               <div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--cyan-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--cyan-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <i className="fa-solid fa-coins" />
                   <span>GAME COIN ACTIONS</span>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
                   Load coins, redeem cashouts, or request bonus freeplays specifically for {game.title}.
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
                 <button
                   onClick={() => onOpenDepositForGame(game.title)}
                   className="btn-gold-glow"
-                  style={{ padding: '0.85rem 0.5rem', fontSize: '0.8rem', flexDirection: 'column', gap: '0.4rem' }}
+                  style={{ padding: '0.75rem 0.35rem', fontSize: '0.72rem', flexDirection: 'column', gap: '0.35rem' }}
                 >
-                  <i className="fa-solid fa-coins" style={{ fontSize: '1.2rem' }} />
+                  <i className="fa-solid fa-coins" style={{ fontSize: '1.1rem' }} />
                   <span>LOAD COINS</span>
                 </button>
 
                 <button
                   onClick={() => onOpenWithdrawForGame(game.title)}
                   className="btn-cyan-glow"
-                  style={{ padding: '0.85rem 0.5rem', fontSize: '0.8rem', flexDirection: 'column', gap: '0.4rem' }}
+                  style={{ padding: '0.75rem 0.35rem', fontSize: '0.72rem', flexDirection: 'column', gap: '0.35rem' }}
                 >
-                  <i className="fa-solid fa-wallet" style={{ fontSize: '1.2rem' }} />
+                  <i className="fa-solid fa-wallet" style={{ fontSize: '1.1rem' }} />
                   <span>CASHOUT</span>
                 </button>
 
@@ -369,19 +371,19 @@ export default function GameHubPage({
                     fontFamily: 'var(--font-heading)',
                     border: 'none',
                     borderRadius: '12px',
-                    padding: '0.85rem 0.5rem',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
+                    padding: '0.75rem 0.35rem',
+                    fontSize: '0.72rem',
+                    cursor: freeplayGate?.canClaim !== false ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.4rem',
+                    gap: '0.35rem',
                     opacity: freeplayGate?.canClaim !== false ? 1 : 0.6,
                     boxShadow: freeplayGate?.canClaim !== false ? '0 0 20px rgba(0,230,118,0.35)' : 'none'
                   }}
                 >
-                  <i className="fa-solid fa-gift" style={{ fontSize: '1.2rem' }} />
+                  <i className="fa-solid fa-gift" style={{ fontSize: '1.1rem' }} />
                   <span>FREEPLAY</span>
                 </button>
               </div>

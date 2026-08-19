@@ -257,15 +257,7 @@ export default function UserLobby({
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg-primary)',
-      color: 'var(--text-light)',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      paddingBottom: '5rem' // Mobile bottom dock clearance
-    }}>
+    <div className="player-shell-container">
       {/* Offline Banner Indicator */}
       <OfflineBanner />
 
@@ -291,14 +283,7 @@ export default function UserLobby({
 
       {/* Main Container */}
       <PullToRefresh onRefresh={onRefresh}>
-        <main style={{
-          maxWidth: '1400px',
-          width: '100%',
-          margin: '0 auto',
-          padding: '1.25rem 1.25rem 2.5rem 1.25rem',
-          flex: 1,
-          boxSizing: 'border-box'
-        }}>
+        <main className="player-main-container">
           {/* Main Game Lobby View — Persisted in DOM so images, cards, and state never re-render or reload */}
           <div style={{ display: activeTab === 'main' ? 'block' : 'none' }}>
             {/* 12-Card Live Approved Cashout Stream Marquee Ticker */}
@@ -492,6 +477,36 @@ export default function UserLobby({
         onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
         showToast={showToast}
       />
+
+      <style jsx>{`
+        .player-shell-container {
+          min-height: 100vh;
+          background: var(--bg-primary);
+          color: var(--text-light);
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          padding-bottom: 1.5rem;
+        }
+        .player-main-container {
+          max-width: 1400px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 1.25rem 1.25rem 2.5rem 1.25rem;
+          flex: 1;
+          box-sizing: border-box;
+        }
+        @media (max-width: 768px) {
+          .player-shell-container {
+            padding-bottom: calc(4.8rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
+          }
+        }
+        @media (max-width: 640px) {
+          .player-main-container {
+            padding: 0.75rem 0.65rem 2rem 0.65rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }

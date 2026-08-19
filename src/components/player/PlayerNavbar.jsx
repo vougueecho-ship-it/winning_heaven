@@ -157,7 +157,7 @@ export default function PlayerNavbar({
         </nav>
 
         {/* Right Quick Action Control Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
           {/* APK Download Button (Desktop only to prevent mobile header crowding) */}
           <a
             href="/downloads/winning-heaven.apk"
@@ -186,35 +186,35 @@ export default function PlayerNavbar({
           {/* Deposit Button */}
           <button
             onClick={onOpenDeposit}
-            className="btn-gold-glow"
+            className="btn-gold-glow navbar-action-btn"
             style={{
-              padding: '0.45rem 0.75rem',
-              fontSize: '0.76rem',
+              padding: '0.42rem 0.65rem',
+              fontSize: '0.75rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.35rem',
+              gap: '0.3rem',
               borderRadius: '10px',
               whiteSpace: 'nowrap'
             }}
           >
-            <i className="fa-solid fa-plus-circle" /> <span>DEPOSIT</span>
+            <i className="fa-solid fa-plus-circle" /> <span className="nav-btn-text">DEPOSIT</span>
           </button>
 
           {/* Cashout Button */}
           <button
             onClick={onOpenWithdraw}
-            className="btn-cyan-glow"
+            className="btn-cyan-glow navbar-action-btn"
             style={{
-              padding: '0.45rem 0.75rem',
-              fontSize: '0.76rem',
+              padding: '0.42rem 0.65rem',
+              fontSize: '0.75rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.35rem',
+              gap: '0.3rem',
               borderRadius: '10px',
               whiteSpace: 'nowrap'
             }}
           >
-            <i className="fa-solid fa-wallet" /> <span>CASHOUT</span>
+            <i className="fa-solid fa-wallet" /> <span className="nav-btn-text">CASHOUT</span>
           </button>
 
           {/* User Profile Avatar */}
@@ -225,8 +225,8 @@ export default function PlayerNavbar({
                 background: 'linear-gradient(135deg, rgba(255,200,0,0.2) 0%, rgba(0,240,255,0.2) 100%)',
                 border: '1.5px solid var(--gold-primary)',
                 borderRadius: '50%',
-                width: '34px',
-                height: '34px',
+                width: '32px',
+                height: '32px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -234,7 +234,7 @@ export default function PlayerNavbar({
                 fontWeight: 800,
                 cursor: 'pointer',
                 fontFamily: 'var(--font-heading)',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 boxShadow: '0 0 12px rgba(255,200,0,0.25)',
                 flexShrink: 0
               }}
@@ -254,7 +254,7 @@ export default function PlayerNavbar({
                     position: 'absolute',
                     right: 0,
                     top: 'calc(100% + 10px)',
-                    width: '240px',
+                    width: 'min(240px, calc(100vw - 24px))',
                     background: 'rgba(10, 14, 28, 0.98)',
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
@@ -401,6 +401,14 @@ export default function PlayerNavbar({
         @media (min-width: 641px) {
           .desktop-only-nav {
             display: flex !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .nav-btn-text {
+            display: none !important;
+          }
+          .navbar-action-btn {
+            padding: 0.42rem 0.5rem !important;
           }
         }
       `}</style>

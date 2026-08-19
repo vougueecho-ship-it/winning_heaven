@@ -42,7 +42,7 @@ export default function PlayerLedger({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', padding: '1rem 0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', padding: '0.5rem 0 2rem 0' }}>
       
       {/* Header Bar */}
       <div style={{
@@ -53,33 +53,34 @@ export default function PlayerLedger({
         backdropFilter: 'var(--glass-blur)',
         border: '1px solid var(--card-border)',
         borderRadius: '18px',
-        padding: '1.25rem 1.5rem',
+        padding: '1.25rem 1.25rem',
         flexWrap: 'wrap',
         gap: '1rem'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.3rem', color: '#fff', fontWeight: 900, fontFamily: 'var(--font-heading)', margin: 0 }}>
+          <h2 style={{ fontSize: 'clamp(1.1rem, 3.5vw, 1.35rem)', color: '#fff', fontWeight: 900, fontFamily: 'var(--font-heading)', margin: 0 }}>
             TRANSACTION <span className="gold-gradient-text">LEDGER</span>
           </h2>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             Real-time status tracking for deposits, cashouts & bonuses
           </div>
         </div>
 
         {/* Filter Controls */}
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <div className="ledger-filter-controls" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: 'auto' }}>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             style={{
-              background: 'rgba(6,8,18,0.8)',
+              background: 'rgba(6,8,18,0.85)',
               border: '1px solid var(--border-muted)',
               color: '#fff',
-              padding: '0.5rem 0.85rem',
+              padding: '0.5rem 0.75rem',
               borderRadius: '10px',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               outline: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              flex: 1
             }}
           >
             <option value="ALL">All Types</option>
@@ -92,14 +93,15 @@ export default function PlayerLedger({
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             style={{
-              background: 'rgba(6,8,18,0.8)',
+              background: 'rgba(6,8,18,0.85)',
               border: '1px solid var(--border-muted)',
               color: '#fff',
-              padding: '0.5rem 0.85rem',
+              padding: '0.5rem 0.75rem',
               borderRadius: '10px',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               outline: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              flex: 1
             }}
           >
             <option value="ALL">All Statuses</option>
@@ -116,7 +118,7 @@ export default function PlayerLedger({
           background: 'rgba(10, 14, 28, 0.6)',
           border: '1px solid var(--card-border)',
           borderRadius: '18px',
-          padding: '3.5rem 2rem',
+          padding: '3.5rem 1.5rem',
           textAlign: 'center',
           color: 'var(--text-muted)'
         }}>
@@ -150,24 +152,25 @@ export default function PlayerLedger({
             return (
               <div
                 key={tx.id || tx._id}
+                className="ledger-tx-card"
                 style={{
-                  background: 'rgba(12, 16, 32, 0.85)',
+                  background: 'rgba(12, 16, 32, 0.88)',
                   backdropFilter: 'blur(16px)',
                   border: '1px solid var(--card-border)',
                   borderRadius: '16px',
-                  padding: '1rem 1.25rem',
+                  padding: '0.9rem 1.1rem',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '1rem',
+                  gap: '0.85rem',
                   flexWrap: 'wrap'
                 }}
               >
                 {/* Type Icon & Details */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '220px' }}>
                   <div style={{
-                    width: '44px',
-                    height: '44px',
+                    width: '40px',
+                    height: '40px',
                     borderRadius: '50%',
                     background: iconBg,
                     border: `1px solid ${iconBorder}`,
@@ -175,22 +178,22 @@ export default function PlayerLedger({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: iconColor,
-                    fontSize: '1.1rem',
+                    fontSize: '1rem',
                     flexShrink: 0
                   }}>
                     <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
                   </div>
 
                   <div>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem', fontFamily: 'var(--font-heading)' }}>
+                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem', fontFamily: 'var(--font-heading)' }}>
                       {labelTitle} - {tx.gameTitle || tx.gatewayName || 'MAIN WALLET'}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
                     </div>
                     {/* Partial Payout Breakdown */}
                     {parseFloat(tx.payoutHold || 0) > 0 && (
-                      <div style={{ fontSize: '0.72rem', color: '#ffc800', marginTop: '0.2rem', fontWeight: 700 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#ffc800', marginTop: '0.15rem', fontWeight: 700 }}>
                         Paid: ${parseFloat(tx.payoutSent || tx.amount || 0).toFixed(2)} • Hold: ${parseFloat(tx.payoutHold).toFixed(2)}
                       </div>
                     )}
@@ -198,10 +201,10 @@ export default function PlayerLedger({
                 </div>
 
                 {/* Amount & Status Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="ledger-tx-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
-                      fontSize: '1.1rem',
+                      fontSize: '1.05rem',
                       fontWeight: 900,
                       fontFamily: 'var(--font-heading)',
                       color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
@@ -209,12 +212,12 @@ export default function PlayerLedger({
                       {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
                     </div>
                     {tx.noteCode && (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
                         Code: {tx.noteCode}
                       </div>
                     )}
                     {(tx.senderTag || tx.senderName) && (
-                      <div style={{ fontSize: '0.7rem', color: '#ffd700', fontWeight: 600 }}>
+                      <div style={{ fontSize: '0.68rem', color: '#ffd700', fontWeight: 600 }}>
                         Tag: {tx.senderTag || tx.senderName}
                       </div>
                     )}
@@ -242,13 +245,14 @@ export default function PlayerLedger({
                         color: '#ffc800',
                         fontSize: '0.7rem',
                         fontWeight: 800,
-                        padding: '0.35rem 0.7rem',
+                        padding: '0.35rem 0.65rem',
                         borderRadius: '10px',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.35rem',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       <i className="fa-solid fa-gamepad" /> DEPOSIT TO GAME
@@ -260,7 +264,7 @@ export default function PlayerLedger({
                     <button
                       onClick={() => onOpenReuploadProof(tx)}
                       className="btn-gold-glow"
-                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.72rem', whiteSpace: 'nowrap' }}
                     >
                       <i className="fa-solid fa-upload" /> PROOF
                     </button>
@@ -271,6 +275,26 @@ export default function PlayerLedger({
           })}
         </div>
       )}
+
+      <style jsx>{`
+        @media (max-width: 600px) {
+          .ledger-filter-controls {
+            width: 100% !important;
+          }
+          .ledger-tx-card {
+            padding: 0.8rem 0.85rem !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.6rem !important;
+          }
+          .ledger-tx-right {
+            justify-content: space-between !important;
+            width: 100% !important;
+            padding-top: 0.4rem !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

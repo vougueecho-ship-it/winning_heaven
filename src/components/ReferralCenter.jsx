@@ -61,42 +61,42 @@ export default function ReferralCenter({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '1.25rem 1.5rem',
+        padding: '1rem 1.25rem',
         background: 'var(--card-bg)',
         backdropFilter: 'var(--glass-blur)',
         border: '1px solid var(--card-border)',
         borderRadius: '20px',
         flexWrap: 'wrap',
-        gap: '1rem'
+        gap: '0.85rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
             border: '2px solid var(--gold-primary)',
             background: '#000',
             overflow: 'hidden',
             flexShrink: 0,
-            boxShadow: '0 0 20px rgba(255,200,0,0.35)'
+            boxShadow: '0 0 15px rgba(255,200,0,0.35)'
           }}>
             <img src="/winning_heaven_logo.png" alt="Winning Heaven Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', letterSpacing: '0.04em', margin: 0, fontFamily: 'var(--font-heading)' }}>
+            <h2 style={{ fontSize: 'clamp(1.1rem, 3vw, 1.3rem)', fontWeight: 900, color: '#fff', letterSpacing: '0.04em', margin: 0, fontFamily: 'var(--font-heading)' }}>
               VIP AFFILIATE <span className="gold-gradient-text">LOUNGE</span>
             </h2>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Invite friends & earn continuous deposit commission bonuses
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Invite friends &amp; earn continuous deposit commission bonuses
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <button onClick={onClose} className="btn-glass-secondary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.82rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={onClose} className="btn-glass-secondary" style={{ padding: '0.5rem 0.95rem', fontSize: '0.78rem' }}>
             <i className="fa-solid fa-arrow-left" /> LOBBY
           </button>
-          <button onClick={onOpenSupport} className="btn-gold-glow" style={{ padding: '0.55rem 1.1rem', fontSize: '0.82rem' }}>
+          <button onClick={onOpenSupport} className="btn-gold-glow" style={{ padding: '0.5rem 0.95rem', fontSize: '0.78rem' }}>
             <i className="fa-solid fa-headset" /> SUPPORT
           </button>
         </div>
@@ -108,7 +108,7 @@ export default function ReferralCenter({
         background: 'linear-gradient(135deg, rgba(20,16,40,0.96) 0%, rgba(10,12,24,0.96) 100%)',
         border: '1px solid var(--gold-primary)',
         borderRadius: '24px',
-        padding: '2.5rem 2rem',
+        padding: 'clamp(1.25rem, 3.5vw, 2.5rem) clamp(1rem, 3vw, 2rem)',
         overflow: 'hidden',
         boxShadow: 'var(--card-glow-shadow)'
       }}>
@@ -122,16 +122,16 @@ export default function ReferralCenter({
           pointerEvents: 'none'
         }} />
 
-        <div className="badge-emerald" style={{ marginBottom: '1rem', display: 'inline-flex' }}>
+        <div className="badge-emerald" style={{ marginBottom: '0.75rem', display: 'inline-flex', fontSize: '0.72rem' }}>
           <i className="fa-solid fa-bolt" style={{ marginRight: '0.4rem' }} /> REFERRAL PROGRAM ACTIVE
         </div>
 
         <h1 style={{
-          fontSize: 'clamp(1.7rem, 4vw, 2.6rem)',
+          fontSize: 'clamp(1.4rem, 3.8vw, 2.4rem)',
           fontWeight: 900,
           fontFamily: 'var(--font-heading)',
           color: '#fff',
-          margin: '0 0 0.85rem 0',
+          margin: '0 0 0.65rem 0',
           lineHeight: 1.15
         }}>
           SHARE THE CASINO EXPERIENCE.<br />
@@ -139,31 +139,31 @@ export default function ReferralCenter({
         </h1>
 
         <p style={{
-          fontSize: '0.92rem',
+          fontSize: '0.88rem',
           color: 'var(--text-muted)',
-          lineHeight: 1.6,
+          lineHeight: 1.5,
           maxWidth: '620px',
-          margin: '0 0 1.75rem 0'
+          margin: '0 0 1.25rem 0'
         }}>
           Invite your gaming network to Winning Heaven. Earn instant bonus credits on every deposit made by your referred players.
         </p>
 
-        <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
-          <button onClick={() => copyText(referralLink, 'Referral link', 'link')} className="btn-gold-glow">
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <button onClick={() => copyText(referralLink, 'Referral link', 'link')} className="btn-gold-glow" style={{ padding: '0.65rem 1.1rem', fontSize: '0.8rem' }}>
             {copiedLink ? <i className="fa-solid fa-check" /> : <i className="fa-solid fa-copy" />}
             {copiedLink ? 'LINK COPIED' : 'COPY REFERRAL LINK'}
           </button>
-          <button onClick={shareWhatsApp} className="btn-cyan-glow">
-            <i className="fa-brands fa-whatsapp" /> SHARE ON WHATSAPP
+          <button onClick={shareWhatsApp} className="btn-cyan-glow" style={{ padding: '0.65rem 1.1rem', fontSize: '0.8rem' }}>
+            <i className="fa-brands fa-whatsapp" /> WHATSAPP
           </button>
-          <button onClick={shareSMS} className="btn-glass-secondary">
-            <i className="fa-solid fa-comment-sms" /> SHARE VIA SMS
+          <button onClick={shareSMS} className="btn-glass-secondary" style={{ padding: '0.65rem 1.1rem', fontSize: '0.8rem' }}>
+            <i className="fa-solid fa-comment-sms" /> SMS
           </button>
         </div>
       </div>
 
       {/* Referral Link & Code Inputs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
         
         {/* Referral Link Box */}
         <div style={{
@@ -171,15 +171,15 @@ export default function ReferralCenter({
           backdropFilter: 'var(--glass-blur)',
           border: '1px solid var(--card-border)',
           borderRadius: '20px',
-          padding: '1.5rem',
+          padding: '1.25rem 1.2rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.85rem'
+          gap: '0.75rem'
         }}>
-          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             YOUR PERSONAL REFERRAL LINK
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.45rem' }}>
             <input
               readOnly
               value={referralLink}
@@ -188,14 +188,15 @@ export default function ReferralCenter({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 0.9rem',
-                fontSize: '0.85rem',
+                padding: '0.65rem 0.8rem',
+                fontSize: '0.82rem',
                 color: 'var(--cyan-primary)',
                 fontFamily: 'monospace',
-                outline: 'none'
+                outline: 'none',
+                minWidth: 0
               }}
             />
-            <button onClick={() => copyText(referralLink, 'Referral link', 'link')} className="btn-gold-glow" style={{ padding: '0.75rem 1.1rem', fontSize: '0.82rem' }}>
+            <button onClick={() => copyText(referralLink, 'Referral link', 'link')} className="btn-gold-glow" style={{ padding: '0.65rem 0.95rem', fontSize: '0.78rem' }}>
               COPY
             </button>
           </div>
@@ -207,15 +208,15 @@ export default function ReferralCenter({
           backdropFilter: 'var(--glass-blur)',
           border: '1px solid var(--card-border)',
           borderRadius: '20px',
-          padding: '1.5rem',
+          padding: '1.25rem 1.2rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.85rem'
+          gap: '0.75rem'
         }}>
-          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--gold-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             YOUR REFERRAL CODE
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.45rem' }}>
             <input
               readOnly
               value={referralCode || 'WH-VIP-PLAYER'}
@@ -224,15 +225,16 @@ export default function ReferralCenter({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 0.9rem',
-                fontSize: '0.95rem',
+                padding: '0.65rem 0.8rem',
+                fontSize: '0.88rem',
                 color: 'var(--gold-primary)',
                 fontFamily: 'monospace',
                 fontWeight: 800,
-                outline: 'none'
+                outline: 'none',
+                minWidth: 0
               }}
             />
-            <button onClick={() => copyText(referralCode, 'Referral code', 'code')} className="btn-gold-glow" style={{ padding: '0.75rem 1.1rem', fontSize: '0.82rem' }}>
+            <button onClick={() => copyText(referralCode, 'Referral code', 'code')} className="btn-gold-glow" style={{ padding: '0.65rem 0.95rem', fontSize: '0.78rem' }}>
               COPY
             </button>
           </div>

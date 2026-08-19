@@ -81,15 +81,16 @@ export default function PlayerProfileTab({
         background: 'linear-gradient(135deg, rgba(20,16,40,0.95) 0%, rgba(10,12,24,0.95) 100%)',
         border: '1px solid var(--card-border)',
         borderRadius: '20px',
-        padding: '1.75rem 2rem',
+        padding: 'clamp(1.25rem, 3vw, 1.75rem)',
         display: 'flex',
         alignItems: 'center',
-        gap: '1.25rem',
-        boxShadow: 'var(--card-glow-shadow)'
+        gap: '1rem',
+        boxShadow: 'var(--card-glow-shadow)',
+        flexWrap: 'wrap'
       }}>
         <div style={{
-          width: '64px',
-          height: '64px',
+          width: '54px',
+          height: '54px',
           borderRadius: '50%',
           border: '2px solid var(--gold-primary)',
           background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
@@ -97,7 +98,7 @@ export default function PlayerProfileTab({
           alignItems: 'center',
           justifyContent: 'center',
           color: '#000',
-          fontSize: '1.6rem',
+          fontSize: '1.4rem',
           fontWeight: 900,
           fontFamily: 'var(--font-heading)',
           flexShrink: 0
@@ -106,13 +107,13 @@ export default function PlayerProfileTab({
         </div>
 
         <div>
-          <h2 style={{ fontSize: '1.4rem', color: '#fff', fontWeight: 900, fontFamily: 'var(--font-heading)', margin: 0 }}>
+          <h2 style={{ fontSize: 'clamp(1.15rem, 3vw, 1.35rem)', color: '#fff', fontWeight: 900, fontFamily: 'var(--font-heading)', margin: 0 }}>
             {currentUser?.name || 'VIP Player'}
           </h2>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
             {currentUser?.email}
           </div>
-          <div className="badge-gold" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
+          <div className="badge-gold" style={{ marginTop: '0.4rem', display: 'inline-flex', fontSize: '0.7rem', padding: '0.2rem 0.55rem' }}>
             VIP LEVEL 1 MEMBER
           </div>
         </div>
@@ -124,18 +125,18 @@ export default function PlayerProfileTab({
         backdropFilter: 'var(--glass-blur)',
         border: '1px solid var(--card-border)',
         borderRadius: '20px',
-        padding: '1.75rem 2rem',
+        padding: 'clamp(1.25rem, 3vw, 1.75rem)',
         display: 'flex',
         flexDirection: 'column',
         gap: '1.25rem'
       }}>
-        <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 800, fontFamily: 'var(--font-heading)', margin: 0 }}>
+        <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, fontFamily: 'var(--font-heading)', margin: 0 }}>
           ACCOUNT DETAILS
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
           <div>
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>FULL NAME</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>FULL NAME</label>
             <input
               type="text"
               value={name}
@@ -146,16 +147,16 @@ export default function PlayerProfileTab({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 outline: 'none'
               }}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>PHONE NUMBER</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>PHONE NUMBER</label>
             <input
               type="text"
               value={phone}
@@ -166,22 +167,22 @@ export default function PlayerProfileTab({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 outline: 'none'
               }}
             />
           </div>
         </div>
 
-        <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 800, fontFamily: 'var(--font-heading)', margin: '0.75rem 0 0 0' }}>
+        <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, fontFamily: 'var(--font-heading)', margin: '0.5rem 0 0 0' }}>
           SECURITY & PASSWORD
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
           <div>
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>NEW PASSWORD</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>NEW PASSWORD</label>
             <input
               type="password"
               value={newPassword}
@@ -192,16 +193,16 @@ export default function PlayerProfileTab({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 outline: 'none'
               }}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.4rem' }}>CONFIRM PASSWORD</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>CONFIRM PASSWORD</label>
             <input
               type="password"
               value={confirmPassword}
@@ -212,16 +213,16 @@ export default function PlayerProfileTab({
                 background: 'rgba(6,8,18,0.8)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '12px',
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: '0.88rem',
                 outline: 'none'
               }}
             />
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.85rem', flexWrap: 'wrap-reverse' }}>
           <button
             type="button"
             onClick={() => setDeletionOpen(true)}
@@ -229,9 +230,10 @@ export default function PlayerProfileTab({
               background: 'transparent',
               border: 'none',
               color: 'var(--red-primary)',
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              padding: '0.4rem 0'
             }}
           >
             <i className="fa-solid fa-trash" /> Request Account Deletion
@@ -241,7 +243,7 @@ export default function PlayerProfileTab({
             type="submit"
             disabled={saving}
             className="btn-gold-glow"
-            style={{ padding: '0.75rem 1.5rem', fontSize: '0.88rem' }}
+            style={{ padding: '0.7rem 1.4rem', fontSize: '0.85rem' }}
           >
             {saving ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-floppy-disk" />} SAVE CHANGES
           </button>
