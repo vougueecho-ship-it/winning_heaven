@@ -16,6 +16,7 @@ export default function GameHubPage({
   onRequestFreeplayForGame,
   onOpenSupport,
   transactions = [],
+  accountRequests = [],
   freeplayGate = {}
 }) {
   const [copiedUser, setCopiedUser] = useState(false);
@@ -86,6 +87,17 @@ export default function GameHubPage({
   const gameTxs = transactions.filter(
     (t) => String(t.gameTitle || '').toLowerCase().trim() === String(game.title || '').toLowerCase().trim()
   );
+
+  // Filter latest account request for this game
+  const matchingRequests = (accountRequests || []).filter(
+    (req) => String(req.gameTitle || '').toLowerCase().trim() === String(game.title || '').toLowerCase().trim()
+  );
+  const latestRequest = [...matchingRequests].sort((a, b) => {
+    if (a.id && b.id) return parseFloat(b.id) - parseFloat(a.id);
+    return new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0);
+  })[0];
+  const isRejectedAccountRequest = latestRequest && (latestRequest.status === 'FAILED' || latestRequest.status === 'REJECTED' || Boolean(latestRequest.rejectionReason));
+  const accountRejectionNote = latestRequest?.rejectionReason || latestRequest?.note || latestRequest?.reason || latestRequest?.adminNote;
 
   return (
     <motion.div
@@ -456,59 +468,107 @@ export default function GameHubPage({
                       ? 'var(--cyan-primary)'
                       : 'var(--gold-primary)';
 
+                  const adminNote = tx.note || tx.coinsHoldNote || tx.rejectionReason || tx.reason || tx.adminNote || tx.holdNote;
+                  const isFailedTx = (tx.status || '').toUpperCase() === 'FAILED' || (tx.status || '').toUpperCase() === 'REJECTED';
+                  const isHoldTx = parseFloat(tx.payoutHold || 0) > 0 || (tx.status || '').toUpperCase() === 'HOLD' || (tx.coinsHoldNote && tx.coinsHoldNote.trim());
+
                   return (
                     <div
                       key={tx.id || tx._id}
                       style={{
                         background: 'rgba(6,8,18,0.7)',
-                        border: '1px solid var(--border-muted)',
+                        border: isFailedTx 
+                          ? '1px solid rgba(255, 0, 85, 0.4)' 
+                          : isHoldTx 
+                            ? '1px solid rgba(255, 170, 0, 0.4)' 
+                            : '1px solid var(--border-muted)',
                         borderRadius: '14px',
                         padding: '0.85rem 1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.65rem'
+                      }}
+                    >
+                      <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: '1rem',
-                        flexWrap: 'wrap'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                        <div style={{
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          background: iconBg,
-                          border: `1px solid ${iconBorder}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: iconColor,
-                          fontSize: '0.95rem'
-                        }}>
-                          <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
+                        flexWrap: 'wrap',
+                        width: '100%'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            background: iconBg,
+                            border: `1px solid ${iconBorder}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: iconColor,
+                            fontSize: '0.95rem'
+                          }}>
+                            <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem' }}>
+                              {isDeposit ? 'DEPOSIT' : isWithdraw ? 'CASHOUT' : 'FREEPLAY BONUS'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem' }}>
-                            {isDeposit ? 'DEPOSIT' : isWithdraw ? 'CASHOUT' : 'FREEPLAY BONUS'}
+
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{
+                            fontSize: '1rem',
+                            fontWeight: 900,
+                            fontFamily: 'var(--font-heading)',
+                            color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
+                          }}>
+                            {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
-                          </div>
+                          <span className={tx.status === 'APPROVED' || tx.status === 'SUCCESS' ? 'badge-emerald' : tx.status === 'REJECTED' || tx.status === 'FAILED' ? 'badge-red' : 'badge-gold'}>
+                            {tx.status || 'PENDING'}
+                          </span>
                         </div>
                       </div>
 
-                      <div style={{ textAlign: 'right' }}>
+                      {/* Highlighted Admin Note in Game History */}
+                      {adminNote && adminNote.trim() && (
                         <div style={{
-                          fontSize: '1rem',
-                          fontWeight: 900,
-                          fontFamily: 'var(--font-heading)',
-                          color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
+                          width: '100%',
+                          background: isFailedTx 
+                            ? 'rgba(255, 0, 85, 0.12)' 
+                            : isHoldTx 
+                              ? 'rgba(255, 170, 0, 0.12)' 
+                              : 'rgba(0, 240, 255, 0.08)',
+                          border: isFailedTx 
+                            ? '1px solid rgba(255, 0, 85, 0.35)' 
+                            : isHoldTx 
+                              ? '1px solid rgba(255, 170, 0, 0.35)' 
+                              : '1px solid rgba(0, 240, 255, 0.25)',
+                          borderRadius: '8px',
+                          padding: '0.45rem 0.65rem',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.45rem',
+                          fontSize: '0.75rem',
+                          color: isFailedTx ? '#ff6b81' : isHoldTx ? '#ffd700' : '#67e8f9',
+                          boxSizing: 'border-box'
                         }}>
-                          {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
+                          <i className={isFailedTx ? 'fa-solid fa-circle-xmark' : isHoldTx ? 'fa-solid fa-clock' : 'fa-solid fa-message'} style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <div style={{ lineHeight: 1.35, wordBreak: 'break-word' }}>
+                            <span style={{ fontWeight: 800, color: '#fff', marginRight: '4px' }}>
+                              {isFailedTx ? 'Admin Decline Note:' : isHoldTx ? 'Hold Note:' : 'Admin Note:'}
+                            </span>
+                            <span>{adminNote}</span>
+                          </div>
                         </div>
-                        <span className={tx.status === 'APPROVED' || tx.status === 'SUCCESS' ? 'badge-emerald' : tx.status === 'REJECTED' || tx.status === 'FAILED' ? 'badge-red' : 'badge-gold'}>
-                          {tx.status || 'PENDING'}
-                        </span>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -700,6 +760,33 @@ export default function GameHubPage({
               </p>
             </div>
 
+            {/* Account Rejection Alert Banner */}
+            {accountRejectionNote && (
+              <div style={{
+                width: '100%',
+                maxWidth: '600px',
+                background: 'rgba(255, 0, 85, 0.12)',
+                border: '1.5px solid rgba(255, 0, 85, 0.45)',
+                borderRadius: '14px',
+                padding: '0.9rem 1.25rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                textAlign: 'left',
+                boxShadow: '0 8px 24px rgba(255, 0, 85, 0.15)'
+              }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ff4d6d', fontSize: '1.3rem', marginTop: '2px', flexShrink: 0 }} />
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: '0.88rem', marginBottom: '0.2rem' }}>
+                    Previous Account Request Declined
+                  </div>
+                  <div style={{ color: '#ffb3c1', fontSize: '0.82rem', lineHeight: 1.45 }}>
+                    <strong>Admin Note / Reason:</strong> {accountRejectionNote}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleRequestClick}
               disabled={isSubmittingRequest}
@@ -709,7 +796,7 @@ export default function GameHubPage({
               {isSubmittingRequest ? (
                 <span><i className="fa-solid fa-spinner fa-spin" /> SUBMITTING REQUEST...</span>
               ) : (
-                <span><i className="fa-solid fa-user-plus" /> REQUEST {game.title.toUpperCase()} CREDENTIALS &rarr;</span>
+                <span><i className="fa-solid fa-user-plus" /> {accountRejectionNote ? 'REQUEST CREDENTIALS AGAIN' : `REQUEST ${game.title.toUpperCase()} CREDENTIALS`} &rarr;</span>
               )}
             </button>
           </div>

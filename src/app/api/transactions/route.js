@@ -135,8 +135,17 @@ export async function GET(req) {
         id: 1,
         userEmail: 1,
         date: 1,
+        timestamp: 1,
+        createdAt: 1,
         status: 1,
         note: 1,
+        noteCode: 1,
+        senderTag: 1,
+        senderName: 1,
+        rejectionReason: 1,
+        reason: 1,
+        adminNote: 1,
+        holdNote: 1,
         gameTitle: 1,
         type: 1,
         amount: 1,
@@ -158,6 +167,7 @@ export async function GET(req) {
         approvedBy: 1,
         allottedBy: 1,
         isFreeplayWithdraw: 1,
+        isDepositFromCashout: 1,
         gameAmount: 1,
         proofPending: 1,
         coinsHoldNote: 1,
@@ -962,7 +972,23 @@ export async function POST(req) {
 // PUT update transaction status (Admin action - approve/decline)
 export async function PUT(req) {
   try {
-    const { id, status, note, payoutSent, payoutHold, processedBy, payoutProof, remainderWaitHours, remainderWaitMinutes } = await req.json();
+    const body = await req.json();
+    const {
+      id,
+      status,
+      note,
+      rejectionReason,
+      reason,
+      holdNote,
+      coinsHoldNote,
+      adminNote,
+      payoutSent,
+      payoutHold,
+      processedBy,
+      payoutProof,
+      remainderWaitHours,
+      remainderWaitMinutes
+    } = body || {};
 
     if (!id || !status) {
       return NextResponse.json({ success: false, message: 'Transaction ID and status are required.' }, { status: 400 });
@@ -1003,8 +1029,15 @@ export async function PUT(req) {
       finalStatus = 'COINS_LOADING';
     }
     const updateFields = { status: finalStatus };
-    if (note !== undefined) {
-      updateFields.note = note;
+    const effectiveNote = note !== undefined ? note : (rejectionReason || reason || holdNote || coinsHoldNote || adminNote);
+    if (effectiveNote !== undefined && effectiveNote !== null) {
+      updateFields.note = String(effectiveNote);
+      updateFields.rejectionReason = String(effectiveNote);
+      updateFields.adminNote = String(effectiveNote);
+    }
+    if (coinsHoldNote || holdNote) {
+      updateFields.coinsHoldNote = String(coinsHoldNote || holdNote);
+      updateFields.coinsHoldAt = new Date().toISOString();
     }
     if (payoutSent !== undefined) {
       updateFields.payoutSent = Number(payoutSent);

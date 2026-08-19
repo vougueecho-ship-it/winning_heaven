@@ -71,6 +71,10 @@ export async function GET(req) {
         status: 1,
         date: 1,
         createdAt: 1,
+        rejectionReason: 1,
+        note: 1,
+        reason: 1,
+        adminNote: 1,
         distributorId: 1,
         distributorType: 1,
         distributorName: 1,
@@ -704,7 +708,18 @@ export async function POST(req) {
 export async function PUT(req) {
   try {
     const body = await req.json();
-    const { id, status, gameAccountUsername, gameAccountPassword, processedBy, rejectionReason, adminEmail } = body;
+    const {
+      id,
+      status,
+      gameAccountUsername,
+      gameAccountPassword,
+      processedBy,
+      rejectionReason,
+      note,
+      reason,
+      adminNote,
+      adminEmail
+    } = body || {};
 
     if (!id || !status) {
       return NextResponse.json({ success: false, message: 'Request ID and status are required.' }, { status: 400 });
@@ -794,7 +809,11 @@ export async function PUT(req) {
 
     const updateFields = { status: finalStatus };
     if (processedBy) updateFields.processedBy = processedBy;
-    if (rejectionReason) updateFields.rejectionReason = rejectionReason;
+    const effectiveRejection = rejectionReason || note || reason || adminNote;
+    if (effectiveRejection) {
+      updateFields.rejectionReason = String(effectiveRejection);
+      updateFields.note = String(effectiveRejection);
+    }
     if (hasCreds) {
       updateFields.gameAccountUsername = credUser;
       updateFields.gameAccountPassword = credPass;

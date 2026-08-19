@@ -149,6 +149,10 @@ export default function PlayerLedger({
                   ? 'DEPOSIT'
                   : 'CASHOUT';
 
+            const adminNote = tx.note || tx.coinsHoldNote || tx.rejectionReason || tx.reason || tx.adminNote || tx.holdNote;
+            const isFailed = (tx.status || '').toUpperCase() === 'FAILED' || (tx.status || '').toUpperCase() === 'REJECTED';
+            const isHoldStatus = parseFloat(tx.payoutHold || 0) > 0 || (tx.status || '').toUpperCase() === 'HOLD' || (tx.coinsHoldNote && tx.coinsHoldNote.trim());
+
             return (
               <div
                 key={tx.id || tx._id}
@@ -156,120 +160,168 @@ export default function PlayerLedger({
                 style={{
                   background: 'rgba(12, 16, 32, 0.88)',
                   backdropFilter: 'blur(16px)',
-                  border: '1px solid var(--card-border)',
+                  border: isFailed 
+                    ? '1.5px solid rgba(255, 0, 85, 0.35)' 
+                    : isHoldStatus 
+                      ? '1.5px solid rgba(255, 170, 0, 0.35)' 
+                      : '1px solid var(--card-border)',
                   borderRadius: '16px',
                   padding: '0.9rem 1.1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem'
+                }}
+              >
+                {/* Main Row: Details + Status */}
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: '0.85rem',
-                  flexWrap: 'wrap'
-                }}
-              >
-                {/* Type Icon & Details */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '220px' }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: iconBg,
-                    border: `1px solid ${iconBorder}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: iconColor,
-                    fontSize: '1rem',
-                    flexShrink: 0
-                  }}>
-                    <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
-                  </div>
-
-                  <div>
-                    <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem', fontFamily: 'var(--font-heading)' }}>
-                      {labelTitle} - {tx.gameTitle || tx.gatewayName || 'MAIN WALLET'}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
-                    </div>
-                    {/* Partial Payout Breakdown */}
-                    {parseFloat(tx.payoutHold || 0) > 0 && (
-                      <div style={{ fontSize: '0.7rem', color: '#ffc800', marginTop: '0.15rem', fontWeight: 700 }}>
-                        Paid: ${parseFloat(tx.payoutSent || tx.amount || 0).toFixed(2)} • Hold: ${parseFloat(tx.payoutHold).toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Amount & Status Badge */}
-                <div className="ledger-tx-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <div style={{ textAlign: 'right' }}>
+                  flexWrap: 'wrap',
+                  width: '100%'
+                }}>
+                  {/* Type Icon & Details */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '200px' }}>
                     <div style={{
-                      fontSize: '1.05rem',
-                      fontWeight: 900,
-                      fontFamily: 'var(--font-heading)',
-                      color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: iconBg,
+                      border: `1px solid ${iconBorder}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: iconColor,
+                      fontSize: '1rem',
+                      flexShrink: 0
                     }}>
-                      {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
+                      <i className={isDeposit ? 'fa-solid fa-arrow-down-left' : isWithdraw ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-gift'} />
                     </div>
-                    {tx.noteCode && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
-                        Code: {tx.noteCode}
+
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem', fontFamily: 'var(--font-heading)' }}>
+                        {labelTitle} - {tx.gameTitle || tx.gatewayName || 'MAIN WALLET'}
                       </div>
-                    )}
-                    {(tx.senderTag || tx.senderName) && (
-                      <div style={{ fontSize: '0.68rem', color: '#ffd700', fontWeight: 600 }}>
-                        Tag: {tx.senderTag || tx.senderName}
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {formatDeviceDateTime(tx.timestamp || tx.createdAt)}
                       </div>
-                    )}
+                      {/* Partial Payout Breakdown */}
+                      {parseFloat(tx.payoutHold || 0) > 0 && (
+                        <div style={{ fontSize: '0.7rem', color: '#ffc800', marginTop: '0.15rem', fontWeight: 700 }}>
+                          Paid: ${parseFloat(tx.payoutSent || tx.amount || 0).toFixed(2)} • Hold: ${parseFloat(tx.payoutHold).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div>{getStatusBadge(tx.status)}</div>
+                  {/* Amount & Status Badge */}
+                  <div className="ledger-tx-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{
+                        fontSize: '1.05rem',
+                        fontWeight: 900,
+                        fontFamily: 'var(--font-heading)',
+                        color: isDeposit ? 'var(--emerald-primary)' : isWithdraw ? 'var(--cyan-primary)' : 'var(--gold-primary)'
+                      }}>
+                        {isDeposit ? '+' : isWithdraw ? '-' : ''}${parseFloat(tx.amount || 0).toFixed(2)}
+                      </div>
+                      {tx.noteCode && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', fontFamily: 'monospace', fontWeight: 800 }}>
+                          Code: {tx.noteCode}
+                        </div>
+                      )}
+                      {(tx.senderTag || tx.senderName) && (
+                        <div style={{ fontSize: '0.68rem', color: '#ffd700', fontWeight: 600 }}>
+                          Tag: {tx.senderTag || tx.senderName}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Remainder Claim Action Button */}
-                  {onClaimRemainder && (
-                    <RemainderClaimAction
-                      tx={tx}
-                      claimedIds={claimedRemainderIds}
-                      onClaim={onClaimRemainder}
-                    />
-                  )}
+                    <div>{getStatusBadge(tx.status)}</div>
 
-                  {/* Deposit Hold to Game Action Button */}
-                  {hasHold && onDepositFromCashout && (
-                    <button
-                      type="button"
-                      onClick={() => onDepositFromCashout(tx)}
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)',
-                        border: '1px solid #eab308',
-                        color: '#ffc800',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        padding: '0.35rem 0.65rem',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        transition: 'all 0.2s ease',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      <i className="fa-solid fa-gamepad" /> DEPOSIT TO GAME
-                    </button>
-                  )}
+                    {/* Remainder Claim Action Button */}
+                    {onClaimRemainder && (
+                      <RemainderClaimAction
+                        tx={tx}
+                        claimedIds={claimedRemainderIds}
+                        onClaim={onClaimRemainder}
+                      />
+                    )}
 
-                  {/* Re-upload proof trigger if missing screenshot */}
-                  {needsProof && onOpenReuploadProof && (
-                    <button
-                      onClick={() => onOpenReuploadProof(tx)}
-                      className="btn-gold-glow"
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.72rem', whiteSpace: 'nowrap' }}
-                    >
-                      <i className="fa-solid fa-upload" /> PROOF
-                    </button>
-                  )}
+                    {/* Deposit Hold to Game Action Button */}
+                    {hasHold && onDepositFromCashout && (
+                      <button
+                        type="button"
+                        onClick={() => onDepositFromCashout(tx)}
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)',
+                          border: '1px solid #eab308',
+                          color: '#ffc800',
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          transition: 'all 0.2s ease',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <i className="fa-solid fa-gamepad" /> DEPOSIT TO GAME
+                      </button>
+                    )}
+
+                    {/* Re-upload proof trigger if missing screenshot */}
+                    {needsProof && onOpenReuploadProof && (
+                      <button
+                        onClick={() => onOpenReuploadProof(tx)}
+                        className="btn-gold-glow"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                      >
+                        <i className="fa-solid fa-upload" /> PROOF
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* --- Highlighted Admin Note Banner --- */}
+                {adminNote && adminNote.trim() && (
+                  <div style={{
+                    width: '100%',
+                    background: isFailed 
+                      ? 'rgba(255, 0, 85, 0.12)' 
+                      : isHoldStatus 
+                        ? 'rgba(255, 170, 0, 0.12)' 
+                        : 'rgba(0, 240, 255, 0.08)',
+                    border: isFailed 
+                      ? '1px solid rgba(255, 0, 85, 0.4)' 
+                      : isHoldStatus 
+                        ? '1px solid rgba(255, 170, 0, 0.4)' 
+                        : '1px solid rgba(0, 240, 255, 0.25)',
+                    borderRadius: '10px',
+                    padding: '0.5rem 0.75rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    fontSize: '0.78rem',
+                    color: isFailed ? '#ff6b81' : isHoldStatus ? '#ffd700' : '#67e8f9',
+                    boxSizing: 'border-box'
+                  }}>
+                    <i 
+                      className={isFailed ? 'fa-solid fa-circle-xmark' : isHoldStatus ? 'fa-solid fa-clock-rotate-left' : 'fa-solid fa-message'} 
+                      style={{ marginTop: '2px', flexShrink: 0, fontSize: '0.9rem' }} 
+                    />
+                    <div style={{ lineHeight: 1.4, wordBreak: 'break-word' }}>
+                      <span style={{ fontWeight: 800, color: '#fff', marginRight: '5px' }}>
+                        {isFailed ? 'Admin Decline Note:' : isHoldStatus ? 'Admin Hold Note:' : 'Admin Note:'}
+                      </span>
+                      <span>{adminNote}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

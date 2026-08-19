@@ -340,6 +340,7 @@ export default function UserLobby({
                 onRequestFreeplayForGame={handleRequestFreeplayForGame}
                 onOpenSupport={onOpenSupport}
                 transactions={transactions}
+                accountRequests={accountRequests}
                 freeplayGate={freeplayGate}
               />
             )}
