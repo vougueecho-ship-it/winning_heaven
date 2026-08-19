@@ -10,20 +10,55 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const distributorId = searchParams.get('distributorId');
 
-    if (!distributorId) {
-      const cachedGames = cache.get('games_all');
-      if (cachedGames) {
-        // Memory keeps full docs (with data URLs); clients get slim proxy URLs.
-        return jsonOk(
-          { success: true, games: toPublicGames(cachedGames) },
-          { cacheSeconds: 120, scope: 'public' }
-        );
-      }
+    const cacheKey = distributorId ? `games_${distributorId}` : 'games_all_public';
+    const cachedGames = cache.get(cacheKey);
+    if (cachedGames) {
+      return jsonOk(
+        { success: true, games: cachedGames },
+        { cacheSeconds: distributorId ? 60 : 120, scope: 'public' }
+      );
     }
 
     const db = await getDb();
     const gamesCollection = db.collection('games');
-    const games = await gamesCollection.find({}, { projection: { _id: 0 } }).toArray();
+    
+    // Efficiently fetch games metadata without downloading 46MB of base64 images in bulk
+    const rawGames = await gamesCollection.aggregate([
+      {
+        $project: {
+          _id: 0,
+          id: 1,
+          title: 1,
+          badge: 1,
+          link: 1,
+          openPanelLink: 1,
+          category: 1,
+          availableCoins: 1,
+          usedCoins: 1,
+          isHot: 1,
+          isNew: 1,
+          isMaintenance: 1,
+          imagePrefix: { $substrCP: [{ $ifNull: ["$image", ""] }, 0, 30] },
+          imageLength: { $strLenCP: [{ $ifNull: ["$image", ""] }] },
+          staticImage: {
+            $cond: [
+              { $regexMatch: { input: { $ifNull: ["$image", ""] }, regex: /^data:/ } },
+              null,
+              "$image"
+            ]
+          }
+        }
+      }
+    ]).toArray();
+
+    const games = rawGames.map((g) => {
+      let img = g.staticImage || g.imagePrefix || '';
+      if (typeof g.imagePrefix === 'string' && g.imagePrefix.startsWith('data:image')) {
+        img = `/api/games/image?id=${encodeURIComponent(g.id)}&v=${g.imageLength || 1}`;
+      }
+      const { imagePrefix, imageLength, staticImage, ...rest } = g;
+      return { ...rest, image: img };
+    });
     
     if (distributorId) {
       const distGames = await db.collection('distributorGames').find({ distributorId }).toArray();
@@ -41,16 +76,16 @@ export async function GET(req) {
           openPanelLink: dg ? (dg.openPanelLink || game.openPanelLink || game.link) : (game.openPanelLink || game.link)
         };
       });
+      cache.set(cacheKey, mappedGames, 60);
       return jsonOk(
-        { success: true, games: toPublicGames(mappedGames) },
+        { success: true, games: mappedGames },
         { cacheSeconds: 60, scope: 'public' }
       );
     }
 
-    // Cache FULL documents so /api/games/image can serve without another DB round-trip.
-    cache.set('games_all', games, 300);
+    cache.set(cacheKey, games, 300);
     return jsonOk(
-      { success: true, games: toPublicGames(games) },
+      { success: true, games },
       { cacheSeconds: 120, scope: 'public' }
     );
   } catch (err) {
@@ -85,6 +120,7 @@ export async function POST(req) {
     
     // Invalidate caches
     cache.del('games_all');
+    cache.del('games_all_public');
     cache.del(`game_image_${newGame.id}`);
     
     return NextResponse.json({ success: true, game: { ...newGame, image: toPublicGameImage(newGame) }, message: 'Game added successfully!' });
@@ -120,6 +156,7 @@ export async function PUT(req) {
         { $set: updateDoc },
         { upsert: true }
       );
+      cache.del(`games_${game.distributorId}`);
       return NextResponse.json({ success: true, message: 'Distributor game pool updated successfully!' });
     }
 
@@ -149,6 +186,7 @@ export async function PUT(req) {
     
     // Invalidate caches
     cache.del('games_all');
+    cache.del('games_all_public');
     cache.del(`game_image_${game.id}`);
 
     return NextResponse.json({ success: true, message: 'Game updated successfully!' });
@@ -175,6 +213,7 @@ export async function DELETE(req) {
     
     // Invalidate caches
     cache.del('games_all');
+    cache.del('games_all_public');
     cache.del(`game_image_${id}`);
 
     return NextResponse.json({ success: true, message: 'Game deleted successfully!' });

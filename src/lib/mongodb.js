@@ -176,9 +176,10 @@ async function seedRealMongo(db) {
     }
 
     if (!global._mongoIndexesEnsured) {
-      await ensureIndexes(db);
       global._mongoIndexesEnsured = true;
-      console.log('[Seed Database] Database indexes verified and ensured in MongoDB Atlas.');
+      ensureIndexes(db)
+        .then(() => console.log('[Seed Database] Database indexes verified and ensured in MongoDB Atlas.'))
+        .catch((err) => console.error('Failed to create indexes in background:', err));
     }
   } catch (err) {
     console.error('Failed to seed real MongoDB or create indexes:', err);
