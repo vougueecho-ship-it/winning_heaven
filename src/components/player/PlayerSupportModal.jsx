@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageLightbox } from '../Modals';
 import { compressImageFile } from '../../lib/imageCompress';
@@ -69,6 +69,59 @@ const QUICK_OPTIONS = [
   }
 ];
 
+const EMOJI_CATEGORIES = [
+  {
+    name: 'VIP & Casino',
+    emojis: ['🎰', '💰', '🔥', '👑', '💎', '🎲', '⚡', '🚀', '🏆', '💸', '✨', '🎁', '💯', '🍀', '💵', '🤑']
+  },
+  {
+    name: 'Smileys & Vibes',
+    emojis: ['😀', '😂', '🤣', '😊', '😍', '🥰', '😎', '🥳', '🥺', '🤩', '😜', '😉', '😇', '🤔', '🤐', '🤝']
+  },
+  {
+    name: 'Hands & Gestures',
+    emojis: ['👍', '👏', '🙌', '🙏', '✌️', '🤙', '👌', '💪', '🫡', '🎯', '💖', '⭐', '🎉', '🌟', '💥', '👀']
+  }
+];
+
+const QUICK_REACTION_EMOJIS = ['❤️', '👍', '🔥', '😂', '🎰', '👏'];
+const QUICK_INSERT_EMOJIS = ['🎰', '🔥', '💰', '👍', '👑', '💎', '🚀', '❤️', '😂', '🙏'];
+
+// Web Audio API VIP chime synthesizer
+const playNotificationChime = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now); // D5
+    gain1.gain.setValueAtTime(0.1, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.22);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.09); // A5
+    gain2.gain.setValueAtTime(0.12, now + 0.09);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.09);
+    osc2.stop(now + 0.38);
+  } catch {
+    /* ignore audio policy blocks */
+  }
+};
+
 export default function PlayerSupportModal({
   isOpen,
   onClose,
@@ -85,8 +138,35 @@ export default function PlayerSupportModal({
   const [isMinimized, setIsMinimized] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState(null);
 
+  // New Chat Features State
+  const [replyingTo, setReplyingTo] = useState(null); // { id, message, senderType, userName, hasAttachment }
+  const [editingMessage, setEditingMessage] = useState(null); // { id, message }
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
+
+  // Chat Settings State (persisted in localStorage)
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const v = localStorage.getItem('wh_chat_sound');
+    return v !== null ? v === 'true' : true;
+  });
+  const [fontSize, setFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 'medium';
+    return localStorage.getItem('wh_chat_font_size') || 'medium';
+  });
+  const [autoScroll, setAutoScroll] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const v = localStorage.getItem('wh_chat_autoscroll');
+    return v !== null ? v === 'true' : true;
+  });
+
   const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
   const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const previousMsgCountRef = useRef(0);
   const onMessagesSeenRef = useRef(onMessagesSeen);
   onMessagesSeenRef.current = onMessagesSeen;
 
@@ -110,29 +190,66 @@ export default function PlayerSupportModal({
     return { email: 'guest@winningheaven.com', name: 'Guest', isGuest: true };
   };
 
+  const identity = useMemo(() => getChatIdentity(), [currentUser]);
+
+  // Persist settings
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('wh_chat_sound', String(next));
+      return next;
+    });
+  };
+  const changeFontSize = (size) => {
+    setFontSize(size);
+    localStorage.setItem('wh_chat_font_size', size);
+  };
+  const toggleAutoScroll = () => {
+    setAutoScroll((prev) => {
+      const next = !prev;
+      localStorage.setItem('wh_chat_autoscroll', String(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!isOpen) {
       setLoadingChat(false);
       setIsMinimized(false);
       setSelectedPromo(null);
+      setReplyingTo(null);
+      setEditingMessage(null);
+      setShowEmojiPicker(false);
+      setShowSettingsModal(false);
       return;
     }
 
-    const identity = getChatIdentity();
     let firstLoad = true;
     setLoadingChat(true);
     setMessages([]);
+    previousMsgCountRef.current = 0;
 
     const fetchMessages = async () => {
       try {
         const res = await fetch(`/api/support?email=${encodeURIComponent(identity.email)}`);
         const data = await res.json();
         if (data.success) {
-          setMessages(data.messages || []);
-          if (typeof onMessagesSeenRef.current === 'function') {
-            onMessagesSeenRef.current(data.messages || []);
+          const newMsgs = data.messages || [];
+          // Sound chime if new admin message arrived
+          if (!firstLoad && newMsgs.length > previousMsgCountRef.current) {
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            if (lastMsg?.senderType === 'admin' && soundEnabled) {
+              playNotificationChime();
+            }
           }
-          const hasUnreadAdmin = (data.messages || []).some((m) => m.senderType === 'admin' && !m.read);
+          previousMsgCountRef.current = newMsgs.length;
+          setMessages(newMsgs);
+
+          if (typeof onMessagesSeenRef.current === 'function') {
+            onMessagesSeenRef.current(newMsgs);
+          }
+
+          const hasUnreadAdmin = newMsgs.some((m) => m.senderType === 'admin' && !m.read);
           if (hasUnreadAdmin) {
             fetch('/api/support', {
               method: 'PUT',
@@ -154,27 +271,71 @@ export default function PlayerSupportModal({
     fetchMessages();
     const interval = setInterval(fetchMessages, 3000);
     return () => clearInterval(interval);
-  }, [isOpen, currentUser]);
+  }, [isOpen, identity.email, soundEnabled]);
 
+  // Auto-scroll when messages update
   useEffect(() => {
-    if (!isMinimized) {
+    if (!isMinimized && autoScroll) {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isMinimized]);
+  }, [messages, isMinimized, autoScroll]);
 
+  // Smooth scroll to a quoted message
+  const scrollToMessage = (msgId) => {
+    if (!msgId) return;
+    const targetEl = document.getElementById(`support-msg-${msgId}`);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(msgId);
+      setTimeout(() => setHighlightedMsgId(null), 2500);
+    }
+  };
+
+  // Send message or edit existing
   const handleSendMessage = async (e, customText = null) => {
     if (e) e.preventDefault();
     const msgToSend = customText !== null ? customText : input;
     if (!msgToSend.trim() && !attachment) return;
 
-    const { email: userEmail, name: userName } = getChatIdentity();
+    // IF EDITING EXISTING MESSAGE
+    if (editingMessage) {
+      const editId = editingMessage.id;
+      const updatedText = msgToSend.trim();
+      setEditingMessage(null);
+      setInput('');
+      try {
+        const res = await fetch('/api/support', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editId,
+            message: updatedText,
+            userEmail: identity.email
+          })
+        });
+        const d = await res.json();
+        if (d.success) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === editId ? { ...m, message: updatedText, isEdited: true, editedAt: new Date().toISOString() } : m))
+          );
+        }
+      } catch (err) {
+        console.error('Failed to edit message:', err);
+      }
+      return;
+    }
+
+    // NORMAL NEW MESSAGE / REPLY
     const msgText = msgToSend;
     const currentAttachment = attachment;
+    const currentReplyTo = replyingTo;
 
     if (customText === null) {
       setInput('');
     }
     setAttachment('');
+    setReplyingTo(null);
+    setShowEmojiPicker(false);
     setSending(true);
 
     try {
@@ -182,12 +343,13 @@ export default function PlayerSupportModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail,
-          userName,
+          userEmail: identity.email,
+          userName: identity.name,
           message: msgText,
           attachment: currentAttachment,
           senderType: 'player',
-          senderEmail: userEmail
+          senderEmail: identity.email,
+          replyTo: currentReplyTo
         })
       });
       const data = await response.json();
@@ -198,9 +360,36 @@ export default function PlayerSupportModal({
       console.error('Send support msg error:', err);
     } finally {
       setSending(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
+  // Toggle emoji reaction on message
+  const handleToggleReaction = async (msgId, emoji) => {
+    setActiveMenuMsgId(null);
+    try {
+      const res = await fetch('/api/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: msgId,
+          action: 'react',
+          emoji,
+          userIdentifier: identity.email
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, reactions: data.reactions } : m))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to react:', err);
+    }
+  };
+
+  // Attachment upload
   const handleAttachmentUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -225,13 +414,59 @@ export default function PlayerSupportModal({
     }
   };
 
+  // Export chat transcript to .txt file
+  const handleExportChat = () => {
+    if (messages.length === 0) {
+      alert('No messages in chat history to export.');
+      return;
+    }
+    const lines = messages.map((m) => {
+      const time = new Date(m.timestamp).toLocaleString();
+      const sender = m.senderType === 'player' ? (identity.name || 'You') : 'VIP Support Agent';
+      const text = m.message || (m.hasAttachment || m.attachment ? '[Attached Screenshot]' : '');
+      const replyInfo = m.replyTo ? ` (Replying to: "${m.replyTo.message?.slice(0, 40)}...")` : '';
+      return `[${time}] ${sender}${replyInfo}: ${text}`;
+    });
+    const header = `=========================================================\nWINNING HEAVEN VIP 24/7 SUPPORT TRANSCRIPT\nPlayer: ${identity.name} (${identity.email})\nExported: ${new Date().toLocaleString()}\n=========================================================\n\n`;
+    const fullContent = header + lines.join('\n\n');
+    const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `WinningHeaven_Chat_${new Date().toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Clear chat history
+  const handleClearHistory = async () => {
+    if (!window.confirm('Are you sure you want to clear your support chat history? This cannot be undone.')) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/support?email=${encodeURIComponent(identity.email)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages([]);
+        setShowSettingsModal(false);
+      } else {
+        alert(data.message || 'Failed to clear chat history.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error clearing chat history.');
+    }
+  };
+
   if (!isOpen) return null;
 
   const unreadCount = messages.filter((m) => m.senderType === 'admin' && !m.read).length;
+  const currentFontSizeStyle = fontSize === 'small' ? '0.76rem' : fontSize === 'large' ? '0.92rem' : '0.84rem';
 
   return (
     <>
-      {/* Dynamic visible scrollbars style */}
       <style>{`
         .custom-support-feed::-webkit-scrollbar {
           width: 6px;
@@ -257,6 +492,15 @@ export default function PlayerSupportModal({
         .custom-chips-bar::-webkit-scrollbar-thumb {
           background: rgba(0, 240, 255, 0.4);
           border-radius: 4px;
+        }
+        @keyframes highlightFlash {
+          0% { background: rgba(255, 200, 0, 0.4); transform: scale(1.02); }
+          50% { background: rgba(255, 200, 0, 0.2); }
+          100% { background: transparent; transform: scale(1); }
+        }
+        .msg-highlighted {
+          animation: highlightFlash 2s ease-out;
+          border-radius: 16px;
         }
       `}</style>
 
@@ -352,10 +596,10 @@ export default function PlayerSupportModal({
               bottom: '20px',
               right: '20px',
               zIndex: 100000,
-              width: '430px',
-              maxWidth: 'calc(100vw - 32px)',
-              height: '620px',
-              maxHeight: 'calc(100vh - 40px)',
+              width: '450px',
+              maxWidth: 'calc(100vw - 24px)',
+              height: '650px',
+              maxHeight: 'calc(100vh - 35px)',
               display: 'flex',
               flexDirection: 'column',
               background: 'linear-gradient(165deg, rgba(14, 18, 38, 0.98) 0%, rgba(5, 7, 18, 0.99) 100%)',
@@ -369,7 +613,7 @@ export default function PlayerSupportModal({
           >
             {/* TOP HEADER */}
             <div style={{
-              padding: '0.95rem 1.15rem',
+              padding: '0.85rem 1.1rem',
               background: 'linear-gradient(135deg, rgba(22, 28, 56, 0.98) 0%, rgba(10, 14, 30, 0.98) 100%)',
               borderBottom: '1px solid rgba(255, 200, 0, 0.2)',
               display: 'flex',
@@ -379,8 +623,8 @@ export default function PlayerSupportModal({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{
-                  width: '42px',
-                  height: '42px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   border: '2px solid #ffc800',
                   background: '#04060e',
@@ -396,19 +640,43 @@ export default function PlayerSupportModal({
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', margin: 0, fontFamily: 'var(--font-heading)', letterSpacing: '0.02em' }}>
+                    <h3 style={{ fontSize: '0.98rem', fontWeight: 900, color: '#fff', margin: 0, fontFamily: 'var(--font-heading)', letterSpacing: '0.02em' }}>
                       WINNING <span style={{ background: 'linear-gradient(135deg, #ffc800 0%, #e6a100 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>SUPPORT</span>
                     </h3>
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.15rem' }}>
+                  <div style={{ fontSize: '0.66rem', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.12rem' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
                     24/7 LIVE AGENT • ONLINE
                   </div>
                 </div>
               </div>
 
-              {/* ACTION CONTROLS (MINIMIZE & CLOSE) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {/* ACTION CONTROLS (SETTINGS, MINIMIZE, CLOSE) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                {/* Chat Settings Trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal((prev) => !prev)}
+                  style={{
+                    background: showSettingsModal ? 'rgba(255, 200, 0, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: showSettingsModal ? '#ffc800' : 'rgba(255, 255, 255, 0.8)',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Chat Settings & Preferences"
+                >
+                  <i className="fa-solid fa-gear" />
+                </button>
+
+                {/* Minimize Button */}
                 <button
                   type="button"
                   onClick={() => setIsMinimized(true)}
@@ -419,7 +687,7 @@ export default function PlayerSupportModal({
                     borderRadius: '50%',
                     width: '32px',
                     height: '32px',
-                    fontSize: '1rem',
+                    fontSize: '0.9rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -430,6 +698,8 @@ export default function PlayerSupportModal({
                 >
                   <i className="fa-solid fa-minus" />
                 </button>
+
+                {/* Close Button */}
                 <button
                   type="button"
                   onClick={onClose}
@@ -440,7 +710,7 @@ export default function PlayerSupportModal({
                     borderRadius: '50%',
                     width: '32px',
                     height: '32px',
-                    fontSize: '1rem',
+                    fontSize: '0.95rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -454,11 +724,170 @@ export default function PlayerSupportModal({
               </div>
             </div>
 
-            {/* QUICK ASSISTANCE CHIPS WITH PROMO DETAILS */}
+            {/* CHAT SETTINGS POPUP MODAL */}
+            <AnimatePresence>
+              {showSettingsModal && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.18 }}
+                  style={{
+                    background: 'rgba(10, 14, 30, 0.98)',
+                    borderBottom: '1.5px solid rgba(255, 200, 0, 0.35)',
+                    padding: '1rem 1.15rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                    zIndex: 10,
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.8)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#ffc800', fontWeight: 800, fontSize: '0.85rem' }}>
+                      <i className="fa-solid fa-sliders" /> CHAT PREFERENCES &amp; SETTINGS
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSettingsModal(false)}
+                      style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1rem' }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  {/* Setting 1: Sound Notifications */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div>
+                      <div style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>Sound Alerts</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Play VIP chime when agent replies</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleSound}
+                      style={{
+                        background: soundEnabled ? '#10b981' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.3rem 0.75rem',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {soundEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Setting 2: Font Size */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div>
+                      <div style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>Chat Text Size</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Scale message readability</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      {['small', 'medium', 'large'].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => changeFontSize(s)}
+                          style={{
+                            background: fontSize === s ? 'rgba(255, 200, 0, 0.25)' : 'rgba(255,255,255,0.06)',
+                            border: fontSize === s ? '1px solid #ffc800' : '1px solid rgba(255,255,255,0.1)',
+                            color: fontSize === s ? '#ffc800' : '#aaa',
+                            borderRadius: '6px',
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            textTransform: 'capitalize',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Setting 3: Auto-scroll */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div>
+                      <div style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 700 }}>Auto Scroll</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Automatically scroll to new messages</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleAutoScroll}
+                      style={{
+                        background: autoScroll ? '#10b981' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.3rem 0.75rem',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {autoScroll ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Setting 4: Actions (Export & Clear) */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                    <button
+                      type="button"
+                      onClick={handleExportChat}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(0, 240, 255, 0.12)',
+                        border: '1px solid rgba(0, 240, 255, 0.35)',
+                        color: '#00f0ff',
+                        borderRadius: '10px',
+                        padding: '0.45rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <i className="fa-solid fa-download" /> Export Transcript
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearHistory}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#ef4444',
+                        borderRadius: '10px',
+                        padding: '0.45rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <i className="fa-solid fa-trash-can" /> Clear History
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* QUICK ASSISTANCE CHIPS */}
             <div
               className="custom-chips-bar"
               style={{
-                padding: '0.5rem 0.85rem',
+                padding: '0.45rem 0.85rem',
                 background: 'rgba(6, 8, 18, 0.95)',
                 borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                 display: 'flex',
@@ -480,13 +909,13 @@ export default function PlayerSupportModal({
                       color: isSelected ? opt.color : '#fff',
                       fontSize: '0.72rem',
                       fontWeight: 800,
-                      padding: '0.35rem 0.75rem',
+                      padding: '0.32rem 0.7rem',
                       borderRadius: '12px',
                       cursor: 'pointer',
                       flexShrink: 0,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.4rem',
+                      gap: '0.35rem',
                       transition: 'all 0.15s ease',
                       boxShadow: isSelected ? `0 0 12px ${opt.color}40` : 'none'
                     }}
@@ -516,31 +945,22 @@ export default function PlayerSupportModal({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{
-                        background: `${selectedPromo.color}22`,
-                        border: `1px solid ${selectedPromo.color}`,
-                        color: selectedPromo.color,
-                        fontSize: '0.65rem',
-                        fontWeight: 900,
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '6px',
-                        letterSpacing: '0.04em'
-                      }}>
-                        {selectedPromo.badge}
-                      </span>
-                    </div>
+                    <span style={{
+                      background: `${selectedPromo.color}22`,
+                      border: `1px solid ${selectedPromo.color}`,
+                      color: selectedPromo.color,
+                      fontSize: '0.65rem',
+                      fontWeight: 900,
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '6px',
+                      letterSpacing: '0.04em'
+                    }}>
+                      {selectedPromo.badge}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setSelectedPromo(null)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        fontSize: '1.1rem',
-                        cursor: 'pointer',
-                        lineHeight: 1
-                      }}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.1rem', cursor: 'pointer', lineHeight: 1 }}
                     >
                       &times;
                     </button>
@@ -550,11 +970,10 @@ export default function PlayerSupportModal({
                     {selectedPromo.title}
                   </h4>
 
-                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', lineHeight: 1.45, margin: '0 0 0.6rem 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.74rem', lineHeight: 1.45, margin: '0 0 0.6rem 0' }}>
                     {selectedPromo.details}
                   </p>
 
-                  {/* Perks list */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
                     {selectedPromo.perks.map((perk, pidx) => (
                       <span key={pidx} style={{
@@ -605,8 +1024,9 @@ export default function PlayerSupportModal({
               )}
             </AnimatePresence>
 
-            {/* MESSAGES FEED CONTAINER WITH VISIBLE SCROLLBAR */}
+            {/* MESSAGES FEED CONTAINER */}
             <div
+              ref={messagesContainerRef}
               className="custom-support-feed"
               style={{
                 flex: 1,
@@ -638,14 +1058,21 @@ export default function PlayerSupportModal({
                 messages.map((msg) => {
                   const isMe = msg.senderType === 'player';
                   const hasMsgAttachment = Boolean(msg.attachment && String(msg.attachment).trim());
+                  const isHighlighted = highlightedMsgId === msg.id;
+                  const isReplyingThis = replyingTo?.id === msg.id;
+                  const reactions = msg.reactions || {};
 
                   return (
                     <div
                       key={msg.id || msg._id}
+                      id={`support-msg-${msg.id}`}
+                      className={isHighlighted ? 'msg-highlighted' : ''}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: isMe ? 'flex-end' : 'flex-start'
+                        alignItems: isMe ? 'flex-end' : 'flex-start',
+                        position: 'relative',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       {!isMe && (
@@ -657,25 +1084,57 @@ export default function PlayerSupportModal({
                         </div>
                       )}
 
-                      <div style={{
-                        background: isMe
-                          ? 'linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 150, 255, 0.25) 100%)'
-                          : 'linear-gradient(135deg, rgba(255, 200, 0, 0.14) 0%, rgba(212, 160, 23, 0.2) 100%)',
-                        color: '#fff',
-                        border: isMe ? '1px solid rgba(0, 240, 255, 0.4)' : '1px solid rgba(255, 200, 0, 0.35)',
-                        borderLeft: isMe ? '1px solid rgba(0, 240, 255, 0.4)' : '3px solid #ffc800',
-                        padding: '0.65rem 0.9rem',
-                        borderRadius: '16px',
-                        borderBottomRightRadius: isMe ? '2px' : '16px',
-                        borderBottomLeftRadius: isMe ? '16px' : '2px',
-                        fontSize: '0.82rem',
-                        maxWidth: '86%',
-                        fontWeight: 500,
-                        wordBreak: 'break-word',
-                        boxShadow: isMe ? '0 4px 15px rgba(0, 240, 255, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.4)',
-                        lineHeight: 1.45
-                      }}>
-                        {msg.message}
+                      {/* MESSAGE BUBBLE */}
+                      <div
+                        style={{
+                          background: isMe
+                            ? 'linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 150, 255, 0.25) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 200, 0, 0.14) 0%, rgba(212, 160, 23, 0.2) 100%)',
+                          color: '#fff',
+                          border: isMe ? '1px solid rgba(0, 240, 255, 0.4)' : '1px solid rgba(255, 200, 0, 0.35)',
+                          borderLeft: isMe ? '1px solid rgba(0, 240, 255, 0.4)' : '3px solid #ffc800',
+                          padding: '0.65rem 0.9rem',
+                          borderRadius: '16px',
+                          borderBottomRightRadius: isMe ? '2px' : '16px',
+                          borderBottomLeftRadius: isMe ? '16px' : '2px',
+                          fontSize: currentFontSizeStyle,
+                          maxWidth: '86%',
+                          fontWeight: 500,
+                          wordBreak: 'break-word',
+                          boxShadow: isMe ? '0 4px 15px rgba(0, 240, 255, 0.15)' : '0 4px 15px rgba(0, 0, 0, 0.4)',
+                          lineHeight: 1.45,
+                          position: 'relative'
+                        }}
+                      >
+                        {/* QUOTED REPLY PREVIEW (WHATSAPP STYLE) */}
+                        {msg.replyTo && (
+                          <div
+                            onClick={() => scrollToMessage(msg.replyTo.id)}
+                            style={{
+                              background: 'rgba(0, 0, 0, 0.35)',
+                              borderLeft: `3px solid ${msg.replyTo.senderType === 'admin' ? '#ffc800' : '#00f0ff'}`,
+                              borderRadius: '8px',
+                              padding: '0.35rem 0.55rem',
+                              marginBottom: '0.45rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.15rem'
+                            }}
+                          >
+                            <span style={{ fontSize: '0.66rem', fontWeight: 800, color: msg.replyTo.senderType === 'admin' ? '#ffc800' : '#00f0ff' }}>
+                              {msg.replyTo.senderType === 'admin' ? 'Support Agent' : 'You'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {msg.replyTo.message || (msg.replyTo.hasAttachment ? '📷 Attached Photo' : '')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Main Text Content */}
+                        <div>{msg.message}</div>
+
+                        {/* Attachment Image */}
                         {hasMsgAttachment && (
                           <div style={{ marginTop: '0.45rem' }}>
                             <img
@@ -697,12 +1156,151 @@ export default function PlayerSupportModal({
                             />
                           </div>
                         )}
+
+                        {/* HOVER / TAP ACTION BUTTONS (REPLY, EDIT, REACT) */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          marginTop: '0.35rem',
+                          paddingTop: '0.35rem',
+                          borderTop: '1px solid rgba(255,255,255,0.08)',
+                          justifyContent: isMe ? 'flex-end' : 'flex-start'
+                        }}>
+                          {/* Reply Button (WhatsApp Style) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingMessage(null);
+                              setReplyingTo({
+                                id: msg.id,
+                                message: msg.message,
+                                senderType: msg.senderType,
+                                userName: msg.userName,
+                                hasAttachment: hasMsgAttachment
+                              });
+                              inputRef.current?.focus();
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.6)',
+                              fontSize: '0.68rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.15rem 0.35rem',
+                              borderRadius: '4px'
+                            }}
+                            title="Reply to this message"
+                          >
+                            <i className="fa-solid fa-reply" /> Reply
+                          </button>
+
+                          {/* Edit Button (Only for player's own message) */}
+                          {isMe && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setEditingMessage({ id: msg.id, message: msg.message });
+                                setInput(msg.message);
+                                inputRef.current?.focus();
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.6)',
+                                fontSize: '0.68rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.15rem 0.35rem',
+                                borderRadius: '4px'
+                              }}
+                              title="Edit this message"
+                            >
+                              <i className="fa-solid fa-pen-to-square" /> Edit
+                            </button>
+                          )}
+
+                          {/* Quick Emoji Reaction Trigger */}
+                          <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.25rem' }}>
+                            {QUICK_REACTION_EMOJIS.slice(0, 3).map((em) => (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, em)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem',
+                                  padding: '0.1rem',
+                                  opacity: 0.7,
+                                  transition: 'transform 0.15s ease'
+                                }}
+                                title={`React with ${em}`}
+                              >
+                                {em}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
 
+                      {/* EMOJI REACTION PILLS ROW */}
+                      {Object.keys(reactions).length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.25rem',
+                          marginTop: '0.2rem',
+                          padding: isMe ? '0 0.2rem 0 0' : '0 0 0 0.2rem'
+                        }}>
+                          {Object.entries(reactions).map(([em, voters]) => {
+                            const count = Array.isArray(voters) ? voters.length : 0;
+                            if (count === 0) return null;
+                            const hasMyVote = Array.isArray(voters) && voters.includes(identity.email.toLowerCase().trim());
+                            return (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, em)}
+                                style={{
+                                  background: hasMyVote ? 'rgba(255, 200, 0, 0.25)' : 'rgba(10, 14, 30, 0.8)',
+                                  border: hasMyVote ? '1px solid #ffc800' : '1px solid rgba(255, 255, 255, 0.15)',
+                                  borderRadius: '12px',
+                                  padding: '0.15rem 0.45rem',
+                                  color: '#fff',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+                                }}
+                              >
+                                <span>{em}</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: hasMyVote ? '#ffc800' : 'rgba(255,255,255,0.8)' }}>
+                                  {count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* TIMESTAMP & STATUS */}
                       <div style={{ fontSize: '0.63rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.3rem', paddingRight: isMe ? '0.15rem' : 0 }}>
                         <span>{isMe ? 'You' : 'Agent'}</span>
                         <span>•</span>
                         <span>{formatDeviceTime(msg.timestamp)}</span>
+                        {msg.isEdited && (
+                          <span style={{ color: '#ffd700', fontStyle: 'italic', fontWeight: 600 }}>• (edited)</span>
+                        )}
                         {isMe && (
                           msg.read ? (
                             <span style={{ color: '#00f0ff', fontWeight: 800 }}>• <i className="fa-solid fa-check-double" /> Seen</span>
@@ -717,6 +1315,63 @@ export default function PlayerSupportModal({
               )}
               <div ref={chatEndRef} />
             </div>
+
+            {/* QUOTED REPLY BAR (WHATSAPP STYLE ABOVE INPUT) */}
+            {replyingTo && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.5rem 0.95rem',
+                background: 'rgba(8, 12, 26, 0.98)',
+                borderTop: '1.5px solid #00f0ff',
+                borderLeft: `4px solid ${replyingTo.senderType === 'admin' ? '#ffc800' : '#00f0ff'}`
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingRight: '0.5rem' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: replyingTo.senderType === 'admin' ? '#ffc800' : '#00f0ff' }}>
+                    <i className="fa-solid fa-reply" style={{ marginRight: '4px' }} />
+                    Replying to {replyingTo.senderType === 'admin' ? 'Support Agent' : 'Yourself'}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {replyingTo.message || (replyingTo.hasAttachment ? '📷 Attached Photo' : '')}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.1rem' }}
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+
+            {/* EDITING MESSAGE BAR */}
+            {editingMessage && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.45rem 0.95rem',
+                background: 'rgba(255, 200, 0, 0.12)',
+                borderTop: '1.5px solid #ffc800',
+                color: '#ffc800'
+              }}>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className="fa-solid fa-pen-to-square" /> Editing your message...
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMessage(null);
+                    setInput('');
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#ffc800', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800 }}
+                >
+                  Cancel Edit
+                </button>
+              </div>
+            )}
 
             {/* ATTACHMENT PREVIEW BOX */}
             {attachment && (
@@ -743,11 +1398,100 @@ export default function PlayerSupportModal({
               </div>
             )}
 
+            {/* QUICK 1-TAP EMOJI INSERT BAR */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.35rem 0.95rem',
+              background: 'rgba(8, 11, 24, 0.98)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              overflowX: 'auto'
+            }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, marginRight: '2px', flexShrink: 0 }}>
+                QUICK:
+              </span>
+              {QUICK_INSERT_EMOJIS.map((em) => (
+                <button
+                  key={em}
+                  type="button"
+                  onClick={() => setInput((prev) => prev + em)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    padding: '0.15rem 0.4rem',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
+
+            {/* EMOJI PICKER POPOVER */}
+            <AnimatePresence>
+              {showEmojiPicker && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: '170px' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  style={{
+                    background: 'rgba(10, 14, 30, 0.99)',
+                    borderTop: '1.5px solid rgba(255, 200, 0, 0.35)',
+                    padding: '0.65rem 0.95rem',
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.65rem',
+                    zIndex: 15
+                  }}
+                >
+                  {EMOJI_CATEGORIES.map((cat) => (
+                    <div key={cat.name}>
+                      <div style={{ fontSize: '0.65rem', color: '#ffc800', fontWeight: 800, marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        {cat.name}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '0.35rem' }}>
+                        {cat.emojis.map((em) => (
+                          <button
+                            key={em}
+                            type="button"
+                            onClick={() => {
+                              setInput((prev) => prev + em);
+                              inputRef.current?.focus();
+                            }}
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              borderRadius: '8px',
+                              padding: '0.35rem',
+                              fontSize: '1.15rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'transform 0.1s ease'
+                            }}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* INPUT BAR DOCK */}
             <form onSubmit={handleSendMessage} style={{
               display: 'flex',
-              gap: '0.5rem',
-              padding: '0.75rem 0.95rem',
+              gap: '0.45rem',
+              padding: '0.7rem 0.95rem',
               background: 'rgba(10, 14, 30, 0.98)',
               borderTop: '1px solid rgba(255, 200, 0, 0.2)',
               alignItems: 'center'
@@ -759,6 +1503,8 @@ export default function PlayerSupportModal({
                 style={{ display: 'none' }}
                 onChange={handleAttachmentUpload}
               />
+
+              {/* Attachment Button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -768,8 +1514,32 @@ export default function PlayerSupportModal({
                   border: '1.5px solid rgba(255, 200, 0, 0.35)',
                   borderRadius: '12px',
                   color: '#ffc800',
-                  width: '40px',
-                  height: '40px',
+                  width: '38px',
+                  height: '38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '0.95rem',
+                  flexShrink: 0,
+                  transition: 'all 0.2s ease'
+                }}
+                title="Attach Screenshot / Proof"
+              >
+                {uploadingAttachment ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paperclip" />}
+              </button>
+
+              {/* Emoji Picker Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                style={{
+                  background: showEmojiPicker ? 'rgba(255, 200, 0, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                  border: showEmojiPicker ? '1.5px solid #ffc800' : '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '12px',
+                  color: showEmojiPicker ? '#ffc800' : '#fff',
+                  width: '38px',
+                  height: '38px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -778,14 +1548,16 @@ export default function PlayerSupportModal({
                   flexShrink: 0,
                   transition: 'all 0.2s ease'
                 }}
-                title="Attach Screenshot / Image"
+                title="Insert Emojis"
               >
-                {uploadingAttachment ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paperclip" />}
+                <i className="fa-regular fa-face-smile" />
               </button>
 
+              {/* Text Input */}
               <input
+                ref={inputRef}
                 type="text"
-                placeholder="Type your message..."
+                placeholder={editingMessage ? 'Update message...' : replyingTo ? `Reply to ${replyingTo.senderType === 'admin' ? 'Agent' : 'Yourself'}...` : 'Type your message...'}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 style={{
@@ -795,33 +1567,43 @@ export default function PlayerSupportModal({
                   borderRadius: '12px',
                   padding: '0.65rem 0.85rem',
                   color: '#fff',
-                  fontSize: '0.82rem',
+                  fontSize: currentFontSizeStyle,
                   outline: 'none',
-                  height: '40px'
+                  height: '38px'
                 }}
               />
 
+              {/* Send / Update Button */}
               <button
                 type="submit"
                 disabled={sending || (!input.trim() && !attachment)}
                 className="submit-btn"
                 style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '38px',
+                  height: '38px',
                   borderRadius: '12px',
                   padding: 0,
                   flexShrink: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #ffc800 0%, #e6a100 100%)',
+                  background: editingMessage
+                    ? 'linear-gradient(135deg, #00f0ff 0%, #00a8ff 100%)'
+                    : 'linear-gradient(135deg, #ffc800 0%, #e6a100 100%)',
                   color: '#000',
                   margin: 0,
                   boxShadow: '0 4px 15px rgba(255,200,0,0.3)',
                   opacity: (sending || (!input.trim() && !attachment)) ? 0.5 : 1
                 }}
+                title={editingMessage ? 'Save Edited Message' : 'Send Message'}
               >
-                {sending ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paper-plane" />}
+                {sending ? (
+                  <i className="fa-solid fa-spinner fa-spin" />
+                ) : editingMessage ? (
+                  <i className="fa-solid fa-check" />
+                ) : (
+                  <i className="fa-solid fa-paper-plane" />
+                )}
               </button>
             </form>
           </motion.div>

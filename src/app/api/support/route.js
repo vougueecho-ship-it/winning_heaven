@@ -90,7 +90,11 @@ export async function GET(req) {
           timestamp: 1,
           distributorId: 1,
           distributorType: 1,
-          hasAttachment: 1
+          hasAttachment: 1,
+          replyTo: 1,
+          isEdited: 1,
+          editedAt: 1,
+          reactions: 1
         })
         .sort({ timestamp: -1 })
         .skip(Math.max(0, (page - 1) * threadLimit))
@@ -327,7 +331,7 @@ export async function GET(req) {
 // POST new support message (Player or Admin reply)
 export async function POST(req) {
   try {
-    const { userEmail, userName, message, attachment, senderType, senderEmail } = await req.json();
+    const { userEmail, userName, message, attachment, senderType, senderEmail, replyTo } = await req.json();
 
     if (!userEmail || !senderType) {
       return NextResponse.json({ success: false, message: 'User email and sender type are required.' }, { status: 400 });
@@ -378,7 +382,17 @@ export async function POST(req) {
       timestamp: new Date().toISOString(),
       distributorId: distId,
       distributorType: distType,
-      distributorName: distName
+      distributorName: distName,
+      replyTo: replyTo && typeof replyTo === 'object' ? {
+        id: String(replyTo.id || ''),
+        message: String(replyTo.message || '').slice(0, 300),
+        senderType: String(replyTo.senderType || 'player'),
+        userName: String(replyTo.userName || (replyTo.senderType === 'admin' ? 'Support Agent' : 'Player')),
+        hasAttachment: Boolean(replyTo.hasAttachment || replyTo.attachment)
+      } : null,
+      isEdited: false,
+      editedAt: null,
+      reactions: {}
     };
 
     await supportCollection.insertOne(newMsg);
@@ -444,6 +458,103 @@ export async function PUT(req) {
     return NextResponse.json({ success: true, message: 'Messages marked as read.' });
   } catch (err) {
     console.error('Update Support Messages Error:', err);
+    return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
+  }
+}
+
+// PATCH edit message or add/remove emoji reactions
+export async function PATCH(req) {
+  try {
+    const body = await req.json();
+    const { id, message, userEmail, action, emoji, userIdentifier } = body || {};
+    if (!id) {
+      return NextResponse.json({ success: false, message: 'Message ID is required.' }, { status: 400 });
+    }
+
+    const db = await getDb();
+    const supportCollection = db.collection('supportMessages');
+    const msg = await supportCollection.findOne({ id: String(id) });
+    if (!msg) {
+      return NextResponse.json({ success: false, message: 'Message not found.' }, { status: 404 });
+    }
+
+    if (action === 'react') {
+      if (!emoji) {
+        return NextResponse.json({ success: false, message: 'Emoji is required.' }, { status: 400 });
+      }
+      const voter = (userIdentifier || userEmail || 'user').toLowerCase().trim();
+      const reactions = msg.reactions || {};
+      const currentVoters = Array.isArray(reactions[emoji]) ? reactions[emoji] : [];
+      const hasVoted = currentVoters.includes(voter);
+      let updatedVoters;
+      if (hasVoted) {
+        updatedVoters = currentVoters.filter((v) => v !== voter);
+      } else {
+        updatedVoters = [...currentVoters, voter];
+      }
+      if (updatedVoters.length === 0) {
+        delete reactions[emoji];
+      } else {
+        reactions[emoji] = updatedVoters;
+      }
+      await supportCollection.updateOne({ id: String(id) }, { $set: { reactions } });
+      publishAdminEvent('support', { distributorId: msg.distributorId || '' });
+      return NextResponse.json({ success: true, reactions });
+    }
+
+    // Edit message text
+    if (message === undefined || message === null) {
+      return NextResponse.json({ success: false, message: 'New message text is required.' }, { status: 400 });
+    }
+    const trimmed = String(message).trim();
+    if (!trimmed) {
+      return NextResponse.json({ success: false, message: 'Message cannot be empty.' }, { status: 400 });
+    }
+
+    await supportCollection.updateOne(
+      { id: String(id) },
+      {
+        $set: {
+          message: trimmed,
+          isEdited: true,
+          editedAt: new Date().toISOString()
+        }
+      }
+    );
+
+    publishAdminEvent('support', { distributorId: msg.distributorId || '' });
+    return NextResponse.json({ success: true, message: 'Message edited successfully.' });
+  } catch (err) {
+    console.error('PATCH Support Error:', err);
+    return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
+  }
+}
+
+// DELETE clear chat history or delete specific message
+export async function DELETE(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get('email');
+    const msgId = searchParams.get('id');
+
+    const db = await getDb();
+    const supportCollection = db.collection('supportMessages');
+
+    if (msgId) {
+      await supportCollection.deleteOne({ id: String(msgId) });
+      cache.del('admin_stats');
+      return NextResponse.json({ success: true, message: 'Message deleted successfully.' });
+    }
+
+    if (email) {
+      await supportCollection.deleteMany({ userEmail: email.toLowerCase().trim() });
+      cache.del('admin_stats');
+      return NextResponse.json({ success: true, message: 'Chat history cleared successfully.' });
+    }
+
+    return NextResponse.json({ success: false, message: 'Missing email or message ID.' }, { status: 400 });
+  } catch (err) {
+    console.error('DELETE Support Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
   }
 }

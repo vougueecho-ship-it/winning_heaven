@@ -14,7 +14,10 @@ export default function SupportTab({ adminUser }) {
   const [playerHits, setPlayerHits] = useState([]);
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
   const [openedPlayers, setOpenedPlayers] = useState({}); // email -> { email, name }
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const chatEndRef = useRef(null);
+  const adminInputRef = useRef(null);
 
   const distQueryParam = adminUser?.distributorId ? `&adminDistributorId=${adminUser.distributorId}` : '';
 
@@ -289,6 +292,9 @@ export default function SupportTab({ adminUser }) {
     setAdminReplyText('');
     const replyAttachment = adminAttachment;
     setAdminAttachment('');
+    const currentReplyTo = replyingTo;
+    setReplyingTo(null);
+    setShowEmojiPicker(false);
 
     const tempId = 'temp-' + Date.now();
     const tempMessage = {
@@ -299,7 +305,8 @@ export default function SupportTab({ adminUser }) {
       attachment: replyAttachment,
       senderType: 'admin',
       senderEmail: adminUser.email,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      replyTo: currentReplyTo
     };
 
     mutateActiveChat(
@@ -317,7 +324,8 @@ export default function SupportTab({ adminUser }) {
           message: replyMsg,
           attachment: replyAttachment,
           senderType: 'admin',
-          senderEmail: adminUser.email
+          senderEmail: adminUser.email,
+          replyTo: currentReplyTo
         })
       });
       const data = await response.json();
@@ -584,9 +592,34 @@ export default function SupportTab({ adminUser }) {
                         fontSize: '0.8rem',
                         maxWidth: 'min(75%, 100%)',
                         fontWeight: isMe ? '600' : 'normal',
-                        wordBreak: 'break-word'
+                        wordBreak: 'break-word',
+                        position: 'relative'
                       }}>
-                        {msg.message}
+                        {/* QUOTED REPLY BANNER (WHATSAPP STYLE) */}
+                        {msg.replyTo && (
+                          <div
+                            style={{
+                              background: isMe ? 'rgba(0, 0, 0, 0.18)' : 'rgba(0, 0, 0, 0.4)',
+                              borderLeft: `3px solid ${msg.replyTo.senderType === 'admin' ? '#000' : 'var(--gold-primary)'}`,
+                              borderRadius: '6px',
+                              padding: '0.25rem 0.5rem',
+                              marginBottom: '0.4rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.1rem'
+                            }}
+                          >
+                            <span style={{ fontSize: '0.62rem', fontWeight: 'bold', color: isMe ? '#000' : 'var(--gold-primary)' }}>
+                              {msg.replyTo.senderType === 'admin' ? 'Agent' : 'Player'}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {msg.replyTo.message || (msg.replyTo.hasAttachment ? '📷 Attached Photo' : '')}
+                            </span>
+                          </div>
+                        )}
+
+                        <div>{msg.message}</div>
+
                         {msg.attachment && (
                           <div style={{ marginTop: '0.5rem' }}>
                             <img
@@ -612,9 +645,42 @@ export default function SupportTab({ adminUser }) {
                             />
                           </div>
                         )}
+
+                        {/* Reply Action Trigger */}
+                        <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: '0.3rem', paddingTop: '0.25rem', borderTop: isMe ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.06)' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo({
+                                id: msg.id,
+                                message: msg.message,
+                                senderType: msg.senderType,
+                                userName: msg.userName,
+                                hasAttachment: Boolean(msg.attachment)
+                              });
+                              adminInputRef.current?.focus();
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: isMe ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
+                              fontSize: '0.62rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              padding: 0
+                            }}
+                            title="Reply to this message"
+                          >
+                            <i className="fa-solid fa-reply" /> Reply
+                          </button>
+                        </div>
                       </div>
+
                       <span style={{ fontSize: '0.55rem', opacity: 0.65, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
                         {isMe ? 'You (Agent)' : (msg.userName && !/^support\s*agent$/i.test(msg.userName) ? msg.userName : activeChatDisplayName || 'Player')} • {formatDeviceTime(msg.timestamp)}
+                        {msg.isEdited && <span style={{ color: '#ffd700', fontStyle: 'italic' }}>• (edited)</span>}
                         {isMe && (
                           msg.read ? (
                             <span style={{ color: '#60a5fa', fontWeight: 'bold', marginLeft: '3px' }}>
@@ -634,7 +700,34 @@ export default function SupportTab({ adminUser }) {
               <div ref={chatEndRef} />
             </div>
 
-            <form onSubmit={handleSendAdminReply} style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem', gap: '0.5rem', flexShrink: 0 }}>
+            <form onSubmit={handleSendAdminReply} style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.5rem', gap: '0.4rem', flexShrink: 0 }}>
+              {/* Quoted Reply Preview Above Admin Input */}
+              {replyingTo && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.35rem 0.75rem',
+                  background: 'rgba(255, 215, 0, 0.1)',
+                  borderLeft: `3px solid ${replyingTo.senderType === 'admin' ? '#ffd700' : '#00f0ff'}`,
+                  borderRadius: '6px'
+                }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.7rem' }}>
+                    <strong style={{ color: replyingTo.senderType === 'admin' ? '#ffd700' : '#00f0ff', marginRight: '5px' }}>
+                      Replying to {replyingTo.senderType === 'admin' ? 'Agent' : 'Player'}:
+                    </strong>
+                    <span style={{ opacity: 0.8 }}>{replyingTo.message || '📷 Photo'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '0.9rem', padding: '0 4px' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+
               {adminAttachment && (
                 <div style={{ alignSelf: 'flex-start' }}>
                   <div style={{ position: 'relative', display: 'inline-block', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -664,6 +757,21 @@ export default function SupportTab({ adminUser }) {
                   </div>
                 </div>
               )}
+
+              {/* Quick Emojis Bar for Staff */}
+              <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', overflowX: 'auto', padding: '0.1rem 0' }}>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>EMOJIS:</span>
+                {['🎰', '🔥', '💰', '👑', '💎', '🚀', '👍', '❤️', '🙌', '🎉'].map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => setAdminReplyText((prev) => prev + em)}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.1rem 0.35rem', fontSize: '0.8rem', cursor: 'pointer' }}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
 
               {(() => {
                 const isTypeBSupportChat = activeChatMessages.some(m => m.distributorType === 'B');
@@ -707,8 +815,9 @@ export default function SupportTab({ adminUser }) {
                     </label>
 
                     <input
+                      ref={adminInputRef}
                       type="text"
-                      placeholder={activeChatMessages.length === 0 ? 'Write first message to player...' : 'Type reply to player...'}
+                      placeholder={activeChatMessages.length === 0 ? 'Write first message to player...' : replyingTo ? `Replying to ${replyingTo.senderType === 'admin' ? 'Agent' : 'Player'}...` : 'Type reply to player...'}
                       value={adminReplyText}
                       onChange={(e) => setAdminReplyText(e.target.value)}
                       style={{
