@@ -19,6 +19,7 @@ export default function LedgerTab({
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [ledgerStatusFilter, setLedgerStatusFilter] = useState('PENDING'); // 'PENDING' (default), 'FAILED', 'SUCCESS', '' (All)
   const limit = 20;
 
   useEffect(() => {
@@ -29,9 +30,15 @@ export default function LedgerTab({
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Finance ledger: only PENDING. Withdrawals stay PENDING_COINS for coins staff
-  // first; after coins approve they become PENDING and then appear here.
-  const swrKey = `/api/transactions?status=PENDING&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
+  // Status Override Modal States (Re-Approve Failed / Mark Approved as Failed)
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [targetStatusTx, setTargetStatusTx] = useState(null);
+  const [targetNewStatus, setTargetNewStatus] = useState(''); // 'SUCCESS' | 'FAILED'
+  const [overrideReason, setOverrideReason] = useState('');
+  const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
+
+  // Finance ledger swr key supports PENDING (default), FAILED, SUCCESS, or ALL
+  const swrKey = `/api/transactions?status=${ledgerStatusFilter}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
 
   // SWR automatically polls every 4s for ledger transactions
   const { data, error, mutate } = usePollingSWR(swrKey, POLL.QUEUES, { keepPreviousData: false });
@@ -58,6 +65,62 @@ export default function LedgerTab({
       mutate();
     } finally {
       setApprovingIds(prev => { const n = { ...prev }; delete n[txId]; return n; });
+    }
+  };
+
+  const handleOpenReApproveModal = (tx) => {
+    setTargetStatusTx(tx);
+    setTargetNewStatus('SUCCESS');
+    setOverrideReason('Re-approved by admin');
+    setStatusModalOpen(true);
+  };
+
+  const handleOpenRevokeModal = (tx) => {
+    setTargetStatusTx(tx);
+    setTargetNewStatus('FAILED');
+    setOverrideReason('Approved by mistake / Declined by admin');
+    setStatusModalOpen(true);
+  };
+
+  const handleConfirmStatusOverride = async () => {
+    if (!targetStatusTx || !targetNewStatus) return;
+    setIsSubmittingStatus(true);
+    try {
+      if (targetNewStatus === 'SUCCESS') {
+        if (targetStatusTx.type === 'WITHDRAW') {
+          handleOpenPayoutModal(targetStatusTx);
+          setStatusModalOpen(false);
+          return;
+        }
+        await handleApprove(targetStatusTx.id);
+        alert('Transaction re-approved successfully!');
+      } else if (targetNewStatus === 'FAILED') {
+        const res = await fetch('/api/transactions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: targetStatusTx.id,
+            status: 'FAILED',
+            note: overrideReason.trim() || 'Declined by Admin',
+            rejectionReason: overrideReason.trim() || 'Declined by Admin',
+            processedBy: adminUser?.email || 'admin@winningheaven.com'
+          })
+        });
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+          alert('Transaction status changed to FAILED!');
+        } else {
+          alert(resData.message || 'Failed to update transaction status.');
+        }
+      }
+      setStatusModalOpen(false);
+      setTargetStatusTx(null);
+      mutate();
+    } catch (err) {
+      console.error('Status override error:', err);
+      alert('Error updating transaction status. Check internet connection.');
+    } finally {
+      setIsSubmittingStatus(false);
     }
   };
 
@@ -256,15 +319,44 @@ export default function LedgerTab({
         </div>
       ) : (
         <>
-          {/* PENDING VIEW: Search Input */}
-          <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', width: '100%', marginBottom: '1.25rem' }}>
-            <i className="fa-solid fa-magnifying-glass input-icon"></i>
-            <input
-              type="text"
-              placeholder="Search pending ledger by email or gateway..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          {/* LEDGER SEARCH & STATUS FILTER */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', flex: '1 1 280px', margin: 0 }}>
+              <i className="fa-solid fa-magnifying-glass input-icon"></i>
+              <input
+                type="text"
+                placeholder="Search ledger by email, gateway or note..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="ledger-status-filter" style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <i className="fa-solid fa-filter" style={{ color: 'var(--gold-primary)', marginRight: '4px' }}></i> Status:
+              </label>
+              <select
+                id="ledger-status-filter"
+                value={ledgerStatusFilter}
+                onChange={(e) => { setLedgerStatusFilter(e.target.value); setPage(1); }}
+                style={{
+                  background: '#0b0d16',
+                  color: 'var(--gold-primary)',
+                  border: '1px solid rgba(255,215,0,0.3)',
+                  padding: '0.55rem 0.85rem',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="PENDING" style={{ background: '#0a0e1a', color: '#fff' }}>PENDING (Requires Action)</option>
+                <option value="FAILED" style={{ background: '#0a0e1a', color: '#ef4444' }}>FAILED / REJECTED</option>
+                <option value="SUCCESS" style={{ background: '#0a0e1a', color: '#22c55e' }}>SUCCESS / APPROVED</option>
+                <option value="" style={{ background: '#0a0e1a', color: '#38bdf8' }}>ALL STATUSES</option>
+              </select>
+            </div>
           </div>
 
           {/* DEPOSITS SECTION */}
@@ -384,7 +476,7 @@ export default function LedgerTab({
                             </button>
                             <button
                               disabled={processingIds[tx.id]}
-                              onClick={wrapAction(tx.id, () => handleFail(tx.id))}
+                              onClick={() => handleOpenRevokeModal(tx)}
                               className="action-row-btn btn-delete"
                               style={{ background: '#ef4444', color: '#fff', opacity: processingIds[tx.id] ? 0.5 : 1 }}
                               title="Fail/Reject Payment"
@@ -392,6 +484,52 @@ export default function LedgerTab({
                               {processingIds[tx.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-xmark"></i>}
                             </button>
                           </div>
+                        ) : (tx.status === 'FAILED' || tx.status === 'REJECTED' || tx.status === 'CANCELLED') ? (
+                          <button
+                            disabled={processingIds[tx.id]}
+                            onClick={() => handleOpenReApproveModal(tx)}
+                            className="action-row-btn"
+                            style={{
+                              background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
+                              color: '#fff',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.68rem',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              cursor: 'pointer',
+                              border: 'none',
+                              fontWeight: 'bold'
+                            }}
+                            title="Re-Approve Failed Payment"
+                          >
+                            <i className="fa-solid fa-rotate-left"></i>
+                            <span>Approve</span>
+                          </button>
+                        ) : (tx.status === 'SUCCESS' || tx.status === 'READY' || tx.status === 'COMPLETED' || tx.status === 'COINS_LOADING') ? (
+                          <button
+                            disabled={processingIds[tx.id]}
+                            onClick={() => handleOpenRevokeModal(tx)}
+                            className="action-row-btn"
+                            style={{
+                              background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                              color: '#fff',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.68rem',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              cursor: 'pointer',
+                              border: 'none',
+                              fontWeight: 'bold'
+                            }}
+                            title="Revoke & Mark Failed"
+                          >
+                            <i className="fa-solid fa-ban"></i>
+                            <span>Mark Failed</span>
+                          </button>
                         ) : (
                           <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Processed</span>
                         )}
@@ -537,7 +675,7 @@ export default function LedgerTab({
                             </button>
                             <button
                               disabled={processingIds[tx.id]}
-                              onClick={wrapAction(tx.id, () => handleFail(tx.id))}
+                              onClick={() => handleOpenRevokeModal(tx)}
                               className="action-row-btn btn-delete"
                               style={{ background: '#ef4444', color: '#fff', opacity: processingIds[tx.id] ? 0.5 : 1 }}
                               title="Fail/Reject Payment"
@@ -545,6 +683,52 @@ export default function LedgerTab({
                               {processingIds[tx.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-xmark"></i>}
                             </button>
                           </div>
+                        ) : (tx.status === 'FAILED' || tx.status === 'REJECTED' || tx.status === 'CANCELLED') ? (
+                          <button
+                            disabled={processingIds[tx.id]}
+                            onClick={() => handleOpenReApproveModal(tx)}
+                            className="action-row-btn"
+                            style={{
+                              background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
+                              color: '#fff',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.68rem',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              cursor: 'pointer',
+                              border: 'none',
+                              fontWeight: 'bold'
+                            }}
+                            title="Re-Approve Failed Withdrawal"
+                          >
+                            <i className="fa-solid fa-rotate-left"></i>
+                            <span>Approve</span>
+                          </button>
+                        ) : (tx.status === 'SUCCESS' || tx.status === 'READY' || tx.status === 'COMPLETED') ? (
+                          <button
+                            disabled={processingIds[tx.id]}
+                            onClick={() => handleOpenRevokeModal(tx)}
+                            className="action-row-btn"
+                            style={{
+                              background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                              color: '#fff',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.68rem',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              cursor: 'pointer',
+                              border: 'none',
+                              fontWeight: 'bold'
+                            }}
+                            title="Revoke & Mark Failed"
+                          >
+                            <i className="fa-solid fa-ban"></i>
+                            <span>Mark Failed</span>
+                          </button>
                         ) : tx.status === 'PENDING_COINS' ? (
                           <span style={{ fontSize: '0.7rem', color: '#ffb703', fontWeight: 'bold' }}>Waiting on Coins Manager</span>
                         ) : (
@@ -767,6 +951,116 @@ export default function LedgerTab({
                   {isProcessingPayout ? 'PROCESSING PAYOUT...' : 'CONFIRM PAYOUT ➔'}
                 </button>
               </form>
+            </div>
+          </div>
+        </PanelModalBackdrop>
+      )}
+
+      {/* STATUS OVERRIDE CONFIRMATION MODAL (Re-Approve Failed / Revoke Approved) */}
+      {statusModalOpen && targetStatusTx && (
+        <PanelModalBackdrop onClose={() => setStatusModalOpen(false)}>
+          <div className="admin-modal" style={{ width: '90%', maxWidth: '460px', background: '#0a0e1a', border: `1px solid ${targetNewStatus === 'SUCCESS' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`, borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.85)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, color: targetNewStatus === 'SUCCESS' ? '#22c55e' : '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontFamily: 'var(--font-heading)' }}>
+                <i className={`fa-solid ${targetNewStatus === 'SUCCESS' ? 'fa-circle-check' : 'fa-circle-exclamation'}`}></i>
+                {targetNewStatus === 'SUCCESS' ? 'Re-Approve Failed Transaction' : 'Revoke & Mark Payment Failed'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setStatusModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.1rem', cursor: 'pointer' }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                {targetNewStatus === 'SUCCESS' ? (
+                  <>Are you sure you want to <strong style={{ color: '#22c55e' }}>RE-APPROVE</strong> this previously failed transaction?</>
+                ) : (
+                  <>Are you sure you want to <strong style={{ color: '#ef4444' }}>REVOKE &amp; MARK FAILED</strong> this approved transaction?</>
+                )}
+              </p>
+
+              <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.85rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Player Email: </span>
+                  <span style={{ color: 'var(--cyan-primary, #00f0ff)', fontFamily: 'monospace', fontWeight: 600 }}>{targetStatusTx.userEmail}</span>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Type &amp; Game: </span>
+                  <strong style={{ color: '#fff' }}>{targetStatusTx.type}</strong> — <span>{targetStatusTx.gameTitle}</span>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Amount: </span>
+                  <strong style={{ color: 'var(--gold-primary)', fontSize: '0.95rem' }}>${parseFloat(targetStatusTx.amount || 0).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Gateway: </span>
+                  <span style={{ color: '#fff', fontWeight: 600 }}>{targetStatusTx.gateway || '—'} {targetStatusTx.code ? `(${targetStatusTx.code})` : ''}</span>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Current Status: </span>
+                  <span className={`admin-badge-preview b-${targetStatusTx.status.toLowerCase() === 'success' ? 'ready' : targetStatusTx.status.toLowerCase()}`}>
+                    {targetStatusTx.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '0.25rem' }}>
+                <label htmlFor="override-reason" style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem', display: 'block' }}>
+                  {targetNewStatus === 'SUCCESS' ? 'Approval Note (Optional)' : 'Reason for Rejection / Failure (Required)'}
+                </label>
+                <div className="input-wrapper">
+                  <i className="fa-solid fa-comment-dots input-icon"></i>
+                  <input
+                    type="text"
+                    id="override-reason"
+                    placeholder={targetNewStatus === 'SUCCESS' ? 'e.g. Re-approved after verification' : 'e.g. Approved by mistake / Chargeback'}
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    style={{ fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setStatusModalOpen(false)}
+                  className="action-row-btn"
+                  style={{ flex: 1, padding: '0.65rem', background: '#334155', color: '#fff', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                >
+                  Close / Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmStatusOverride}
+                  disabled={isSubmittingStatus}
+                  className="submit-btn"
+                  style={{
+                    flex: 1.2,
+                    padding: '0.65rem',
+                    background: targetNewStatus === 'SUCCESS' ? 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: isSubmittingStatus ? 'wait' : 'pointer',
+                    opacity: isSubmittingStatus ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    margin: 0
+                  }}
+                >
+                  {isSubmittingStatus ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className={`fa-solid ${targetNewStatus === 'SUCCESS' ? 'fa-check' : 'fa-xmark'}`}></i>}
+                  <span>{isSubmittingStatus ? 'Updating...' : targetNewStatus === 'SUCCESS' ? 'Confirm Re-Approve' : 'Confirm Fail'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </PanelModalBackdrop>
