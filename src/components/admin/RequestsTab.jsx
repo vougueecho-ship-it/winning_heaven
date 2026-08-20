@@ -25,6 +25,12 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
   const [isExistingAccount, setIsExistingAccount] = useState(false);
   const [isUpdatingCreds, setIsUpdatingCreds] = useState(false);
 
+  // Cancel Request Modal States
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [requestToCancel, setRequestToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('Cancelled by admin');
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const cleanRoles = (adminUser?.role || '').toLowerCase().split(',').map(r => r.trim());
   const canUpdateCredentials = cleanRoles.some(r => ['admin', 'operation_admin', 'coins_admin', 'distributor'].includes(r));
 
@@ -208,6 +214,43 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
     mutate(); // instantly refresh list
   };
 
+  const handleCancelClick = (reqItem) => {
+    setRequestToCancel(reqItem);
+    setCancelReason('Cancelled by admin');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!requestToCancel) return;
+    setIsCancelling(true);
+    try {
+      const response = await fetch('/api/account-requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: requestToCancel.id,
+          status: 'REJECTED',
+          rejectionReason: cancelReason.trim() || 'Cancelled by admin',
+          processedBy: adminUser?.email || 'admin@winningheaven.com',
+          adminEmail: adminUser?.email || ''
+        })
+      });
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        setCancelModalOpen(false);
+        setRequestToCancel(null);
+        mutate(); // Refresh the list instantly
+      } else {
+        alert(resData.message || 'Failed to cancel account request.');
+      }
+    } catch (err) {
+      console.error('Cancel request error:', err);
+      alert('Error cancelling request. Please check internet connection.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const handleEditGameAccount = (email, gameTitle) => {
     setSelectedPlayerEmail(email);
     setSelectedGameTitle(gameTitle);
@@ -382,26 +425,53 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       {req.status === 'PENDING' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          <button
-                            disabled={processingIds[req.id]}
-                            onClick={wrapAction(req.id, () => handleApprove(req))}
-                            className="submit-btn"
-                            style={{
-                              margin: 0,
-                              padding: '0.4rem 0.85rem',
-                              width: 'auto',
-                              display: 'inline-flex',
-                              gap: '0.4rem',
-                              alignItems: 'center',
-                              opacity: processingIds[req.id] ? 0.6 : 1,
-                              background: '#22c55e'
-                            }}
-                          >
-                            {processingIds[req.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-user-check"></i>}
-                            <span style={{ fontSize: '0.7rem' }}>
-                              {processingIds[req.id] ? 'Approving...' : 'Approve'}
-                            </span>
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <button
+                              disabled={processingIds[req.id]}
+                              onClick={wrapAction(req.id, () => handleApprove(req))}
+                              className="submit-btn"
+                              style={{
+                                margin: 0,
+                                padding: '0.4rem 0.85rem',
+                                width: 'auto',
+                                display: 'inline-flex',
+                                gap: '0.4rem',
+                                alignItems: 'center',
+                                opacity: processingIds[req.id] ? 0.6 : 1,
+                                background: '#22c55e'
+                              }}
+                            >
+                              {processingIds[req.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-user-check"></i>}
+                              <span style={{ fontSize: '0.7rem' }}>
+                                {processingIds[req.id] ? 'Approving...' : 'Approve'}
+                              </span>
+                            </button>
+
+                            <button
+                              disabled={processingIds[req.id]}
+                              onClick={() => handleCancelClick(req)}
+                              className="action-row-btn"
+                              style={{
+                                margin: 0,
+                                padding: '0.4rem 0.85rem',
+                                width: 'auto',
+                                display: 'inline-flex',
+                                gap: '0.35rem',
+                                alignItems: 'center',
+                                background: '#ef4444',
+                                color: '#fff',
+                                fontSize: '0.7rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                border: 'none'
+                              }}
+                              title="Cancel Account Request"
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                              <span>Cancel</span>
+                            </button>
+                          </div>
+
                           {req.distributorType === 'B' && (
                             <span style={{ fontSize: '0.6rem', color: '#3b82f6', display: 'block', textAlign: 'center' }}>
                               Managed by {req.distributorName || 'Distributor'}
@@ -655,6 +725,101 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                   {isUpdatingCreds ? 'SAVING...' : isExistingAccount ? 'UPDATE GAME ACCOUNT' : 'CREATE GAME ACCOUNT'}
                 </button>
               </form>
+            </div>
+          </div>
+        </PanelModalBackdrop>
+      )}
+
+      {/* Confirmation Modal for Cancelling Account Request */}
+      {cancelModalOpen && requestToCancel && (
+        <PanelModalBackdrop onClose={() => setCancelModalOpen(false)}>
+          <div className="admin-modal" style={{ width: '90%', maxWidth: '440px', background: '#0a0e1a', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontFamily: 'var(--font-heading)' }}>
+                <i className="fa-solid fa-circle-exclamation"></i> Cancel Game Request
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.1rem', cursor: 'pointer' }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                Are you sure you want to <strong style={{ color: '#ef4444' }}>CANCEL</strong> this game account request?
+              </p>
+
+              <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.85rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Player: </span>
+                  <strong style={{ color: '#fff' }}>{requestToCancel.userName || '—'}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Email: </span>
+                  <span style={{ color: 'var(--cyan-primary, #00f0ff)', fontFamily: 'monospace', fontWeight: 600 }}>{requestToCancel.userEmail}</span>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>Requested Game: </span>
+                  <span className="admin-badge-preview b-hot" style={{ marginLeft: '4px' }}>{requestToCancel.gameTitle}</span>
+                </div>
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '0.25rem' }}>
+                <label htmlFor="cancel-reason" style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem', display: 'block' }}>
+                  Cancellation Reason (Optional)
+                </label>
+                <div className="input-wrapper">
+                  <i className="fa-solid fa-comment-dots input-icon"></i>
+                  <input
+                    type="text"
+                    id="cancel-reason"
+                    placeholder="e.g. Cancelled by admin / Invalid request"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    style={{ fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setCancelModalOpen(false)}
+                  className="action-row-btn"
+                  style={{ flex: 1, padding: '0.65rem', background: '#334155', color: '#fff', fontSize: '0.8rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                >
+                  Close / Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancel}
+                  disabled={isCancelling}
+                  className="submit-btn"
+                  style={{
+                    flex: 1.2,
+                    padding: '0.65rem',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: isCancelling ? 'wait' : 'pointer',
+                    opacity: isCancelling ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    margin: 0
+                  }}
+                >
+                  {isCancelling ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-xmark"></i>}
+                  <span>{isCancelling ? 'Cancelling...' : 'Confirm Cancel'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </PanelModalBackdrop>
