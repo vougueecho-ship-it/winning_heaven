@@ -4,8 +4,9 @@ import useSWR from 'swr';
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
 export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDeleteGame }) {
-  const { data: gamesData, error, mutate } = useSWR('/api/games', fetcher);
+  const { data: gamesData, error, mutate } = useSWR('/api/games?includeInactive=true', fetcher);
   const [gameSearch, setGameSearch] = useState('');
+  const [togglingId, setTogglingId] = useState(null);
 
   const games = gamesData?.games || [];
   const filteredGames = games.filter((g) =>
@@ -15,6 +16,37 @@ export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDel
   const handleDelete = async (id) => {
     await onDeleteGame(id);
     mutate(); // revalidate cache
+  };
+
+  const handleToggleActive = async (game) => {
+    if (togglingId) return;
+    setTogglingId(game.id);
+    const newActiveState = game.active === false ? true : false;
+    try {
+      const res = await fetch('/api/games', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: game.id,
+          title: game.title,
+          badge: game.badge,
+          link: game.link,
+          openPanelLink: game.openPanelLink,
+          active: newActiveState
+        })
+      });
+      const resData = await res.json();
+      if (res.ok && resData.success) {
+        mutate();
+      } else {
+        alert(resData.message || 'Failed to toggle game visibility.');
+      }
+    } catch (err) {
+      console.error('Toggle game status error:', err);
+      alert('Network error while updating game visibility.');
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   if (!gamesData && !error) {
@@ -54,13 +86,14 @@ export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDel
               <th>Game Cover</th>
               <th>Game Title</th>
               <th>Badge Type</th>
+              <th>Lobby Visibility</th>
               <th>Target Play Link</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredGames.length === 0 ? (
-              <tr><td colSpan="5" className="text-center text-muted">No games matching criteria found.</td></tr>
+              <tr><td colSpan="6" className="text-center text-muted">No games matching criteria found.</td></tr>
             ) : (
               filteredGames.map((game) => (
                 <tr key={game.id}>
@@ -68,7 +101,6 @@ export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDel
                     <div className="admin-game-th-img">
                       {(() => {
                         const img = String(game.image || '');
-                        // API returns lean proxy URLs (/api/games/image?id=...) — same as lobby
                         const isRealCover =
                           img.startsWith('data:') ||
                           img.startsWith('game_') ||
@@ -89,6 +121,43 @@ export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDel
                   </td>
                   <td><strong>{game.title}</strong></td>
                   <td><span className={`admin-badge-preview b-${game.badge}`}>{game.badge}</span></td>
+                  <td>
+                    <button
+                      onClick={() => handleToggleActive(game)}
+                      disabled={togglingId === game.id}
+                      style={{
+                        background: game.active !== false
+                          ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(21, 128, 61, 0.25) 100%)'
+                          : 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(185, 28, 28, 0.25) 100%)',
+                        border: `1px solid ${game.active !== false ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)'}`,
+                        color: game.active !== false ? '#4ade80' : '#f87171',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '20px',
+                        fontSize: '0.72rem',
+                        fontWeight: '800',
+                        cursor: togglingId === game.id ? 'wait' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        transition: 'all 0.2s ease',
+                        boxShadow: game.active !== false ? '0 0 10px rgba(34, 197, 94, 0.25)' : 'none'
+                      }}
+                      title={game.active !== false ? 'Click to HIDE from Player Lobby' : 'Click to SHOW in Player Lobby'}
+                    >
+                      {togglingId === game.id ? (
+                        <i className="fa-solid fa-spinner fa-spin"></i>
+                      ) : (
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: game.active !== false ? '#22c55e' : '#ef4444',
+                          boxShadow: game.active !== false ? '0 0 8px #22c55e' : 'none'
+                        }} />
+                      )}
+                      <span>{game.active !== false ? 'ONLINE (ON)' : 'HIDDEN (OFF)'}</span>
+                    </button>
+                  </td>
                   <td>
                     <a href={game.link} target="_blank" rel="noopener noreferrer" className="gold-text" style={{ fontSize: '0.75rem', textDecoration: 'none' }}>
                       {game.link.slice(0, 24)}...

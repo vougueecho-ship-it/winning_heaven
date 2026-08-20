@@ -9,8 +9,13 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const distributorId = searchParams.get('distributorId');
+    const includeInactive = searchParams.get('includeInactive') === 'true' || Boolean(searchParams.get('adminRole'));
 
-    const cacheKey = distributorId ? `games_${distributorId}` : 'games_all_public';
+    const cacheKey = distributorId
+      ? `games_${distributorId}`
+      : includeInactive
+        ? 'games_all_include_inactive'
+        : 'games_all_public';
     const cachedGames = cache.get(cacheKey);
     if (cachedGames) {
       return jsonOk(
@@ -38,6 +43,7 @@ export async function GET(req) {
           isHot: 1,
           isNew: 1,
           isMaintenance: 1,
+          active: { $ifNull: ["$active", true] },
           imagePrefix: { $substrCP: [{ $ifNull: ["$image", ""] }, 0, 30] },
           imageLength: { $strLenCP: [{ $ifNull: ["$image", ""] }] },
           staticImage: {
@@ -51,7 +57,9 @@ export async function GET(req) {
       }
     ]).toArray();
 
-    const games = rawGames.map((g) => {
+    const filteredRawGames = includeInactive ? rawGames : rawGames.filter(g => g.active !== false);
+
+    const games = filteredRawGames.map((g) => {
       let img = g.staticImage || g.imagePrefix || '';
       if (typeof g.imagePrefix === 'string' && g.imagePrefix.startsWith('data:image')) {
         img = `/api/games/image?id=${encodeURIComponent(g.id)}&v=${g.imageLength || 1}`;
@@ -113,7 +121,8 @@ export async function POST(req) {
       link: game.link,
       openPanelLink: game.openPanelLink || '',
       availableCoins: Number(game.availableCoins || 0),
-      usedCoins: 0
+      usedCoins: 0,
+      active: game.active !== undefined ? Boolean(game.active) : true
     };
 
     await gamesCollection.insertOne(newGame);
@@ -121,6 +130,7 @@ export async function POST(req) {
     // Invalidate caches
     cache.del('games_all');
     cache.del('games_all_public');
+    cache.del('games_all_include_inactive');
     cache.del(`game_image_${newGame.id}`);
     
     return NextResponse.json({ success: true, game: { ...newGame, image: toPublicGameImage(newGame) }, message: 'Game added successfully!' });
@@ -166,7 +176,8 @@ export async function PUT(req) {
       image: game.image,
       link: game.link,
       openPanelLink: game.openPanelLink,
-      availableCoins: game.availableCoins !== undefined ? Number(game.availableCoins) : undefined
+      availableCoins: game.availableCoins !== undefined ? Number(game.availableCoins) : undefined,
+      active: game.active !== undefined ? Boolean(game.active) : undefined
     };
 
     if (game.resetUsedCoins) {

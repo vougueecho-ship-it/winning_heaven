@@ -171,7 +171,7 @@ export default function Home() {
     fallbackData: cachedFrontendSettings ? { success: true, settings: cachedFrontendSettings } : undefined
   });
 
-  const games = gamesData?.games || [];
+  const games = (gamesData?.games || []).filter((g) => g.active !== false);
   const gateways = gatewaysData?.gateways || [];
   const frontendSettings = frontendSettingsData?.settings || {};
 

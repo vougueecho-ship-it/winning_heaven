@@ -168,7 +168,7 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
               <th>Timestamp</th>
               <th>Status</th>
               <th>Screenshot</th>
-              <th>Actions</th>
+              <th style={{ textAlign: 'center', minWidth: '130px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -276,73 +276,103 @@ export default function TxSearchTab({ onInspectProof, adminUser }) {
                       )}
                     </div>
                   </td>
-                  <td>
-                    {tx.status === 'PENDING' ? (
-                      <div className="table-actions" style={{ justifyContent: 'flex-start', gap: '0.4rem' }}>
+                  <td style={{ textAlign: 'center', minWidth: '130px', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', justifyContent: 'center' }}>
+                      {tx.status === 'PENDING' ? (
+                        <>
+                          <button
+                            onClick={() => handleOpenReApproveModal(tx)}
+                            style={{
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              color: '#fff',
+                              border: '1px solid rgba(16, 185, 129, 0.4)',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                            }}
+                            title="Approve Payment"
+                          >
+                            <i className="fa-solid fa-check"></i>
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenRevokeModal(tx)}
+                            style={{
+                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                              color: '#fff',
+                              border: '1px solid rgba(239, 68, 68, 0.4)',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+                            }}
+                            title="Fail Payment"
+                          >
+                            <i className="fa-solid fa-xmark"></i>
+                            <span>Fail</span>
+                          </button>
+                        </>
+                      ) : (tx.status === 'FAILED' || tx.status === 'REJECTED' || tx.status === 'CANCELLED') ? (
                         <button
                           onClick={() => handleOpenReApproveModal(tx)}
-                          className="action-row-btn btn-edit"
-                          style={{ background: '#22c55e', color: '#fff' }}
-                          title="Approve Payment"
+                          style={{
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: '#fff',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.72rem',
+                            fontWeight: '800',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Re-Approve Failed Payment"
                         >
-                          <i className="fa-solid fa-check"></i>
+                          <i className="fa-solid fa-rotate-left"></i>
+                          <span>Approve</span>
                         </button>
+                      ) : (tx.status === 'SUCCESS' || tx.status === 'READY' || tx.status === 'COMPLETED' || tx.status === 'COINS_LOADING') ? (
                         <button
                           onClick={() => handleOpenRevokeModal(tx)}
-                          className="action-row-btn btn-delete"
-                          style={{ background: '#ef4444', color: '#fff' }}
-                          title="Fail Payment"
+                          style={{
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            color: '#fff',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.72rem',
+                            fontWeight: '800',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Revoke & Mark Payment as Failed"
                         >
-                          <i className="fa-solid fa-xmark"></i>
+                          <i className="fa-solid fa-ban"></i>
+                          <span>Mark Failed</span>
                         </button>
-                      </div>
-                    ) : (tx.status === 'FAILED' || tx.status === 'REJECTED' || tx.status === 'CANCELLED') ? (
-                      <button
-                        onClick={() => handleOpenReApproveModal(tx)}
-                        className="action-row-btn"
-                        style={{
-                          background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
-                          color: '#fff',
-                          padding: '0.35rem 0.65rem',
-                          fontSize: '0.68rem',
-                          borderRadius: '6px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          cursor: 'pointer',
-                          border: 'none',
-                          fontWeight: 'bold'
-                        }}
-                        title="Re-Approve Failed Payment"
-                      >
-                        <i className="fa-solid fa-rotate-left"></i>
-                        <span>Approve</span>
-                      </button>
-                    ) : (tx.status === 'SUCCESS' || tx.status === 'READY' || tx.status === 'COMPLETED' || tx.status === 'COINS_LOADING') ? (
-                      <button
-                        onClick={() => handleOpenRevokeModal(tx)}
-                        className="action-row-btn"
-                        style={{
-                          background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                          color: '#fff',
-                          padding: '0.35rem 0.65rem',
-                          fontSize: '0.68rem',
-                          borderRadius: '6px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          cursor: 'pointer',
-                          border: 'none',
-                          fontWeight: 'bold'
-                        }}
-                        title="Revoke & Mark Failed"
-                      >
-                        <i className="fa-solid fa-ban"></i>
-                        <span>Mark Failed</span>
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Processed</span>
-                    )}
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Processed</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
