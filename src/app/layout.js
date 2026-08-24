@@ -28,7 +28,7 @@ export const metadata = {
     'Play GameVault Online'
   ],
   alternates: {
-    canonical: 'https://winningheaven.com'
+    canonical: './'
   },
   robots: {
     index: true,
