@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Top Sweepstakes Games - GameVault, Juwa, Vegas Sweeps & More',
-  description: 'Explore the highest-paying sweepstakes casino games on Winning Heaven. Play GameVault 777, Juwa, Vegas Sweeps, Orion Stars, and Ultra Panda with instant cashouts.'
+  title: 'Top Sweepstakes Games - GameVault 777, Juwa, Vegas Sweeps & Orion Stars',
+  description: 'Explore high-paying online sweepstakes casino games on Winning Heaven. Play GameVault 777, Juwa, Vegas Sweeps, Orion Stars, and Ultra Panda with instant 24/7 cashouts and $3 freeplay signup bonus.'
 };
 
 const gamesCatalog = [
@@ -56,19 +56,48 @@ const gamesCatalog = [
   }
 ];
 
+const gameFaqs = [
+  {
+    q: 'Which sweepstakes game has the highest payout on Winning Heaven?',
+    a: 'GameVault 777 and Juwa 777 are top player favorites due to their high Return to Player (RTP) percentages, bonus spin rounds, and frequent community jackpot payouts.'
+  },
+  {
+    q: 'Can I play GameVault 777 on my phone?',
+    a: 'Yes! You can play GameVault directly inside your mobile web browser, install our Android APK app, or add our iOS Safari PWA to your iPhone home screen.'
+  },
+  {
+    q: 'How do I claim $3 Freeplay for GameVault or Juwa?',
+    a: 'Simply create a free Winning Heaven player account. In your lobby, navigate to the Freeplay tab, select your preferred game, and submit a request to receive instant login credentials with $3 free bonus credits.'
+  }
+];
+
 export default function GamesPage() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Winning Heaven Sweepstakes Games Catalog',
-    description: 'Top online sweepstakes casino games available on Winning Heaven',
-    itemListElement: gamesCatalog.map((game, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      name: game.title,
-      description: game.description
-    }))
-  };
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Winning Heaven Sweepstakes Games Catalog',
+      description: 'Top online sweepstakes casino games available on Winning Heaven',
+      itemListElement: gamesCatalog.map((game, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: game.title,
+        description: game.description
+      }))
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: gameFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.a
+        }
+      }))
+    }
+  ];
 
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
@@ -155,6 +184,21 @@ export default function GamesPage() {
             </div>
           ))}
         </div>
+
+        {/* FAQs Section */}
+        <section style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '20px', padding: '2rem', marginBottom: '3rem' }}>
+          <h2 style={{ color: 'var(--gold-primary)', fontSize: '1.4rem', fontWeight: 800, margin: '0 0 1.25rem', textAlign: 'center' }}>
+            Sweepstakes Games FAQ
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {gameFaqs.map((faq, i) => (
+              <div key={i} style={{ borderBottom: i !== gameFaqs.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', paddingBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 700, margin: '0 0 0.4rem' }}>Q: {faq.q}</h3>
+                <p style={{ fontSize: '0.92rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* SEO CTA Banner */}
         <section

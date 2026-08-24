@@ -1,0 +1,42 @@
+# Winning Heaven - Complete Platform & API Documentation for LLMs
+
+Winning Heaven (https://winningheaven.com) is a premier online sweepstakes casino platform. It enables players across legal jurisdictions to register accounts, request game credentials, play top sweepstakes titles, load funds, and redeem instant 24/7 cashouts.
+
+---
+
+## 1. Platform Overview
+
+- **Official Website**: https://winningheaven.com
+- **Sitemap**: https://winningheaven.com/sitemap.xml
+- **Robots Config**: https://winningheaven.com/robots.txt
+- **Primary Game Platforms**: GameVault 777, Juwa 777, Vegas Sweeps, Orion Stars, Ultra Panda, Fire Kirin, Blue Dragon, Milky Way.
+- **Signup Promotion**: $3 Freeplay Signup Credit (No deposit required to start).
+- **Cashout Guarantee**: 24/7 Instant Cashouts via Cash App, Zelle, Venmo, PayPal, and Cryptocurrency.
+
+---
+
+## 2. Frequently Asked Questions (FAQ)
+
+### Q1: Is Winning Heaven a real money sweepstakes casino?
+Winning Heaven operates as a promotional sweepstakes gaming platform. Players use coins/credits to play sweepstakes games and can redeem their winning credits for real money payouts delivered via Cash App, Zelle, Venmo, or Crypto.
+
+### Q2: How do I claim the $3 Freeplay bonus?
+Register a new player account on https://winningheaven.com/register. After logging into your lobby, navigate to the Freeplay tab, select your preferred game (e.g. GameVault or Juwa), and submit your request. Freeplay credits will be credited directly to your game account.
+
+### Q3: How fast are cashouts processed?
+Winning Heaven processes withdrawal and redeem requests 24 hours a day, 7 days a week. Most payouts complete within 5 to 15 minutes after approval.
+
+### Q4: How do I install the mobile app?
+- **Android**: Download `winning-heaven.apk` directly from https://winningheaven.com/download-app and install it after enabling "Unknown Sources" in Chrome settings.
+- **iPhone / iOS**: Open https://winningheaven.com in Safari, tap the Share icon, and select "Add to Home Screen" to install the full-screen Progressive Web App (PWA).
+
+---
+
+## 3. SEO Landing Page Index
+
+- **Games Directory**: https://winningheaven.com/games
+- **How to Play & Cashout**: https://winningheaven.com/how-to-play
+- **App Download Center**: https://winningheaven.com/download-app
+- **Blog Hub**: https://winningheaven.com/blog
+- **Privacy Policy**: https://winningheaven.com/privacy
+- **Info & Contact**: https://winningheaven.com/info
