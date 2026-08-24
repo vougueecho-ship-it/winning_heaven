@@ -10,24 +10,67 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 export const metadata = {
-  title: "Winning Heaven - Celestial Vegas Casino & Instant Cashouts",
-  description: "Welcome to Winning Heaven Casino. Access sweepstakes games, grab heavenly bonuses, and cash out instantly!",
-  applicationName: "Winning Heaven",
-  manifest: "/manifest.json",
+  metadataBase: new URL('https://winningheaven.com'),
+  title: {
+    default: 'Winning Heaven - Premier Online Sweepstakes Casino & Instant Cashouts',
+    template: '%s | Winning Heaven'
+  },
+  description: 'Play top online sweepstakes casino games (GameVault, Juwa, Vegas Sweeps). Get $3 freeplay signup bonus, instant 24/7 cashouts, and mobile APK download!',
+  keywords: [
+    'Winning Heaven',
+    'Sweepstakes Casino',
+    'GameVault 777',
+    'Juwa Casino',
+    'Vegas Sweeps',
+    'Instant Cashout Casino',
+    'Freeplay Casino Bonus',
+    'Sweepstakes APK Download',
+    'Play GameVault Online'
+  ],
+  applicationName: 'Winning Heaven',
+  authors: [{ name: 'Winning Heaven Team' }],
+  creator: 'Winning Heaven',
+  publisher: 'Winning Heaven',
+  manifest: '/manifest.json',
+  openGraph: {
+    title: 'Winning Heaven - Premier Online Sweepstakes Casino & Instant Cashouts',
+    description: 'Play top sweepstakes games, grab $3 freeplay bonus, and redeem instant 24/7 cashouts.',
+    url: 'https://winningheaven.com',
+    siteName: 'Winning Heaven',
+    images: [
+      {
+        url: '/winning_heaven_banner.png',
+        width: 1200,
+        height: 630,
+        alt: 'Winning Heaven Sweepstakes Casino'
+      }
+    ],
+    locale: 'en_US',
+    type: 'website'
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Winning Heaven - Premier Online Sweepstakes Casino',
+    description: 'Instant 24/7 Cashouts & Freeplay Signup Bonus on GameVault, Juwa & Vegas Sweeps.',
+    images: ['/winning_heaven_banner.png']
+  },
   icons: {
     icon: [
-      { url: "/winning_heaven_logo.png", sizes: "192x192", type: "image/png" },
-      { url: "/winning_heaven_logo.png", sizes: "512x512", type: "image/png" }
+      { url: '/winning_heaven_logo.png', sizes: '192x192', type: 'image/png' },
+      { url: '/winning_heaven_logo.png', sizes: '512x512', type: 'image/png' }
     ],
-    apple: [{ url: "/winning_heaven_logo.png", sizes: "180x180", type: "image/png" }]
+    apple: [{ url: '/winning_heaven_logo.png', sizes: '180x180', type: 'image/png' }]
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Winning Heaven"
+    statusBarStyle: 'black-translucent',
+    title: 'Winning Heaven'
   },
   formatDetection: {
     telephone: false
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '7mN3z-FIOGyzL7cTGDDR9qIwfG8jYWtPGj498Lw3CFc'
   }
 };
 
