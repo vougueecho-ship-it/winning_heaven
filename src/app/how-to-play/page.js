@@ -1,8 +1,11 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'How to Play & Instant Cashouts Guide | Winning Heaven',
-  description: 'Learn how online sweepstakes gaming works on Winning Heaven. How to claim $3 freeplay, load coins via Cash App/Venmo/Zelle, and cash out instant real money winnings.'
+  title: 'How to Play & Instant Cashout Guide - Sweepstakes Casino',
+  description: 'Learn how online sweepstakes gaming works on Winning Heaven. How to claim $3 freeplay, load coins via Cash App/Venmo/Zelle, and cash out instant real money winnings.',
+  alternates: {
+    canonical: 'https://winningheaven.com/how-to-play'
+  }
 };
 
 const faqs = [
@@ -29,18 +32,52 @@ const faqs = [
 ];
 
 export default function HowToPlayPage() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.a
-      }
-    }))
-  };
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.a
+        }
+      }))
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: 'How to Play Sweepstakes Games & Cash Out Instantly',
+      description: 'Step-by-step guide to starting, playing, and cashing out winnings on Winning Heaven.',
+      step: [
+        {
+          '@type': 'HowToStep',
+          position: 1,
+          name: 'Free Registration',
+          text: 'Sign up in under 60 seconds with email or 1-click Google account login.'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 2,
+          name: 'Claim $3 Freeplay',
+          text: 'Request freeplay for GameVault or Juwa directly inside your player lobby.'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 3,
+          name: 'Deposit & Play',
+          text: 'Load coins using Cash App, Zelle, or Venmo to unlock high-jackpot games.'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 4,
+          name: 'Instant Cashout',
+          text: 'Submit cashout redeem requests anytime — our finance team pays out 24/7.'
+        }
+      ]
+    }
+  ];
 
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>

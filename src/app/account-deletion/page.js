@@ -1,9 +1,12 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Account Deletion | Winning Heaven',
+  title: 'Account Deletion Request | Winning Heaven',
   description:
-    'Request deletion of your Winning Heaven account and associated personal data.'
+    'Request deletion of your Winning Heaven account and associated personal data.',
+  alternates: {
+    canonical: 'https://winningheaven.com/account-deletion'
+  }
 };
 
 const SUPPORT_EMAIL = 'support@winningheaven.com';
@@ -24,8 +27,20 @@ const listStyle = {
 };
 
 export default function AccountDeletionPage() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Winning Heaven Account Deletion Request',
+    url: 'https://winningheaven.com/account-deletion',
+    description: 'Instructions on how to request account and data deletion.'
+  };
+
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="info-page-inner" style={{ maxWidth: '820px', margin: '0 auto' }}>
         <header style={{ marginBottom: '1.5rem' }}>
           <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>

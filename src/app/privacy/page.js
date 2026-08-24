@@ -1,9 +1,12 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy | Winning Heaven',
+  title: 'Privacy Policy - Data Protection | Winning Heaven',
   description:
-    'How Winning Heaven collects, uses, and protects your information across our website and mobile app.'
+    'How Winning Heaven collects, uses, and protects your information across our sweepstakes website and mobile app.',
+  alternates: {
+    canonical: 'https://winningheaven.com/privacy'
+  }
 };
 
 const UPDATED = 'August 10, 2026';
@@ -32,8 +35,20 @@ const listStyle = {
 };
 
 export default function PrivacyPolicyPage() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Winning Heaven Privacy Policy',
+    url: 'https://winningheaven.com/privacy',
+    description: 'Privacy Policy and Data Protection rules for Winning Heaven players.'
+  };
+
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="info-page-inner" style={{ maxWidth: '820px', margin: '0 auto' }}>
         <header style={{ marginBottom: '1.5rem' }}>
           <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>

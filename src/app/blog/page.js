@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { blogPosts as fallbackSeedPosts, blogCategories } from '../../lib/blogData';
@@ -37,8 +37,36 @@ export default function BlogHubPage() {
 
   const featuredPost = blogPosts.find((p) => p.featured) || blogPosts[0];
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: 'Winning Heaven Sweepstakes Gaming Blog',
+      url: 'https://winningheaven.com/blog',
+      description: 'Latest sweepstakes casino guides, game reviews, and instant cashout tips.'
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'What kind of articles are covered on the Winning Heaven Blog?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'We cover sweepstakes casino strategy guides, game vault tips, instant cashout instructions, freeplay promo updates, and mobile app installation tutorials.'
+          }
+        }
+      ]
+    }
+  ];
+
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
         {/* Navigation */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>

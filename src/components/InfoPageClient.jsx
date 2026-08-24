@@ -96,6 +96,22 @@ export default function InfoPageClient() {
               <span>For account help, deposits, or withdrawals, email support at </span>
               <a href={supportMailto} style={{ color: 'var(--cyan-primary)', fontWeight: 700 }}>{supportEmail}</a>
             </section>
+
+            <section style={{ width: '100%', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '14px', padding: '1.25rem', textAlign: 'left' }}>
+              <h2 style={{ color: 'var(--gold-primary)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem', textAlign: 'center' }}>
+                Player Support FAQ
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.85rem' }}>
+                <div>
+                  <strong style={{ color: '#fff', display: 'block', marginBottom: '0.2rem' }}>Q: How quickly does support reply?</strong>
+                  <span style={{ color: 'var(--text-muted)' }}>Our 24/7 support team replies within 2-5 minutes via live chat and email.</span>
+                </div>
+                <div>
+                  <strong style={{ color: '#fff', display: 'block', marginBottom: '0.2rem' }}>Q: What hours are cashouts processed?</strong>
+                  <span style={{ color: 'var(--text-muted)' }}>Cashouts are processed 24 hours a day, 7 days a week, 365 days a year.</span>
+                </div>
+              </div>
+            </section>
           </>
         )}
 

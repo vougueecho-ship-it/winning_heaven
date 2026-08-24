@@ -2,23 +2,55 @@ import Link from 'next/link';
 
 export const metadata = {
   title: 'Download Winning Heaven App - Android APK & iOS Setup',
-  description: 'Download the official Winning Heaven Android APK and setup iOS Progressive Web App (PWA) for 1-click full-screen sweepstakes mobile gaming.'
+  description: 'Download the official Winning Heaven Android APK and setup iOS Progressive Web App (PWA) for 1-click full-screen sweepstakes mobile gaming.',
+  alternates: {
+    canonical: 'https://winningheaven.com/download-app'
+  }
 };
 
+const appFaqs = [
+  {
+    q: 'Is the Winning Heaven Android APK safe to install?',
+    a: 'Yes, our APK is compiled release-signed and scanned for safety. You can download winning-heaven.apk directly from our website without third-party popups.'
+  },
+  {
+    q: 'How do I enable Unknown Sources on Android?',
+    a: 'When downloading the APK, Chrome will prompt you to allow installations from unknown sources. Tap Settings on the prompt and toggle "Allow from this source".'
+  },
+  {
+    q: 'Does Winning Heaven support push notifications on iPhone?',
+    a: 'Yes! On iOS 16.4 and newer, once you add Winning Heaven to your iPhone Home Screen via Safari, you can receive instant Web Push notifications for coin deposits and bonuses.'
+  }
+];
+
 export default function DownloadAppPage() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Winning Heaven Mobile App',
-    operatingSystem: 'Android, iOS',
-    applicationCategory: 'GameApplication',
-    offers: {
-      '@type': 'Offer',
-      price: '0.00',
-      priceCurrency: 'USD'
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Winning Heaven Mobile App',
+      operatingSystem: 'Android, iOS',
+      applicationCategory: 'GameApplication',
+      offers: {
+        '@type': 'Offer',
+        price: '0.00',
+        priceCurrency: 'USD'
+      },
+      description: 'Play GameVault, Juwa, Vegas Sweeps, and sweepstakes games with instant cashouts on mobile.'
     },
-    description: 'Play GameVault, Juwa, Vegas Sweeps, and sweepstakes games with instant cashouts on mobile.'
-  };
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: appFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.a
+        }
+      }))
+    }
+  ];
 
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
@@ -107,6 +139,21 @@ export default function DownloadAppPage() {
             </Link>
           </div>
         </div>
+
+        {/* App Installation FAQs */}
+        <section style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '20px', padding: '2rem', marginBottom: '3rem' }}>
+          <h2 style={{ color: 'var(--gold-primary)', fontSize: '1.4rem', fontWeight: 800, margin: '0 0 1.25rem', textAlign: 'center' }}>
+            Mobile App Download FAQ
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {appFaqs.map((faq, i) => (
+              <div key={i} style={{ borderBottom: i !== appFaqs.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', paddingBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 700, margin: '0 0 0.4rem' }}>Q: {faq.q}</h3>
+                <p style={{ fontSize: '0.92rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <footer style={{ marginTop: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
           <p>© {new Date().getFullYear()} Winning Heaven. All rights reserved.</p>

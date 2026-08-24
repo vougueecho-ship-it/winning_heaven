@@ -204,7 +204,7 @@ export default function GameHubPage({
             {game.category || 'SLOTS & FISH'}
           </div>
 
-          <h1 style={{
+          <h2 style={{
             fontSize: 'clamp(1.4rem, 4vw, 2.3rem)',
             fontWeight: 900,
             fontFamily: 'var(--font-heading)',
@@ -213,7 +213,7 @@ export default function GameHubPage({
             lineHeight: 1.15
           }}>
             {game.title}
-          </h1>
+          </h2>
 
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1.1rem 0', maxWidth: '650px', lineHeight: 1.45 }}>
             {isLinked

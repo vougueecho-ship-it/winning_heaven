@@ -2,7 +2,10 @@ import Link from 'next/link';
 
 export const metadata = {
   title: 'Top Sweepstakes Games - GameVault 777, Juwa, Vegas Sweeps & Orion Stars',
-  description: 'Explore high-paying online sweepstakes casino games on Winning Heaven. Play GameVault 777, Juwa, Vegas Sweeps, Orion Stars, and Ultra Panda with instant 24/7 cashouts and $3 freeplay signup bonus.'
+  description: 'Explore high-paying online sweepstakes casino games on Winning Heaven. Play GameVault 777, Juwa, Vegas Sweeps, Orion Stars, and Ultra Panda with instant 24/7 cashouts and $3 freeplay signup bonus.',
+  alternates: {
+    canonical: 'https://winningheaven.com/games'
+  }
 };
 
 const gamesCatalog = [

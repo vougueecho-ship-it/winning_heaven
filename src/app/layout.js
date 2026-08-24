@@ -12,7 +12,7 @@ export const fetchCache = 'force-no-store';
 export const metadata = {
   metadataBase: new URL('https://winningheaven.com'),
   title: {
-    default: 'Winning Heaven - Premier Online Sweepstakes Casino & Instant Cashouts',
+    default: 'Winning Heaven - Sweepstakes Casino & Cashout',
     template: '%s | Winning Heaven'
   },
   description: 'Play top online sweepstakes casino games (GameVault, Juwa, Vegas Sweeps). Get $3 freeplay signup bonus, instant 24/7 cashouts, and mobile APK download!',
@@ -27,13 +27,27 @@ export const metadata = {
     'Sweepstakes APK Download',
     'Play GameVault Online'
   ],
+  alternates: {
+    canonical: 'https://winningheaven.com'
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1
+    }
+  },
   applicationName: 'Winning Heaven',
   authors: [{ name: 'Winning Heaven Team' }],
   creator: 'Winning Heaven',
   publisher: 'Winning Heaven',
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Winning Heaven - Premier Online Sweepstakes Casino & Instant Cashouts',
+    title: 'Winning Heaven - Sweepstakes Casino & Cashout',
     description: 'Play top sweepstakes games, grab $3 freeplay bonus, and redeem instant 24/7 cashouts.',
     url: 'https://winningheaven.com',
     siteName: 'Winning Heaven',
@@ -50,7 +64,7 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Winning Heaven - Premier Online Sweepstakes Casino',
+    title: 'Winning Heaven - Sweepstakes Casino',
     description: 'Instant 24/7 Cashouts & Freeplay Signup Bonus on GameVault, Juwa & Vegas Sweeps.',
     images: ['/winning_heaven_banner.png']
   },
@@ -84,6 +98,30 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
+  const globalSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': 'https://winningheaven.com/#organization',
+        name: 'Winning Heaven',
+        url: 'https://winningheaven.com',
+        logo: 'https://winningheaven.com/winning_heaven_logo.png',
+        sameAs: ['https://winningheaven.com']
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://winningheaven.com/#website',
+        url: 'https://winningheaven.com',
+        name: 'Winning Heaven',
+        description: 'Premier Online Sweepstakes Casino Platform',
+        publisher: {
+          '@id': 'https://winningheaven.com/#organization'
+        }
+      }
+    ]
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -99,6 +137,12 @@ export default function RootLayout({ children }) {
         
         {/* FontAwesome Icon Library */}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+        {/* Global WebSite & Organization JSON-LD Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchema) }}
+        />
       </head>
       <body suppressHydrationWarning>
         <MetaPixel />

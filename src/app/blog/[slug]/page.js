@@ -41,6 +41,9 @@ export async function generateMetadata({ params }) {
     title: `${post.title} | Winning Heaven Blog`,
     description: post.summary,
     keywords: tagsList,
+    alternates: {
+      canonical: `https://winningheaven.com/blog/${post.slug}`
+    },
     openGraph: {
       title: post.title,
       description: post.summary,
