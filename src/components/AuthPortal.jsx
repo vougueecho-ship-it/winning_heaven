@@ -480,13 +480,14 @@ export default function AuthPortal({
   return (
     <div style={{
       minHeight: '100vh',
-      width: '100vw',
+      width: '100%',
       position: 'relative',
       overflowX: 'hidden',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2.5rem 1.25rem',
+      justifyContent: 'space-between',
+      padding: '2.5rem 1.25rem 0',
       backgroundImage: `linear-gradient(135deg, rgba(4, 6, 14, 0.45) 0%, rgba(4, 6, 14, 0.75) 100%), radial-gradient(circle at center, rgba(255, 200, 0, 0.1) 0%, rgba(4, 6, 14, 0.6) 80%), url("${loginBg}")`,
       backgroundSize: 'cover',
       backgroundPosition: 'center center',
@@ -1500,11 +1501,11 @@ export default function AuthPortal({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Player Footer Links */}
-        <div style={{ marginTop: '2.5rem', width: '100%' }}>
-          <PlayerFooter />
-        </div>
+      {/* Player Footer Links at Bottom */}
+      <div style={{ marginTop: '3rem', width: '100%' }}>
+        <PlayerFooter />
       </div>
     </div>
   );
