@@ -9,6 +9,7 @@ import { shouldShowInfoOnAuth } from '../lib/infoPage';
 import { trackCompleteRegistration } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage, isNativePlatform } from '../lib/safeFetch';
 import { getDeviceFingerprint } from '../lib/deviceId';
+import PlayerFooter from './player/PlayerFooter';
 
 const DEFAULT_LOGIN_BG = '/casino_vip_hero.jpg';
 const DEFAULT_GOOGLE_CLIENT_ID =
@@ -1498,6 +1499,11 @@ export default function AuthPortal({
               🔥 HOT
             </div>
           </div>
+        </div>
+
+        {/* Player Footer Links */}
+        <div style={{ marginTop: '2.5rem', width: '100%' }}>
+          <PlayerFooter />
         </div>
       </div>
     </div>

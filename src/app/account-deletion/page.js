@@ -9,7 +9,7 @@ export const metadata = {
   }
 };
 
-const SUPPORT_EMAIL = 'support@winningheaven.com';
+const SUPPORT_EMAIL = 'verified@winningheaven.com';
 
 const paraStyle = {
   color: 'rgba(255,255,255,0.85)',

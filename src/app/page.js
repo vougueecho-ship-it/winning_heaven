@@ -10,6 +10,7 @@ import AuthPortal from '../components/AuthPortal';
 import UserLobby from '../components/UserLobby';
 import LoadingOverlay from '../components/LoadingOverlay';
 import PlayerSupportModal from '../components/player/PlayerSupportModal';
+import PlayerFooter from '../components/player/PlayerFooter';
 import { GoogleWarningModal } from '../components/Modals';
 import useSessionGuard from '../hooks/useSessionGuard';
 import { compressDataUrl } from '../lib/imageCompress';
@@ -241,16 +242,43 @@ export default function Home() {
     soundUrlRef.current = frontendSettings?.notificationSoundUrl || '/api/settings/audio';
   }, [frontendSettings]);
 
-  const prevCoinsCountRef = useRef(null);
+  const knownNotificationIdsRef = useRef(null);
   useEffect(() => {
-    if (!notificationsData?.coinsNotifications) return;
-    const count = notificationsData.coinsNotifications.length;
-    if (prevCoinsCountRef.current !== null && count > prevCoinsCountRef.current) {
+    const list = notificationsData?.coinsNotifications;
+    if (!Array.isArray(list)) return;
+
+    if (knownNotificationIdsRef.current === null) {
+      knownNotificationIdsRef.current = new Set(list.map((n) => String(n._id || n.id)));
+      return;
+    }
+
+    const newItems = list.filter((n) => {
+      const id = String(n._id || n.id);
+      return id && !knownNotificationIdsRef.current.has(id);
+    });
+
+    if (newItems.length > 0) {
+      newItems.forEach((n) => {
+        const id = String(n._id || n.id);
+        if (id) knownNotificationIdsRef.current.add(id);
+      });
+
+      const latest = newItems[0];
+      const title = latest.gameTitle || 'Winning Heaven';
+      const typeLabel =
+        latest.type === 'bonus'
+          ? '🎁 Bonus Credited'
+          : latest.type === 'redeem'
+            ? '💰 Cashout Approved'
+            : '⚡ Coins Allotted';
+      const amountStr = latest.coins ? `$${latest.coins}` : '';
+      const textMsg = `${typeLabel}: ${amountStr} ${title}`.trim();
+
+      showToast(textMsg, 'success');
       try {
         playNotificationSound(soundUrlRef.current);
       } catch (_) {}
     }
-    prevCoinsCountRef.current = count;
   }, [notificationsData]);
 
   // Persist credentials in localStorage when fetched
@@ -420,6 +448,9 @@ export default function Home() {
         if (unread && latestTs && supportAlertRef.current !== latestTs) {
           supportAlertRef.current = latestTs;
           showToast('New message from Support — tap SUPPORT to read.', 'info');
+          try {
+            playNotificationSound(soundUrlRef.current);
+          } catch (_) {}
         }
       } catch {
         /* ignore network blips */
@@ -659,8 +690,62 @@ export default function Home() {
     );
   }
 
+  const homeSchemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: 'Winning Heaven Sweepstakes Casino',
+      image: 'https://winningheaven.com/winning_heaven_banner.png',
+      description: 'Play GameVault 777, Juwa, Vegas Sweeps & Orion Stars with instant 24/7 cashouts and $3 freeplay signup bonus.',
+      offers: {
+        '@type': 'Offer',
+        price: '0.00',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        seller: {
+          '@type': 'Organization',
+          name: 'Winning Heaven'
+        }
+      }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'Is Winning Heaven a legal sweepstakes casino platform?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes, Winning Heaven operates as a promotional online sweepstakes casino platform under legal No Purchase Necessary sweepstakes regulations across North America.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'How do I claim my $3 signup freeplay bonus?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Create a free Winning Heaven account. Once logged in, open the Freeplay section in your lobby, choose GameVault or Juwa, and request your freeplay game account credentials.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'How fast are cashout redemptions on Winning Heaven?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Our finance desk operates 24/7. Cashouts requested via Cash App, Venmo, Zelle, PayPal, or Crypto are processed within 5 to 15 minutes.'
+          }
+        }
+      ]
+    }
+  ];
+
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeSchemas) }}
+      />
       <ParticlesBackground />
       <div className="aurora-bg" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 }} />
       <div className="ambient-glow glow-1"></div>

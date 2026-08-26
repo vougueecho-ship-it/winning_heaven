@@ -11,6 +11,7 @@ import GameHubPage from './player/GameHubPage';
 import PlayerLedger from './player/PlayerLedger';
 import PlayerProfileTab from './player/PlayerProfileTab';
 import MobileBottomNav from './player/MobileBottomNav';
+import PlayerFooter from './player/PlayerFooter';
 
 // Core Player Features & Modals
 import ReferralCenter from './ReferralCenter';
@@ -478,6 +479,9 @@ export default function UserLobby({
         onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
         showToast={showToast}
       />
+
+      {/* --- Player Footer Links --- */}
+      <PlayerFooter />
 
       <style jsx>{`
         .player-shell-container {

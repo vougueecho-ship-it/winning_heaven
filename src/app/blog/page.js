@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { blogPosts as fallbackSeedPosts, blogCategories } from '../../lib/blogData';
+import PlayerFooter from '../../components/player/PlayerFooter';
 
 const fetcher = async (url) => {
   try {
@@ -273,11 +274,9 @@ export default function BlogHubPage() {
             REGISTER & CLAIM FREEPLAY
           </Link>
         </section>
-
-        <footer style={{ marginTop: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          <p>© {new Date().getFullYear()} Winning Heaven. All rights reserved.</p>
-        </footer>
       </div>
+
+      <PlayerFooter />
     </main>
   );
 }

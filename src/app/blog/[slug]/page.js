@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { blogPosts as seedPosts } from '../../../lib/blogData';
 import { getDb } from '../../../lib/mongodb';
+import PlayerFooter from '../../../components/player/PlayerFooter';
 
 async function fetchBlogBySlug(slug) {
   try {
@@ -186,11 +187,9 @@ export default async function BlogPostPage({ params }) {
             </div>
           </section>
         )}
-
-        <footer style={{ marginTop: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          <p>© {new Date().getFullYear()} Winning Heaven. All rights reserved.</p>
-        </footer>
       </div>
+
+      <PlayerFooter />
     </main>
   );
 }

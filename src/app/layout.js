@@ -4,6 +4,7 @@ import NativeSplash from "../components/NativeSplash";
 import NativeChrome from "../components/NativeChrome";
 import NativeBackButton from "../components/NativeBackButton";
 import MetaPixel from "../components/MetaPixel";
+import FloatingChatButton from "../components/player/FloatingChatButton";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -151,6 +152,7 @@ export default function RootLayout({ children }) {
         <NativeSplash />
         <ClientChunkGuard />
         {children}
+        <FloatingChatButton />
       </body>
     </html>
   );
