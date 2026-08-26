@@ -231,3 +231,22 @@ export async function getDeviceFingerprint() {
     return cachedDeviceId;
   }
 }
+
+export function getBoundDeviceEmail() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const email = localStorage.getItem('wh_bound_user_email') || getCookie('wh_bound_user_email') || '';
+    return String(email).toLowerCase().trim();
+  } catch {
+    return '';
+  }
+}
+
+export function setBoundDeviceEmail(email) {
+  if (typeof window === 'undefined' || !email) return;
+  const clean = String(email).toLowerCase().trim();
+  try {
+    localStorage.setItem('wh_bound_user_email', clean);
+  } catch {}
+  setCookie('wh_bound_user_email', clean, 3650);
+}

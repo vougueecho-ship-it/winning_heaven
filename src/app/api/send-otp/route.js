@@ -28,17 +28,24 @@ export async function POST(req) {
         );
       }
 
-      if (cleanDeviceId) {
-        const settings = await db.collection('settings').findOne({ id: 'global_settings' });
-        const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
-        if (enforceDeviceLimit) {
+      const settings = await db.collection('settings').findOne({ id: 'global_settings' });
+      const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
+      if (enforceDeviceLimit) {
+        const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+        const deviceOrIpFilter = [
+          cleanDeviceId ? { deviceId: cleanDeviceId } : null,
+          clientIp ? { registrationIp: clientIp } : null
+        ].filter(Boolean);
+
+        if (deviceOrIpFilter.length > 0) {
           const existingDevice = await usersCollection.findOne({
-            deviceId: cleanDeviceId,
-            email: { $ne: cleanEmail }
+            $or: deviceOrIpFilter,
+            email: { $ne: cleanEmail },
+            role: 'user'
           });
           if (existingDevice) {
             return NextResponse.json(
-              { success: false, message: 'You already have an account from this device.' },
+              { success: false, message: 'Strict Device Lock: Only 1 account is allowed per device. An account is already registered on this device.' },
               { status: 400 }
             );
           }

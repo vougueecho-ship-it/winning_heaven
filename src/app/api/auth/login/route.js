@@ -4,7 +4,7 @@ import { healOrphanedDistributorPlayer } from '../../../../lib/orphanDistributor
 
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, deviceId } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -14,20 +14,14 @@ export async function POST(req) {
     }
 
     const inputEmail = email.toLowerCase().trim();
+    const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
 
-    // -------------------------------------------------------------
-    // Env-driven super admin (single source of truth).
-    // Prefer server-only vars; fall back to the NEXT_PUBLIC_ ones that
-    // may already be set on the hosting panel.
-    // -------------------------------------------------------------
     const envAdminEmail = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '')
       .toLowerCase()
       .trim();
     const envAdminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
 
     if (envAdminEmail && envAdminPassword) {
-      // When super admin credentials are configured via env, they are the
-      // ONLY way to open the top-level admin account.
       if (inputEmail === envAdminEmail) {
         if (password === envAdminPassword) {
           return NextResponse.json({
@@ -45,15 +39,6 @@ export async function POST(req) {
             }
           });
         }
-        return NextResponse.json(
-          { success: false, message: 'Incorrect email or password.' },
-          { status: 401 }
-        );
-      }
-
-      // Neutralise the legacy hard-coded default admin that was seeded into
-      // the database, so only the env credentials can grant super-admin access.
-      if (inputEmail === 'admin@winningheaven.com') {
         return NextResponse.json(
           { success: false, message: 'Incorrect email or password.' },
           { status: 401 }
@@ -80,6 +65,34 @@ export async function POST(req) {
       return NextResponse.json(
         { success: false, message: 'Your account has been suspended. Please contact customer support.' },
         { status: 403 }
+      );
+    }
+
+    // Anti-Multi-Account check for player logins: Block if device is bound to another player account
+    if (matchedUser.role === 'user' && cleanDeviceId) {
+      const settings = await db.collection('settings').findOne({ id: 'global_settings' });
+      const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
+
+      if (enforceDeviceLimit) {
+        const existingDeviceUser = await usersCollection.findOne({
+          deviceId: cleanDeviceId,
+          email: { $ne: inputEmail },
+          role: 'user'
+        });
+
+        if (existingDeviceUser) {
+          return NextResponse.json(
+            { success: false, message: 'Strict Device Lock: Only 1 account is allowed per device. This device is already linked to another account.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Update deviceId on successful login
+      const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+      await usersCollection.updateOne(
+        { _id: matchedUser._id },
+        { $set: { deviceId: cleanDeviceId, lastLoginIp: clientIp, lastLoginAt: new Date().toISOString() } }
       );
     }
 

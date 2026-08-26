@@ -72,21 +72,30 @@ export async function POST(req) {
     const isStaffRole = role && role !== 'user';
 
     // Anti-Multi-Account check: Prevent duplicate registrations from the same device
-    if (!isStaffRole && cleanDeviceId) {
+    if (!isStaffRole) {
       const settings = await db.collection('settings').findOne({ id: 'global_settings' });
       const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
 
       if (enforceDeviceLimit) {
-        const existingDeviceUser = await usersCollection.findOne({
-          deviceId: cleanDeviceId,
-          email: { $ne: cleanEmail }
-        });
+        const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+        const deviceOrIpFilter = [
+          cleanDeviceId ? { deviceId: cleanDeviceId } : null,
+          clientIp ? { registrationIp: clientIp } : null
+        ].filter(Boolean);
 
-        if (existingDeviceUser) {
-          return NextResponse.json(
-            { success: false, message: 'You already have an account from this device.' },
-            { status: 400 }
-          );
+        if (deviceOrIpFilter.length > 0) {
+          const existingDeviceUser = await usersCollection.findOne({
+            $or: deviceOrIpFilter,
+            email: { $ne: cleanEmail },
+            role: 'user'
+          });
+
+          if (existingDeviceUser) {
+            return NextResponse.json(
+              { success: false, message: 'Strict Device Lock: Only 1 account is allowed per device. An account is already registered on this device.' },
+              { status: 400 }
+            );
+          }
         }
       }
     }

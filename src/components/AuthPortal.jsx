@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { shouldShowInfoOnAuth } from '../lib/infoPage';
 import { trackCompleteRegistration } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage, isNativePlatform } from '../lib/safeFetch';
-import { getDeviceFingerprint } from '../lib/deviceId';
+import { getDeviceFingerprint, getBoundDeviceEmail, setBoundDeviceEmail } from '../lib/deviceId';
 import PlayerFooter from './player/PlayerFooter';
 
 const DEFAULT_LOGIN_BG = '/casino_vip_hero.jpg';
@@ -163,6 +163,9 @@ export default function AuthPortal({
 
   const finishGoogleLogin = (googleData) => {
     setGoogleLoading(false);
+    if (googleData.user?.email) {
+      setBoundDeviceEmail(googleData.user.email);
+    }
     if (googleData.isNewUser) {
       trackCompleteRegistration('google');
       showToast(`Google account registered! Welcome, ${googleData.user?.name || 'Player'}.`, 'success');
@@ -195,6 +198,7 @@ export default function AuthPortal({
       const origin = (!rawOrigin || rawOrigin.includes('capacitor://') || (rawOrigin.includes('localhost') && !rawOrigin.includes(':3000')))
         ? 'https://winningheaven.com'
         : rawOrigin;
+
       const redirectUri = `${origin}/auth/google/callback`;
       const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
         DEFAULT_GOOGLE_CLIENT_ID
@@ -298,9 +302,14 @@ export default function AuthPortal({
 
     setLoading(true);
     try {
+      const deviceId = await getDeviceFingerprint().catch(() => '');
       const res = await safeFetchJson('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: loginIdentifier.toLowerCase().trim(), password: loginPassword })
+        body: JSON.stringify({
+          email: loginIdentifier.toLowerCase().trim(),
+          password: loginPassword,
+          deviceId
+        })
       });
 
       if (!res.ok || !res.data?.success) {
@@ -308,6 +317,10 @@ export default function AuthPortal({
         setAuthError(errMsg);
         showToast(errMsg, 'error');
         return;
+      }
+
+      if (res.data.user?.email && res.data.user?.role === 'user') {
+        setBoundDeviceEmail(res.data.user.email);
       }
 
       showToast(`Welcome back, ${res.data.user?.name || 'Player'}!`, 'success');
@@ -335,6 +348,14 @@ export default function AuthPortal({
     }
     if (!regPassword || regPassword.length < 6) {
       showToast('Password must be at least 6 characters.', 'error');
+      return;
+    }
+
+    const boundEmail = getBoundDeviceEmail();
+    if (boundEmail && boundEmail !== regEmail.toLowerCase().trim()) {
+      const errMsg = `Strict Device Lock: This device is already bound to account (${boundEmail}). Only 1 account is allowed per device.`;
+      setAuthError(errMsg);
+      showToast(errMsg, 'error');
       return;
     }
 
@@ -437,6 +458,10 @@ export default function AuthPortal({
         setAuthError(errMsg);
         showToast(errMsg, 'error');
         return;
+      }
+
+      if (res.data.user?.email) {
+        setBoundDeviceEmail(res.data.user.email);
       }
 
       trackCompleteRegistration('email');

@@ -33,27 +33,36 @@ export async function POST(req) {
       );
     }
 
-    if (!matchedUser) {
-      // Anti-Multi-Account check: Block if this device is already registered to another account
-      if (cleanDeviceId) {
-        const settings = await db.collection('settings').findOne({ id: 'global_settings' });
-        const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
+    // Strict Anti-Multi-Account check for Google authentication
+    const settings = await db.collection('settings').findOne({ id: 'global_settings' });
+    const enforceDeviceLimit = settings?.enforceDeviceLimit !== false; // Default true
 
-        if (enforceDeviceLimit) {
-          const existingDeviceUser = await usersCollection.findOne({
-            deviceId: cleanDeviceId,
-            email: { $ne: cleanEmail }
-          });
+    if (enforceDeviceLimit) {
+      const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '';
+      const clientIp = forwarded.split(',')[0].trim();
 
-          if (existingDeviceUser) {
-            return NextResponse.json(
-              { success: false, message: 'You already have an account from this device.' },
-              { status: 400 }
-            );
-          }
+      const deviceOrIpFilter = [
+        cleanDeviceId ? { deviceId: cleanDeviceId } : null,
+        clientIp ? { registrationIp: clientIp } : null
+      ].filter(Boolean);
+
+      if (deviceOrIpFilter.length > 0) {
+        const existingDeviceUser = await usersCollection.findOne({
+          $or: deviceOrIpFilter,
+          email: { $ne: cleanEmail },
+          role: 'user'
+        });
+
+        if (existingDeviceUser) {
+          return NextResponse.json(
+            { success: false, message: 'Strict Device Lock: Only 1 account is allowed per device. This device is linked to another account.' },
+            { status: 400 }
+          );
         }
       }
+    }
 
+    if (!matchedUser) {
       // Generate a unique referral code
       let referralCode = generateReferralCode();
       while (await usersCollection.findOne({ referralCode })) {
@@ -115,13 +124,13 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: isNewUser ? 'Google account registered successfully!' : 'Welcome back!',
+      message: isNewUser ? 'Google registration successful!' : 'Google login successful!',
       isNewUser,
       user: {
         name: matchedUser.name,
         email: matchedUser.email,
         role: matchedUser.role,
-        coins: matchedUser.coins || 100,
+        coins: matchedUser.coins || 0,
         referralCode: matchedUser.referralCode || '',
         isSubscribed: matchedUser.isSubscribed || false,
         distributorId: matchedUser.distributorId || '',
@@ -129,7 +138,7 @@ export async function POST(req) {
       }
     });
   } catch (err) {
-    console.error('Google OAuth API Error:', err);
+    console.error('Google Auth API Error:', err);
     return NextResponse.json(
       { success: false, message: 'Server error during Google authentication: ' + err.message },
       { status: 500 }
