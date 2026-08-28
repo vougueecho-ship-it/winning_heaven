@@ -117,7 +117,7 @@ export async function POST(req) {
       id: game.id || Date.now().toString(),
       title: game.title,
       badge: game.badge || 'none',
-      image: game.image || 'placeholder_1',
+      image: game.image || '/winning_heaven_banner.png',
       link: game.link,
       openPanelLink: game.openPanelLink || '',
       availableCoins: Number(game.availableCoins || 0),

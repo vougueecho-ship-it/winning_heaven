@@ -126,7 +126,7 @@ export async function GET(req) {
 // PUT update user details (Admin adjustment of coins or role modifications)
 export async function PUT(req) {
   try {
-    const { email, coins, role, name, password, status, allowedGameIds } = await req.json();
+    const { email, coins, role, name, password, status, allowedGameIds, deviceId } = await req.json();
 
     if (!email) {
       return NextResponse.json({ success: false, message: 'User email is required.' }, { status: 400 });

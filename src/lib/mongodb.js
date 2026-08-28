@@ -14,9 +14,9 @@ const DEFAULT_SEEDS = {
     { id: '1', title: 'JUWA', badge: 'hot', image: 'game_juwa.png', link: 'https://play.juwa.org/' },
     { id: '2', title: 'GAMEVAULT', badge: 'hot', image: 'game_gamevault.png', link: 'https://play.gamevault.com/' },
     { id: '3', title: 'VEGAS SWEEPS', badge: 'hot', image: 'game_vegassweeps.png', link: 'https://play.vegassweeps.com/' },
-    { id: '4', title: 'ULTRAPANDA', badge: 'none', image: 'placeholder_1', link: 'https://play.ultrapanda.com/' },
-    { id: '5', title: 'BLUE DRAGON', badge: 'none', image: 'placeholder_2', link: 'https://play.bluedragon.com/' },
-    { id: '6', title: 'FIREKIRIN', badge: 'none', image: 'placeholder_3', link: 'https://play.firekirin.com/' }
+    { id: '4', title: 'ULTRAPANDA', badge: 'none', image: '/casino_vip_hero.jpg', link: 'https://play.ultrapanda.com/' },
+    { id: '5', title: 'BLUE DRAGON', badge: 'none', image: '/winning_heaven_banner.png', link: 'https://play.bluedragon.com/' },
+    { id: '6', title: 'FIREKIRIN', badge: 'none', image: '/heavenly_lobby_bg.png', link: 'https://play.firekirin.com/' }
   ],
   gateways: [
     {
