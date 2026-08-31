@@ -20,6 +20,12 @@ export default function SupportTab({ adminUser }) {
   // Translation States (Roman Urdu <-> English)
   const [translatedMessages, setTranslatedMessages] = useState({}); // msgId -> { loading, show, romanUrdu, urdu }
   const [autoTranslateIncoming, setAutoTranslateIncoming] = useState(false);
+  const [autoTranslateOnSend, setAutoTranslateOnSend] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('wh_admin_auto_translate_send') === 'true';
+    }
+    return false;
+  });
   const [isTranslatingAdmin, setIsTranslatingAdmin] = useState(false);
   const [adminTranslationPreview, setAdminTranslationPreview] = useState(null);
   const [adminOriginalRoman, setAdminOriginalRoman] = useState('');
@@ -526,12 +532,29 @@ export default function SupportTab({ adminUser }) {
     setReplyingTo(null);
     setShowEmojiPicker(false);
 
+    let finalMessage = replyMsg;
+    if (autoTranslateOnSend && overrideText === null && finalMessage && !replyAttachment) {
+      try {
+        const trRes = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: finalMessage, direction: 'to_english' })
+        });
+        const trData = await trRes.json();
+        if (trData.success && trData.translation) {
+          finalMessage = trData.translation;
+        }
+      } catch (e) {
+        console.warn('Auto-translate on send failed:', e);
+      }
+    }
+
     const tempId = 'temp-' + Date.now();
     const tempMessage = {
       id: tempId,
       userEmail: activeChatEmail,
       userName: activeChatDisplayName || 'Player',
-      message: replyMsg,
+      message: finalMessage,
       attachment: replyAttachment,
       senderType: 'admin',
       senderEmail: adminUser.email,
@@ -551,7 +574,7 @@ export default function SupportTab({ adminUser }) {
         body: JSON.stringify({
           userEmail: activeChatEmail,
           userName: activeChatDisplayName || 'Player',
-          message: replyMsg,
+          message: finalMessage,
           attachment: replyAttachment,
           senderType: 'admin',
           senderEmail: adminUser.email,
@@ -1295,19 +1318,36 @@ export default function SupportTab({ adminUser }) {
                 </div>
               )}
 
-              {/* Quick Emojis Bar for Staff */}
-              <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', overflowX: 'auto', padding: '0.1rem 0' }}>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>EMOJIS:</span>
-                {['🎰', '🔥', '💰', '👑', '💎', '🚀', '👍', '❤️', '🙌', '🎉'].map((em) => (
-                  <button
-                    key={em}
-                    type="button"
-                    onClick={() => setAdminReplyText((prev) => prev + em)}
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.1rem 0.35rem', fontSize: '0.8rem', cursor: 'pointer' }}
-                  >
-                    {em}
-                  </button>
-                ))}
+              {/* Quick Emojis Bar & Auto Translate Toggle for Staff */}
+              <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'space-between', overflowX: 'auto', padding: '0.15rem 0', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', overflowX: 'auto' }}>
+                  <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>EMOJIS:</span>
+                  {['🎰', '🔥', '💰', '👑', '💎', '🚀', '👍', '❤️', '🙌', '🎉'].map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => setAdminReplyText((prev) => prev + em)}
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.1rem 0.35rem', fontSize: '0.8rem', cursor: 'pointer' }}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', margin: 0, fontSize: '0.65rem', color: autoTranslateOnSend ? 'var(--gold-primary)' : 'var(--text-muted)', fontWeight: '600', userSelect: 'none', marginLeft: 'auto' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoTranslateOnSend}
+                    onChange={(e) => {
+                      setAutoTranslateOnSend(e.target.checked);
+                      try {
+                        localStorage.setItem('wh_admin_auto_translate_send', e.target.checked ? 'true' : 'false');
+                      } catch {}
+                    }}
+                    style={{ accentColor: 'var(--gold-primary)', cursor: 'pointer', width: '12px', height: '12px' }}
+                  />
+                  <span>⚡ Auto-translate on Send (RU → EN)</span>
+                </label>
               </div>
 
               {(() => {
