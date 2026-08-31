@@ -94,13 +94,18 @@ export async function GET(req) {
           replyTo: 1,
           isEdited: 1,
           editedAt: 1,
-          reactions: 1
+          reactions: 1,
+          deletedFor: 1,
+          deletedForEveryone: 1
         })
         .sort({ timestamp: -1 })
         .skip(Math.max(0, (page - 1) * threadLimit))
         .limit(threadLimit)
         .toArray();
       const messages = newestFirst.reverse();
+
+      const viewerEmail = (searchParams.get('viewerEmail') || searchParams.get('senderEmail') || '').toLowerCase().trim();
+      const viewerRole = searchParams.get('role') || '';
 
       const isGuest =
         emailKey.includes('@winningheavenguest.com') || emailKey.startsWith('guest_');
@@ -123,16 +128,30 @@ export async function GET(req) {
         }
       }
 
-      const leanMessages = messages.map((m) => {
-        const showAttachment = m.hasAttachment === true || (m.hasAttachment !== false && typeof m.attachment === 'string' && m.attachment.length > 50);
-        return {
-          ...m,
-          playerName,
-          attachment: showAttachment
-            ? `/api/support?attachmentId=${encodeURIComponent(m.id)}`
-            : ''
-        };
-      });
+      // Filter out messages deleted for current viewer, and format deleted-for-everyone messages
+      const leanMessages = messages
+        .filter((m) => {
+          if (m.deletedFor && Array.isArray(m.deletedFor)) {
+            const deletedList = m.deletedFor.map((x) => String(x || '').toLowerCase().trim());
+            if (viewerEmail && deletedList.includes(viewerEmail)) return false;
+            if (viewerRole === 'admin' && (deletedList.includes('admin') || (viewerEmail && deletedList.includes(viewerEmail)))) return false;
+            if (viewerRole === 'player' && (deletedList.includes(emailKey) || (viewerEmail && deletedList.includes(viewerEmail)))) return false;
+          }
+          return true;
+        })
+        .map((m) => {
+          const isDeletedAll = m.deletedForEveryone === true;
+          const showAttachment = !isDeletedAll && (m.hasAttachment === true || (m.hasAttachment !== false && typeof m.attachment === 'string' && m.attachment.length > 50));
+          return {
+            ...m,
+            playerName,
+            message: isDeletedAll ? '🚫 This message was deleted' : m.message,
+            deletedForEveryone: isDeletedAll,
+            attachment: showAttachment
+              ? `/api/support?attachmentId=${encodeURIComponent(m.id)}`
+              : ''
+          };
+        });
 
       return NextResponse.json({ success: true, messages: leanMessages, playerName });
     }
@@ -462,11 +481,11 @@ export async function PUT(req) {
   }
 }
 
-// PATCH edit message or add/remove emoji reactions
+// PATCH edit message or add/remove emoji reactions or delete options
 export async function PATCH(req) {
   try {
     const body = await req.json();
-    const { id, message, userEmail, action, emoji, userIdentifier } = body || {};
+    const { id, message, userEmail, action, emoji, userIdentifier, senderEmail, role } = body || {};
     if (!id) {
       return NextResponse.json({ success: false, message: 'Message ID is required.' }, { status: 400 });
     }
@@ -478,11 +497,45 @@ export async function PATCH(req) {
       return NextResponse.json({ success: false, message: 'Message not found.' }, { status: 404 });
     }
 
+    const actor = (userIdentifier || senderEmail || userEmail || (role === 'admin' ? 'admin' : 'user')).toLowerCase().trim();
+
+    // 1. Action: Delete for Everyone
+    if (action === 'delete_for_everyone') {
+      await supportCollection.updateOne(
+        { id: String(id) },
+        {
+          $set: {
+            deletedForEveryone: true,
+            message: '🚫 This message was deleted',
+            attachment: '',
+            hasAttachment: false,
+            deletedAt: new Date().toISOString()
+          }
+        }
+      );
+      publishAdminEvent('support', { distributorId: msg.distributorId || '' });
+      return NextResponse.json({ success: true, message: 'Message deleted for everyone.', deletedForEveryone: true });
+    }
+
+    // 2. Action: Delete for Me
+    if (action === 'delete_for_me') {
+      await supportCollection.updateOne(
+        { id: String(id) },
+        {
+          $addToSet: {
+            deletedFor: actor
+          }
+        }
+      );
+      return NextResponse.json({ success: true, message: 'Message deleted for you.' });
+    }
+
+    // 3. Action: Emoji Reaction
     if (action === 'react') {
       if (!emoji) {
         return NextResponse.json({ success: false, message: 'Emoji is required.' }, { status: 400 });
       }
-      const voter = (userIdentifier || userEmail || 'user').toLowerCase().trim();
+      const voter = actor;
       const reactions = msg.reactions || {};
       const currentVoters = Array.isArray(reactions[emoji]) ? reactions[emoji] : [];
       const hasVoted = currentVoters.includes(voter);
@@ -502,7 +555,7 @@ export async function PATCH(req) {
       return NextResponse.json({ success: true, reactions });
     }
 
-    // Edit message text
+    // 4. Action: Edit message text
     if (message === undefined || message === null) {
       return NextResponse.json({ success: false, message: 'New message text is required.' }, { status: 400 });
     }
@@ -523,7 +576,7 @@ export async function PATCH(req) {
     );
 
     publishAdminEvent('support', { distributorId: msg.distributorId || '' });
-    return NextResponse.json({ success: true, message: 'Message edited successfully.' });
+    return NextResponse.json({ success: true, message: 'Message edited successfully.', editedMessage: trimmed });
   } catch (err) {
     console.error('PATCH Support Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });

@@ -141,6 +141,7 @@ export default function PlayerSupportModal({
   // New Chat Features State
   const [replyingTo, setReplyingTo] = useState(null); // { id, message, senderType, userName, hasAttachment }
   const [editingMessage, setEditingMessage] = useState(null); // { id, message }
+  const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, message, isMe }
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
@@ -324,6 +325,55 @@ export default function PlayerSupportModal({
       }
       return;
     }
+
+    // Delete message for player only
+    const handleDeleteForMe = async (msgId) => {
+      if (!msgId) return;
+      setDeleteTargetMessage(null);
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      try {
+        await fetch('/api/support', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: msgId,
+            action: 'delete_for_me',
+            userEmail: identity.email,
+            userIdentifier: identity.email,
+            role: 'player'
+          })
+        });
+      } catch (err) {
+        console.error('Failed to delete message for me:', err);
+      }
+    };
+
+    // Delete message for everyone
+    const handleDeleteForEveryone = async (msgId) => {
+      if (!msgId) return;
+      setDeleteTargetMessage(null);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, message: '🚫 This message was deleted', deletedForEveryone: true, hasAttachment: false, attachment: '' }
+            : m
+        )
+      );
+      try {
+        await fetch('/api/support', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: msgId,
+            action: 'delete_for_everyone',
+            userEmail: identity.email,
+            role: 'player'
+          })
+        });
+      } catch (err) {
+        console.error('Failed to delete message for everyone:', err);
+      }
+    };
 
     // NORMAL NEW MESSAGE / REPLY
     const msgText = msgToSend;
@@ -1131,81 +1181,64 @@ export default function PlayerSupportModal({
                           </div>
                         )}
 
-                        {/* Main Text Content */}
-                        <div>{msg.message}</div>
-
-                        {/* Attachment Image */}
-                        {hasMsgAttachment && (
-                          <div style={{ marginTop: '0.45rem' }}>
-                            <img
-                              src={msg.attachment}
-                              alt="Attachment"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '180px',
-                                display: 'block',
-                                borderRadius: '10px',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                cursor: 'zoom-in',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLightboxSrc(msg.attachment);
-                              }}
-                            />
+                        {/* Main Text Content or Deleted Notice */}
+                        {msg.deletedForEveryone ? (
+                          <div style={{ fontStyle: 'italic', opacity: 0.7, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', padding: '0.15rem 0' }}>
+                            <i className="fa-solid fa-ban" style={{ fontSize: '0.82rem', opacity: 0.8 }} />
+                            <span>This message was deleted</span>
                           </div>
+                        ) : (
+                          <>
+                            <div>{msg.message}</div>
+
+                            {/* Attachment Image */}
+                            {hasMsgAttachment && (
+                              <div style={{ marginTop: '0.45rem' }}>
+                                <img
+                                  src={msg.attachment}
+                                  alt="Attachment"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '180px',
+                                    display: 'block',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    cursor: 'zoom-in',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLightboxSrc(msg.attachment);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
 
-                        {/* HOVER / TAP ACTION BUTTONS (REPLY, EDIT, REACT) */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          marginTop: '0.35rem',
-                          paddingTop: '0.35rem',
-                          borderTop: '1px solid rgba(255,255,255,0.08)',
-                          justifyContent: isMe ? 'flex-end' : 'flex-start'
-                        }}>
-                          {/* Reply Button (WhatsApp Style) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingMessage(null);
-                              setReplyingTo({
-                                id: msg.id,
-                                message: msg.message,
-                                senderType: msg.senderType,
-                                userName: msg.userName,
-                                hasAttachment: hasMsgAttachment
-                              });
-                              inputRef.current?.focus();
-                            }}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'rgba(255,255,255,0.6)',
-                              fontSize: '0.68rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '0.15rem 0.35rem',
-                              borderRadius: '4px'
-                            }}
-                            title="Reply to this message"
-                          >
-                            <i className="fa-solid fa-reply" /> Reply
-                          </button>
-
-                          {/* Edit Button (Only for player's own message) */}
-                          {isMe && (
+                        {/* HOVER / TAP ACTION BUTTONS (REPLY, EDIT, DELETE, REACT) */}
+                        {!msg.deletedForEveryone && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            marginTop: '0.35rem',
+                            paddingTop: '0.35rem',
+                            borderTop: '1px solid rgba(255,255,255,0.08)',
+                            justifyContent: isMe ? 'flex-end' : 'flex-start'
+                          }}>
+                            {/* Reply Button (WhatsApp Style) */}
                             <button
                               type="button"
                               onClick={() => {
-                                setReplyingTo(null);
-                                setEditingMessage({ id: msg.id, message: msg.message });
-                                setInput(msg.message);
+                                setEditingMessage(null);
+                                setReplyingTo({
+                                  id: msg.id,
+                                  message: msg.message,
+                                  senderType: msg.senderType,
+                                  userName: msg.userName,
+                                  hasAttachment: hasMsgAttachment
+                                });
                                 inputRef.current?.focus();
                               }}
                               style={{
@@ -1220,35 +1253,84 @@ export default function PlayerSupportModal({
                                 padding: '0.15rem 0.35rem',
                                 borderRadius: '4px'
                               }}
-                              title="Edit this message"
+                              title="Reply to this message"
                             >
-                              <i className="fa-solid fa-pen-to-square" /> Edit
+                              <i className="fa-solid fa-reply" /> Reply
                             </button>
-                          )}
 
-                          {/* Quick Emoji Reaction Trigger */}
-                          <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.25rem' }}>
-                            {QUICK_REACTION_EMOJIS.slice(0, 3).map((em) => (
+                            {/* Edit Button (Only for player's own message) */}
+                            {isMe && msg.message && (
                               <button
-                                key={em}
                                 type="button"
-                                onClick={() => handleToggleReaction(msg.id, em)}
+                                onClick={() => {
+                                  setReplyingTo(null);
+                                  setEditingMessage({ id: msg.id, message: msg.message });
+                                  setInput(msg.message);
+                                  inputRef.current?.focus();
+                                }}
                                 style={{
                                   background: 'transparent',
                                   border: 'none',
+                                  color: 'rgba(255,255,255,0.6)',
+                                  fontSize: '0.68rem',
                                   cursor: 'pointer',
-                                  fontSize: '0.8rem',
-                                  padding: '0.1rem',
-                                  opacity: 0.7,
-                                  transition: 'transform 0.15s ease'
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.15rem 0.35rem',
+                                  borderRadius: '4px'
                                 }}
-                                title={`React with ${em}`}
+                                title="Edit this message"
                               >
-                                {em}
+                                <i className="fa-solid fa-pen-to-square" /> Edit
                               </button>
-                            ))}
+                            )}
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTargetMessage({ id: msg.id, message: msg.message, isMe })}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.6)',
+                                fontSize: '0.68rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.15rem 0.35rem',
+                                borderRadius: '4px'
+                              }}
+                              title="Delete message"
+                            >
+                              <i className="fa-solid fa-trash-can" /> Delete
+                            </button>
+
+                            {/* Quick Emoji Reaction Trigger */}
+                            <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.25rem' }}>
+                              {QUICK_REACTION_EMOJIS.slice(0, 3).map((em) => (
+                                <button
+                                  key={em}
+                                  type="button"
+                                  onClick={() => handleToggleReaction(msg.id, em)}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    padding: '0.1rem',
+                                    opacity: 0.7,
+                                    transition: 'transform 0.15s ease'
+                                  }}
+                                  title={`React with ${em}`}
+                                >
+                                  {em}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* EMOJI REACTION PILLS ROW */}
@@ -1607,6 +1689,112 @@ export default function PlayerSupportModal({
               </button>
             </form>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Message Options Modal (WhatsApp Style) */}
+      <AnimatePresence>
+        {deleteTargetMessage && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.8)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100000,
+              padding: '1rem'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{
+                background: 'linear-gradient(135deg, #101528 0%, #080a14 100%)',
+                border: '1.5px solid rgba(255,200,0,0.3)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                maxWidth: '340px',
+                width: '100%',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.9)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                <i className="fa-solid fa-trash-can" /> Delete Message?
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.4 }}>
+                "{deleteTargetMessage.message?.slice(0, 80) || 'Attachment'}{deleteTargetMessage.message?.length > 80 ? '...' : ''}"
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.25rem' }}>
+                {deleteTargetMessage.isMe && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteForEveryone(deleteTargetMessage.id)}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '0.65rem',
+                      borderRadius: '10px',
+                      fontWeight: 'bold',
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <i className="fa-solid fa-users" /> Delete for Everyone
+                  </button>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => handleDeleteForMe(deleteTargetMessage.id)}
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    fontWeight: '600',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <i className="fa-solid fa-user" /> Delete for Me
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setDeleteTargetMessage(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.55)',
+                    padding: '0.4rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

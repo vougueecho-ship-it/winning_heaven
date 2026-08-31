@@ -23,6 +23,10 @@ export default function SupportTab({ adminUser }) {
   const [isTranslatingAdmin, setIsTranslatingAdmin] = useState(false);
   const [adminTranslationPreview, setAdminTranslationPreview] = useState(null);
   const [adminOriginalRoman, setAdminOriginalRoman] = useState('');
+
+  // Message Edit & Delete States
+  const [editingMessage, setEditingMessage] = useState(null); // { id, message }
+  const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, senderType, message, isMe }
   
   const chatEndRef = useRef(null);
   const adminInputRef = useRef(null);
@@ -405,10 +409,113 @@ export default function SupportTab({ adminUser }) {
     });
   }, [autoTranslateIncoming, activeChatMessages]);
 
+  // Start editing an admin message
+  const handleStartEdit = (msg) => {
+    if (!msg) return;
+    setReplyingTo(null);
+    setEditingMessage({ id: msg.id, message: msg.message });
+    setAdminReplyText(msg.message);
+    adminInputRef.current?.focus();
+  };
+
+  // Delete message for me (hidden from admin view)
+  const handleDeleteForMe = async (msgId) => {
+    if (!msgId) return;
+    setDeleteTargetMessage(null);
+    mutateActiveChat((current) => {
+      const prev = current?.messages || activeChatMessages;
+      return {
+        ...current,
+        messages: prev.filter((m) => m.id !== msgId)
+      };
+    }, false);
+
+    try {
+      await fetch('/api/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: msgId,
+          action: 'delete_for_me',
+          role: 'admin',
+          userIdentifier: 'admin'
+        })
+      });
+    } catch (err) {
+      console.error('Delete for me error:', err);
+    }
+  };
+
+  // Delete message for everyone (replaces with "🚫 This message was deleted")
+  const handleDeleteForEveryone = async (msgId) => {
+    if (!msgId) return;
+    setDeleteTargetMessage(null);
+    mutateActiveChat((current) => {
+      const prev = current?.messages || activeChatMessages;
+      return {
+        ...current,
+        messages: prev.map((m) =>
+          m.id === msgId
+            ? { ...m, message: '🚫 This message was deleted', deletedForEveryone: true, hasAttachment: false, attachment: '' }
+            : m
+        )
+      };
+    }, false);
+
+    try {
+      await fetch('/api/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: msgId,
+          action: 'delete_for_everyone',
+          role: 'admin'
+        })
+      });
+    } catch (err) {
+      console.error('Delete for everyone error:', err);
+    }
+  };
+
   const handleSendAdminReply = async (e, overrideText = null) => {
     if (e && e.preventDefault) e.preventDefault();
     const replyMsg = (overrideText !== null ? overrideText : adminReplyText).trim();
     if ((!replyMsg && !adminAttachment) || !activeChatEmail || !adminUser) return;
+
+    // IF IN EDIT MODE
+    if (editingMessage) {
+      const editId = editingMessage.id;
+      const updatedText = replyMsg;
+      setEditingMessage(null);
+      setAdminReplyText('');
+      mutateActiveChat((current) => {
+        const prev = current?.messages || activeChatMessages;
+        return {
+          ...current,
+          messages: prev.map((m) =>
+            m.id === editId
+              ? { ...m, message: updatedText, isEdited: true, editedAt: new Date().toISOString() }
+              : m
+          )
+        };
+      }, false);
+
+      try {
+        await fetch('/api/support', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editId,
+            message: updatedText,
+            role: 'admin',
+            action: 'edit'
+          })
+        });
+      } catch (err) {
+        console.error('Failed to edit admin message:', err);
+      }
+      return;
+    }
 
     setAdminReplyText('');
     setAdminTranslationPreview(null);
@@ -799,135 +906,190 @@ export default function SupportTab({ adminUser }) {
                           </div>
                         )}
 
-                        <div>{msg.message}</div>
-
-                        {/* ROMAN URDU TRANSLATION BOX FOR PLAYER MESSAGES */}
-                        {!isMe && msgTranslation?.show && (
-                          <div style={{
-                            marginTop: '0.45rem',
-                            marginBottom: '0.15rem',
-                            padding: '0.45rem 0.6rem',
-                            background: 'rgba(0, 0, 0, 0.4)',
-                            borderLeft: '3px solid var(--gold-primary)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.25rem',
-                            fontSize: '0.72rem'
-                          }}>
-                            {msgTranslation.loading ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.8, fontSize: '0.68rem', color: 'var(--gold-primary)' }}>
-                                <i className="fa-solid fa-spinner fa-spin"></i> Translating to Roman Urdu...
-                              </div>
-                            ) : (
-                              <>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', lineHeight: 1.35 }}>
-                                  <span style={{ color: 'var(--gold-primary)', fontWeight: 'bold', fontSize: '0.65rem', flexShrink: 0 }}>
-                                    🗣️ Roman Urdu:
-                                  </span>
-                                  <span style={{ color: '#fff', fontWeight: 500 }}>
-                                    {msgTranslation.romanUrdu}
-                                  </span>
-                                </div>
-                                {msgTranslation.urdu && msgTranslation.urdu !== msgTranslation.romanUrdu && (
-                                  <div style={{ direction: 'rtl', textAlign: 'right', opacity: 0.85, fontSize: '0.72rem', color: '#e2e8f0', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.25rem', marginTop: '0.1rem' }}>
-                                    {msgTranslation.urdu}
-                                  </div>
-                                )}
-                              </>
-                            )}
+                        {/* Message Content or Deleted Notice */}
+                        {msg.deletedForEveryone ? (
+                          <div style={{ fontStyle: 'italic', opacity: 0.7, fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px', padding: '0.1rem 0' }}>
+                            <i className="fa-solid fa-ban" style={{ fontSize: '0.8rem', opacity: 0.8 }}></i>
+                            <span>This message was deleted</span>
                           </div>
-                        )}
+                        ) : (
+                          <>
+                            <div>{msg.message}</div>
 
-                        {msg.attachment && (
-                          <div style={{ marginTop: '0.5rem' }}>
-                            <img
-                              src={msg.attachment}
-                              alt="Chat attachment"
-                              loading="lazy"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '180px',
+                            {/* ROMAN URDU TRANSLATION BOX FOR PLAYER MESSAGES */}
+                            {!isMe && msgTranslation?.show && (
+                              <div style={{
+                                marginTop: '0.45rem',
+                                marginBottom: '0.15rem',
+                                padding: '0.45rem 0.6rem',
+                                background: 'rgba(0, 0, 0, 0.4)',
+                                borderLeft: '3px solid var(--gold-primary)',
                                 borderRadius: '6px',
-                                cursor: 'zoom-in',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                display: 'block'
-                              }}
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLightboxSrc(msg.attachment);
-                              }}
-                              title="Click to enlarge screenshot"
-                            />
-                          </div>
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.25rem',
+                                fontSize: '0.72rem'
+                              }}>
+                                {msgTranslation.loading ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.8, fontSize: '0.68rem', color: 'var(--gold-primary)' }}>
+                                    <i className="fa-solid fa-spinner fa-spin"></i> Translating to Roman Urdu...
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', lineHeight: 1.35 }}>
+                                      <span style={{ color: 'var(--gold-primary)', fontWeight: 'bold', fontSize: '0.65rem', flexShrink: 0 }}>
+                                        🗣️ Roman Urdu:
+                                      </span>
+                                      <span style={{ color: '#fff', fontWeight: 500 }}>
+                                        {msgTranslation.romanUrdu}
+                                      </span>
+                                    </div>
+                                    {msgTranslation.urdu && msgTranslation.urdu !== msgTranslation.romanUrdu && (
+                                      <div style={{ direction: 'rtl', textAlign: 'right', opacity: 0.85, fontSize: '0.72rem', color: '#e2e8f0', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.25rem', marginTop: '0.1rem' }}>
+                                        {msgTranslation.urdu}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+
+                            {msg.attachment && (
+                              <div style={{ marginTop: '0.5rem' }}>
+                                <img
+                                  src={msg.attachment}
+                                  alt="Chat attachment"
+                                  loading="lazy"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '180px',
+                                    borderRadius: '6px',
+                                    cursor: 'zoom-in',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    display: 'block'
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLightboxSrc(msg.attachment);
+                                  }}
+                                  title="Click to enlarge screenshot"
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
 
-                        {/* Message Actions: Reply + Roman Urdu Translate */}
-                        <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '0.5rem', marginTop: '0.3rem', paddingTop: '0.25rem', borderTop: isMe ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.06)' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplyingTo({
-                                id: msg.id,
-                                message: msg.message,
-                                senderType: msg.senderType,
-                                userName: msg.userName,
-                                hasAttachment: Boolean(msg.attachment)
-                              });
-                              adminInputRef.current?.focus();
-                            }}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: isMe ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
-                              fontSize: '0.62rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.2rem',
-                              padding: 0
-                            }}
-                            title="Reply to this message"
-                          >
-                            <i className="fa-solid fa-reply" /> Reply
-                          </button>
-
-                          {/* Player Message Translate Button */}
-                          {!isMe && msg.message && (
+                        {/* Message Actions: Reply + Edit + Delete + Translate */}
+                        {!msg.deletedForEveryone && (
+                          <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '0.45rem', marginTop: '0.3rem', paddingTop: '0.25rem', borderTop: isMe ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.06)' }}>
+                            {/* Reply */}
                             <button
                               type="button"
-                              onClick={() => handleTranslateMessage(msg.id, msg.message)}
+                              onClick={() => {
+                                setReplyingTo({
+                                  id: msg.id,
+                                  message: msg.message,
+                                  senderType: msg.senderType,
+                                  userName: msg.userName,
+                                  hasAttachment: Boolean(msg.attachment)
+                                });
+                                adminInputRef.current?.focus();
+                              }}
                               style={{
-                                background: msgTranslation?.show ? 'rgba(255, 215, 0, 0.15)' : 'transparent',
+                                background: 'transparent',
                                 border: 'none',
-                                color: msgTranslation?.show ? 'var(--gold-primary)' : 'rgba(255,255,255,0.55)',
+                                color: isMe ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
                                 fontSize: '0.62rem',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.2rem',
-                                padding: '0.1rem 0.3rem',
-                                borderRadius: '4px',
-                                transition: 'all 0.2s'
+                                padding: 0
                               }}
-                              title="Translate player message to Roman Urdu"
+                              title="Reply to this message"
                             >
-                              {msgTranslation?.loading ? (
-                                <><i className="fa-solid fa-spinner fa-spin"></i> Translating...</>
-                              ) : (
-                                <><i className="fa-solid fa-language"></i> {msgTranslation?.show ? 'Hide Roman Urdu' : 'Roman Urdu'}</>
-                              )}
+                              <i className="fa-solid fa-reply" /> Reply
                             </button>
-                          )}
-                        </div>
+
+                            {/* Edit Button (Admin's own messages) */}
+                            {isMe && msg.message && (
+                              <button
+                                type="button"
+                                onClick={() => handleStartEdit(msg)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: isMe ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
+                                  fontSize: '0.62rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.2rem',
+                                  padding: 0
+                                }}
+                                title="Edit your message"
+                              >
+                                <i className="fa-solid fa-pen-to-square" /> Edit
+                              </button>
+                            )}
+
+                            {/* Delete Options Button */}
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTargetMessage({ id: msg.id, senderType: msg.senderType, message: msg.message, isMe })}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: isMe ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
+                                fontSize: '0.62rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                padding: 0
+                              }}
+                              title="Delete message options"
+                            >
+                              <i className="fa-solid fa-trash-can" /> Delete
+                            </button>
+
+                            {/* Player Message Translate Button */}
+                            {!isMe && msg.message && (
+                              <button
+                                type="button"
+                                onClick={() => handleTranslateMessage(msg.id, msg.message)}
+                                style={{
+                                  background: msgTranslation?.show ? 'rgba(255, 215, 0, 0.15)' : 'transparent',
+                                  border: 'none',
+                                  color: msgTranslation?.show ? 'var(--gold-primary)' : 'rgba(255,255,255,0.55)',
+                                  fontSize: '0.62rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.2rem',
+                                  padding: '0.1rem 0.3rem',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.2s'
+                                }}
+                                title="Translate player message to Roman Urdu"
+                              >
+                                {msgTranslation?.loading ? (
+                                  <><i className="fa-solid fa-spinner fa-spin"></i> Translating...</>
+                                ) : (
+                                  <><i className="fa-solid fa-language"></i> {msgTranslation?.show ? 'Hide Roman Urdu' : 'Roman Urdu'}</>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <span style={{ fontSize: '0.55rem', opacity: 0.65, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
                         {isMe ? 'You (Agent)' : (msg.userName && !/^support\s*agent$/i.test(msg.userName) ? msg.userName : activeChatDisplayName || 'Player')} • {formatDeviceTime(msg.timestamp)}
-                        {msg.isEdited && <span style={{ color: '#ffd700', fontStyle: 'italic' }}>• (edited)</span>}
+                        {msg.isEdited && <span style={{ color: '#ffd700', fontStyle: 'italic', fontWeight: 'bold' }}>• (edited)</span>}
                         {isMe && (
                           msg.read ? (
                             <span style={{ color: '#60a5fa', fontWeight: 'bold', marginLeft: '3px' }}>
@@ -948,6 +1110,36 @@ export default function SupportTab({ adminUser }) {
             </div>
 
             <form onSubmit={handleSendAdminReply} style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.5rem', gap: '0.4rem', flexShrink: 0 }}>
+              {/* Editing Mode Banner */}
+              {editingMessage && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.4rem 0.75rem',
+                  background: 'rgba(255, 215, 0, 0.15)',
+                  borderLeft: '3px solid var(--gold-primary)',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--gold-primary)', fontWeight: 'bold' }}>
+                      <i className="fa-solid fa-pen-to-square"></i> Editing message:
+                    </span>
+                    <span style={{ opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      "{editingMessage.message}"
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingMessage(null); setAdminReplyText(''); }}
+                    style={{ background: 'transparent', border: 'none', color: '#ffd700', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', padding: '0 4px', whiteSpace: 'nowrap' }}
+                  >
+                    &times; Cancel
+                  </button>
+                </div>
+              )}
+
               {/* Quoted Reply Preview Above Admin Input */}
               {replyingTo && (
                 <div style={{
@@ -1270,6 +1462,102 @@ export default function SupportTab({ adminUser }) {
           </div>
         )}
       </div>
+
+      {/* Delete Message Options Modal (WhatsApp Style) */}
+      {deleteTargetMessage && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.78)',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #101426 0%, #080a14 100%)',
+            border: '1px solid rgba(255,215,0,0.3)',
+            borderRadius: '14px',
+            padding: '1.25rem',
+            maxWidth: '350px',
+            width: '100%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.85)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.85rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              <i className="fa-solid fa-trash-can"></i> Delete Message?
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.4 }}>
+              "{deleteTargetMessage.message?.slice(0, 80) || 'Attachment'}{deleteTargetMessage.message?.length > 80 ? '...' : ''}"
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.25rem' }}>
+              <button
+                type="button"
+                onClick={() => handleDeleteForEveryone(deleteTargetMessage.id)}
+                style={{
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <i className="fa-solid fa-users"></i> Delete for Everyone
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => handleDeleteForMe(deleteTargetMessage.id)}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <i className="fa-solid fa-user"></i> Delete for Me
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setDeleteTargetMessage(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  padding: '0.4rem',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} alt="Chat screenshot" />
     </div>
   );
