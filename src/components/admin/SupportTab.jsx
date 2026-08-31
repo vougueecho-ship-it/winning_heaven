@@ -318,6 +318,34 @@ export default function SupportTab({ adminUser }) {
     }
   };
 
+  // Translate Roman Urdu to English and Send to Player in 1 Click
+  const handleTranslateAndSendAdminReply = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const text = adminReplyText.trim();
+    if (!text && !adminAttachment) return;
+    if (!text && adminAttachment) {
+      handleSendAdminReply(e);
+      return;
+    }
+
+    setIsTranslatingAdmin(true);
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, direction: 'to_english' })
+      });
+      const data = await res.json();
+      const englishText = data.success && data.translation ? data.translation : text;
+      handleSendAdminReply(e, englishText);
+    } catch (err) {
+      console.error('Admin translate & send error:', err);
+      handleSendAdminReply(e, text);
+    } finally {
+      setIsTranslatingAdmin(false);
+    }
+  };
+
   // Translate Player message to Roman Urdu (and Urdu script)
   const handleTranslateMessage = async (msgId, text) => {
     if (!msgId || !text) return;
@@ -1128,7 +1156,7 @@ export default function SupportTab({ adminUser }) {
                       required={!adminAttachment}
                     />
 
-                    {/* Translate Button */}
+                    {/* Translate (Preview) Button */}
                     <button
                       type="button"
                       onClick={handleTranslateAdminText}
@@ -1148,22 +1176,51 @@ export default function SupportTab({ adminUser }) {
                         flexShrink: 0,
                         transition: 'all 0.2s'
                       }}
-                      title="Translate Roman Urdu to English (or press Ctrl+Enter)"
+                      title="Translate Roman Urdu to English Preview (or press Ctrl+Enter)"
                     >
                       {isTranslatingAdmin ? (
                         <i className="fa-solid fa-spinner fa-spin"></i>
                       ) : (
                         <>
                           <i className="fa-solid fa-language" style={{ fontSize: '0.9rem' }}></i>
-                          <span>Translate</span>
+                          <span>Preview</span>
                         </>
                       )}
+                    </button>
+
+                    {/* 1-Click Translate & Send English */}
+                    <button
+                      type="button"
+                      onClick={handleTranslateAndSendAdminReply}
+                      disabled={!adminReplyText.trim() || isTranslatingAdmin}
+                      style={{
+                        margin: 0,
+                        padding: '0.65rem 0.95rem',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: 'bold',
+                        fontSize: '0.75rem',
+                        cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
+                        opacity: !adminReplyText.trim() || isTranslatingAdmin ? 0.6 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap'
+                      }}
+                      title="Translate Roman Urdu to English and Send to Player instantly"
+                    >
+                      <i className="fa-solid fa-bolt"></i>
+                      <span>Translate & Send</span>
                     </button>
 
                     <button
                       type="submit"
                       className="submit-btn support-chat-reply-btn"
-                      style={{ margin: 0, padding: '0.65rem 1.15rem', width: 'auto', background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)', color: '#000', fontWeight: 'bold', flexShrink: 0 }}
+                      style={{ margin: 0, padding: '0.65rem 1rem', width: 'auto', background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)', color: '#000', fontWeight: 'bold', flexShrink: 0 }}
+                      title="Send message as is"
                     >
                       {activeChatMessages.length === 0 ? 'Send' : 'Reply'}
                     </button>

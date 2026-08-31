@@ -9,12 +9,14 @@ function normalizeRomanUrdu(text) {
 
   // Common Roman Urdu chat abbreviations & spellings normalization
   const replacements = [
+    [/\byr\b/gi, 'yaar'],
     [/\bky\b/gi, 'ke'],
     [/\bkiu\b/gi, 'kyun'],
     [/\bkio\b/gi, 'kyun'],
     [/\bchahiye\b/gi, 'chahiye'],
     [/\bchahye\b/gi, 'chahiye'],
     [/\bkr\b/gi, 'kar'],
+    [/\bkro\b/gi, 'karo'],
     [/\bkrna\b/gi, 'karna'],
     [/\bkrta\b/gi, 'karta'],
     [/\bkrty\b/gi, 'karte'],
@@ -28,8 +30,8 @@ function normalizeRomanUrdu(text) {
     [/\bhy\b/gi, 'hai'],
     [/\bhe\b/gi, 'hai'],
     [/\bni\b/gi, 'nahi'],
-    [/\bnahi\b/gi, 'nahi'],
     [/\bnh\b/gi, 'nahi'],
+    [/\bnahe\b/gi, 'nahi'],
     [/\bmgr\b/gi, 'magar'],
     [/\budr\b/gi, 'udhar'],
     [/\bidr\b/gi, 'idhar'],
@@ -37,7 +39,13 @@ function normalizeRomanUrdu(text) {
     [/\btb\b/gi, 'tab'],
     [/\bthx\b/gi, 'shukriya'],
     [/\bpls\b/gi, 'please'],
-    [/\bplz\b/gi, 'please']
+    [/\bplz\b/gi, 'please'],
+    [/\bacc\b/gi, 'account'],
+    [/\bmsg\b/gi, 'message'],
+    [/\bdia\b/gi, 'diya'],
+    [/\bdya\b/gi, 'diya'],
+    [/\bgya\b/gi, 'gaya'],
+    [/\bgia\b/gi, 'gaya']
   ];
 
   for (const [pattern, rep] of replacements) {
@@ -47,16 +55,52 @@ function normalizeRomanUrdu(text) {
 }
 
 /**
- * Translates Roman Urdu or Urdu to English using AI if key exists, else Google Translate
+ * Naturalize Roman Hindi transliteration into standard Pakistani Roman Urdu
+ */
+function naturalizeRomanUrdu(text) {
+  if (!text) return '';
+  return text
+    .replace(/\bkripya\b/gi, 'please')
+    .replace(/\bkrpya\b/gi, 'please')
+    .replace(/\bmadhyam se\b/gi, 'ke zariye')
+    .replace(/\bmadhyam\b/gi, 'zariye')
+    .replace(/\bkhate\b/gi, 'account')
+    .replace(/\bkhaata\b/gi, 'account')
+    .replace(/\bkhaate\b/gi, 'account')
+    .replace(/\bjoden\b/gi, 'add karein')
+    .replace(/\bjodein\b/gi, 'add karein')
+    .replace(/\bjod\b/gi, 'add')
+    .replace(/\bjanch\b/gi, 'check')
+    .replace(/\bjanchen\b/gi, 'check karein')
+    .replace(/\bjaanch\b/gi, 'check')
+    .replace(/\bnamskar\b/gi, 'salam')
+    .replace(/\bnamaste\b/gi, 'salam')
+    .replace(/\bdhanayavad\b/gi, 'shukriya')
+    .replace(/\bdhanyavad\b/gi, 'shukriya')
+    .replace(/\bsikke\b/gi, 'coins')
+    .replace(/\bsikkon\b/gi, 'coins')
+    .replace(/\bvapas\b/gi, 'wapas')
+    .replace(/\bvapsi\b/gi, 'wapsi')
+    .replace(/\bshulk\b/gi, 'fee')
+    .replace(/\bkare\b/gi, 'karein')
+    .replace(/\bhain\b/gi, 'hain')
+    .replace(/\bhan\b/gi, 'hain')
+    .replace(/\bmain\b/gi, 'main')
+    .trim();
+}
+
+/**
+ * Translates Roman Urdu or Urdu to English using high-accuracy multi-tier engines
  */
 async function translateToEnglish(text) {
   const cleanInput = text.trim();
+  const normalized = normalizeRomanUrdu(cleanInput);
 
-  // Try Gemini AI if API Key is configured in environment
+  // Strategy 1: If Gemini API Key exists
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
-      const prompt = `You are a professional customer support translator for a gaming platform. Translate the following user message (written in Roman Urdu or Urdu) into clear, polite, and professional English. Preserve all emojis, usernames, cashtags, numbers, and currency symbols (e.g. $50). Output ONLY the translated English text with no extra commentary or quotes.\n\nInput message:\n${cleanInput}`;
+      const prompt = `You are a support translator. Translate this customer or agent message (written in Roman Urdu or Urdu) into clear, polite, natural English. Keep all numbers, names, cashtags, currencies (e.g. $20) intact. Output ONLY the English translation without quotes or extra text.\n\nMessage: ${cleanInput}`;
       const aiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
         {
@@ -71,19 +115,80 @@ async function translateToEnglish(text) {
       if (aiRes.ok) {
         const aiData = await aiRes.json();
         const aiText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (aiText) return aiText.replace(/^["']|["']$/g, '');
+        if (aiText && aiText.toLowerCase() !== cleanInput.toLowerCase()) {
+          return aiText.replace(/^["']|["']$/g, '');
+        }
       }
     } catch (e) {
-      console.warn('Gemini translate fallback to Google Translate:', e.message);
+      console.warn('Gemini translate error:', e.message);
     }
   }
 
-  const normalized = normalizeRomanUrdu(cleanInput);
+  // Strategy 2: Dual Transliteration Pipeline (Google InputTools Roman Urdu -> Urdu Script -> English)
+  try {
+    const itUrl = `https://inputtools.google.com/request?text=${encodeURIComponent(normalized)}&itc=ur-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+    const itRes = await fetch(itUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      cache: 'no-store'
+    });
+    if (itRes.ok) {
+      const itData = await itRes.json();
+      const urduScript = itData[1]?.[0]?.[1]?.[0];
+      if (urduScript && urduScript !== normalized) {
+        const tUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ur&tl=en&dt=t&q=${encodeURIComponent(urduScript)}`;
+        const tRes = await fetch(tUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+          cache: 'no-store'
+        });
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          const translated = tData[0]?.map((x) => x[0]).filter(Boolean).join('').trim();
+          if (translated && translated.toLowerCase() !== cleanInput.toLowerCase()) {
+            return translated;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('InputTools Urdu transliteration error:', e.message);
+  }
 
-  // Strategy 1: Google Translate with sl=hi (Handles Romanized Hindi/Urdu very well)
+  // Strategy 3: Google InputTools with Hindi Transliteration -> English
+  try {
+    const itHiUrl = `https://inputtools.google.com/request?text=${encodeURIComponent(normalized)}&itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+    const itHiRes = await fetch(itHiUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      cache: 'no-store'
+    });
+    if (itHiRes.ok) {
+      const itHiData = await itHiRes.json();
+      const hiScript = itHiData[1]?.[0]?.[1]?.[0];
+      if (hiScript && hiScript !== normalized) {
+        const tUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=hi&tl=en&dt=t&q=${encodeURIComponent(hiScript)}`;
+        const tRes = await fetch(tUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+          cache: 'no-store'
+        });
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          const translated = tData[0]?.map((x) => x[0]).filter(Boolean).join('').trim();
+          if (translated && translated.toLowerCase() !== cleanInput.toLowerCase()) {
+            return translated;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('InputTools Hindi transliteration error:', e.message);
+  }
+
+  // Strategy 4: Google Translate Direct with sl=hi / sl=auto
   try {
     const urlHi = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=hi&tl=en&dt=t&q=${encodeURIComponent(normalized)}`;
-    const resHi = await fetch(urlHi, { cache: 'no-store' });
+    const resHi = await fetch(urlHi, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      cache: 'no-store'
+    });
     if (resHi.ok) {
       const dataHi = await resHi.json();
       const translated = dataHi[0]?.map((x) => x[0]).filter(Boolean).join('').trim();
@@ -92,53 +197,38 @@ async function translateToEnglish(text) {
       }
     }
   } catch (e) {
-    console.error('Translation sl=hi error:', e);
+    console.warn('GTX sl=hi error:', e.message);
   }
 
-  // Strategy 2: Google Translate with sl=auto
+  // Strategy 5: MyMemory API Fallback
   try {
-    const urlAuto = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(normalized)}`;
-    const resAuto = await fetch(urlAuto, { cache: 'no-store' });
-    if (resAuto.ok) {
-      const dataAuto = await resAuto.json();
-      const translated = dataAuto[0]?.map((x) => x[0]).filter(Boolean).join('').trim();
-      if (translated) {
-        return translated;
+    const memUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(normalized)}&langpair=ur|en`;
+    const memRes = await fetch(memUrl, { cache: 'no-store' });
+    if (memRes.ok) {
+      const memData = await memRes.json();
+      const memTrans = memData?.responseData?.translatedText?.trim();
+      if (memTrans && memTrans.toLowerCase() !== cleanInput.toLowerCase() && !memTrans.includes('MYMEMORY WARNING')) {
+        return memTrans;
       }
     }
   } catch (e) {
-    console.error('Translation sl=auto error:', e);
-  }
-
-  // Strategy 3: Google Translate with sl=ur
-  try {
-    const urlUr = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ur&tl=en&dt=t&q=${encodeURIComponent(cleanInput)}`;
-    const resUr = await fetch(urlUr, { cache: 'no-store' });
-    if (resUr.ok) {
-      const dataUr = await resUr.json();
-      const translated = dataUr[0]?.map((x) => x[0]).filter(Boolean).join('').trim();
-      if (translated) {
-        return translated;
-      }
-    }
-  } catch (e) {
-    console.error('Translation sl=ur error:', e);
+    console.warn('MyMemory fallback error:', e.message);
   }
 
   return cleanInput;
 }
 
 /**
- * Translates English to Urdu Script and extracts Roman Urdu transliteration
+ * Translates English to Roman Urdu (and Urdu script)
  */
 async function translateToRomanUrdu(text) {
   const cleanInput = text.trim();
 
-  // Try Gemini AI if API Key is configured in environment
+  // Strategy 1: Gemini AI
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
-      const prompt = `Translate the following English customer message into natural, easy-to-understand Roman Urdu (Pakistani conversational style) so the support agent can easily understand what the customer wrote. Also provide the Urdu script.\nFormat response in JSON with keys "romanUrdu" and "urdu".\n\nInput message:\n${cleanInput}`;
+      const prompt = `Translate this English customer message into natural conversational Pakistani Roman Urdu (easy to read) and Urdu script. Output JSON with format: {"romanUrdu": "...", "urdu": "..."}\n\nMessage: ${cleanInput}`;
       const aiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
         {
@@ -164,65 +254,50 @@ async function translateToRomanUrdu(text) {
         }
       }
     } catch (e) {
-      console.warn('Gemini translate to roman urdu fallback:', e.message);
+      console.warn('Gemini translate to roman urdu error:', e.message);
     }
   }
 
+  // Strategy 2: Google Translate with transliteration (sl=en&tl=hi&dt=rm)
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ur&dt=t&dt=rm&q=${encodeURIComponent(cleanInput)}`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&dt=rm&q=${encodeURIComponent(cleanInput)}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      cache: 'no-store'
+    });
     if (res.ok) {
       const data = await res.json();
       let urduScript = '';
-      let romanUrdu = '';
+      let rawRoman = '';
 
       if (Array.isArray(data[0])) {
-        urduScript = data[0].map((x) => x[0]).filter(Boolean).join('').trim();
+        urduScript = data[0][0]?.[0] || '';
+        rawRoman = data[0][1]?.[2] || data[0][1]?.[3] || data[0][0]?.[1] || '';
+      }
 
-        // Extract transliteration from sub-arrays of data[0]
-        for (const block of data[0]) {
-          if (Array.isArray(block)) {
-            for (const item of block) {
-              if (typeof item === 'string' && item.length > 0 && !/[؀-ۿ]/.test(item) && item !== cleanInput) {
-                if (!romanUrdu || item.length > romanUrdu.length) {
-                  romanUrdu = item.trim();
-                }
-              }
-            }
-          }
+      // Also try fetching Urdu script for accurate Urdu script
+      try {
+        const urUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ur&dt=t&q=${encodeURIComponent(cleanInput)}`;
+        const urRes = await fetch(urUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+          cache: 'no-store'
+        });
+        if (urRes.ok) {
+          const urData = await urRes.json();
+          const actualUrdu = urData[0]?.map((x) => x[0]).join('').trim();
+          if (actualUrdu) urduScript = actualUrdu;
         }
-      }
+      } catch (_) {}
 
-      // If roman transliteration wasn't found in dt=rm, try sl=en&tl=hi transliteration
-      if (!romanUrdu) {
-        try {
-          const hiUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=hi&dt=t&dt=rm&q=${encodeURIComponent(cleanInput)}`;
-          const hiRes = await fetch(hiUrl, { cache: 'no-store' });
-          if (hiRes.ok) {
-            const hiData = await hiRes.json();
-            if (Array.isArray(hiData[0])) {
-              for (const block of hiData[0]) {
-                if (Array.isArray(block)) {
-                  for (const item of block) {
-                    if (typeof item === 'string' && item.length > 0 && !/[\u0900-\u097F]/.test(item) && item !== cleanInput) {
-                      romanUrdu = item.trim();
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } catch (_) {}
-      }
+      const cleanRoman = naturalizeRomanUrdu(rawRoman) || urduScript || cleanInput;
 
       return {
         urdu: urduScript || cleanInput,
-        romanUrdu: romanUrdu || urduScript || cleanInput
+        romanUrdu: cleanRoman
       };
     }
   } catch (e) {
-    console.error('Translation to Urdu/Roman error:', e);
+    console.error('Translation to Roman Urdu error:', e);
   }
 
   return { urdu: cleanInput, romanUrdu: cleanInput };
@@ -253,31 +328,13 @@ export async function POST(req) {
         original: text,
         romanUrdu: result.romanUrdu,
         urdu: result.urdu,
-        translation: result.romanUrdu || result.urdu
+        translation: result.romanUrdu
       });
-    } else {
-      // Auto-detect direction
-      if (/[؀-ۿ]/.test(text)) {
-        const english = await translateToEnglish(text);
-        return NextResponse.json({ success: true, direction: 'to_english', original: text, translation: english });
-      } else {
-        const english = await translateToEnglish(text);
-        const urduResult = await translateToRomanUrdu(text);
-        return NextResponse.json({
-          success: true,
-          direction: 'both',
-          original: text,
-          english,
-          romanUrdu: urduResult.romanUrdu,
-          urdu: urduResult.urdu
-        });
-      }
     }
-  } catch (error) {
-    console.error('Translate API Route Error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Translation service failed.' },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ success: false, message: 'Invalid translation direction.' }, { status: 400 });
+  } catch (err) {
+    console.error('POST /api/translate error:', err);
+    return NextResponse.json({ success: false, message: 'Internal translation error.' }, { status: 500 });
   }
 }
