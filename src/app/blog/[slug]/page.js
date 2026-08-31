@@ -37,17 +37,20 @@ export async function generateMetadata({ params }) {
   }
 
   const tagsList = Array.isArray(post.tags) ? post.tags : (post.tags || '').split(',').map((t) => t.trim());
+  const finalTitle = post.metaTitle ? (post.metaTitle.includes('Winning Heaven') ? post.metaTitle : `${post.metaTitle} | Winning Heaven Blog`) : `${post.title} | Winning Heaven Blog`;
+  const finalDescription = post.metaDescription || post.summary || post.title;
+  const canonicalUrl = post.canonicalUrl || `https://winningheaven.com/blog/${post.slug}`;
 
   return {
-    title: `${post.title} | Winning Heaven Blog`,
-    description: post.summary,
+    title: finalTitle,
+    description: finalDescription,
     keywords: tagsList,
     alternates: {
-      canonical: `https://winningheaven.com/blog/${post.slug}`
+      canonical: canonicalUrl
     },
     openGraph: {
-      title: post.title,
-      description: post.summary,
+      title: finalTitle,
+      description: finalDescription,
       url: `https://winningheaven.com/blog/${post.slug}`,
       siteName: 'Winning Heaven Blog',
       images: [
@@ -61,8 +64,8 @@ export async function generateMetadata({ params }) {
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.title,
-      description: post.summary,
+      title: finalTitle,
+      description: finalDescription,
       images: [post.image || '/winning_heaven_banner.png']
     }
   };
@@ -78,27 +81,50 @@ export default async function BlogPostPage({ params }) {
 
   const relatedPosts = await fetchRelatedBlogs(post.slug);
   const tagsList = Array.isArray(post.tags) ? post.tags : (post.tags || '').split(',').map((t) => t.trim());
+  const faqsList = Array.isArray(post.faqs) ? post.faqs.filter((f) => f.question && f.answer) : [];
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.title,
-    description: post.summary,
-    image: `https://winningheaven.com${post.image || '/winning_heaven_banner.png'}`,
-    author: {
-      '@type': 'Organization',
-      name: post.author || 'Winning Heaven Team'
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Winning Heaven',
-      logo: {
-        '@type': 'ImageObject',
-        url: 'https://winningheaven.com/winning_heaven_logo.png'
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: post.metaTitle || post.title,
+      description: post.metaDescription || post.summary,
+      image: post.image?.startsWith('http') ? post.image : `https://winningheaven.com${post.image || '/winning_heaven_banner.png'}`,
+      author: {
+        '@type': 'Organization',
+        name: post.author || 'Winning Heaven Team'
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'Winning Heaven',
+        logo: {
+          '@type': 'ImageObject',
+          url: 'https://winningheaven.com/winning_heaven_logo.png'
+        }
+      },
+      datePublished: post.createdAt || new Date(post.date).toISOString(),
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': `https://winningheaven.com/blog/${post.slug}`
       }
-    },
-    datePublished: post.createdAt || new Date(post.date).toISOString()
-  };
+    }
+  ];
+
+  // Add FAQPage Schema if article has FAQs
+  if (faqsList.length > 0) {
+    jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqsList.map((f) => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: f.answer.replace(/<[^>]*>?/gm, '')
+        }
+      }))
+    });
+  }
 
   return (
     <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
@@ -106,9 +132,9 @@ export default async function BlogPostPage({ params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div style={{ maxWidth: '820px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '840px', margin: '0 auto' }}>
         {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <Link href="/blog" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
             <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Blog Hub
           </Link>
@@ -127,7 +153,7 @@ export default async function BlogPostPage({ params }) {
             <span style={{ color: 'var(--cyan-glow)', fontSize: '0.82rem' }}>• {post.readTime}</span>
           </div>
 
-          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem', fontWeight: 900, color: '#fff', lineHeight: 1.3, margin: '0 0 1rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.1rem', fontWeight: 900, color: '#fff', lineHeight: 1.3, margin: '0 0 1rem' }}>
             {post.title}
           </h1>
 
@@ -142,8 +168,12 @@ export default async function BlogPostPage({ params }) {
           </div>
 
           {/* Featured Image */}
-          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.75rem', maxHeight: '360px' }}>
-            <img src={post.image || '/winning_heaven_banner.png'} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.75rem', maxHeight: '420px', background: '#0b0d18' }}>
+            <img
+              src={post.image || '/winning_heaven_banner.png'}
+              alt={post.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
           </div>
 
           {/* Article HTML Content */}
@@ -152,10 +182,41 @@ export default async function BlogPostPage({ params }) {
             dangerouslySetInnerHTML={{ __html: post.content }}
             style={{
               fontSize: '1rem',
-              lineHeight: 1.75,
+              lineHeight: 1.8,
               color: 'rgba(255,255,255,0.9)'
             }}
           />
+
+          {/* FAQs Section if present */}
+          {faqsList.length > 0 && (
+            <section style={{ marginTop: '2.5rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <h2 style={{ fontSize: '1.4rem', color: 'var(--gold-primary)', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <i className="fa-solid fa-circle-question" style={{ color: 'var(--cyan-glow)' }}></i> Frequently Asked Questions (FAQs)
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {faqsList.map((faq, fIdx) => (
+                  <div
+                    key={fIdx}
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,215,0,0.2)',
+                      borderRadius: '16px',
+                      padding: '1.25rem'
+                    }}
+                  >
+                    <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 700, margin: '0 0 0.6rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', lineHeight: 1.4 }}>
+                      <span style={{ color: 'var(--gold-primary)', fontWeight: 900 }}>Q{fIdx + 1}:</span>
+                      <span>{faq.question}</span>
+                    </h3>
+                    <div
+                      style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.92rem', lineHeight: 1.65, paddingLeft: '1.8rem' }}
+                      dangerouslySetInnerHTML={{ __html: faq.answer }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Article Tags */}
           <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>

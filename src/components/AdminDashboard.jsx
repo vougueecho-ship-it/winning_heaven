@@ -948,6 +948,35 @@ export default function AdminDashboard({
             </button>
           )}
 
+          {isSuperAdmin() && !adminUser?.distributorId && (
+            <a
+              href="/blog-admin"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'none',
+                color: '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+                marginTop: '0.25rem'
+              }}
+            >
+              <i className="fa-solid fa-newspaper" style={{ width: '18px', color: 'var(--cyan-glow)' }}></i>
+              <span>Blog CMS Manager ↗</span>
+            </a>
+          )}
+
           {!adminUser?.distributorId && isSuperAdmin() && (
             <button
               onClick={() => { setActiveTab('deleted_accounts'); setSidebarOpen(false); }}

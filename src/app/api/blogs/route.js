@@ -64,7 +64,23 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, summary, category, author, readTime, image, tags, content, status, featured } = body;
+    const {
+      title,
+      slug,
+      metaTitle,
+      metaDescription,
+      summary,
+      category,
+      author,
+      readTime,
+      image,
+      tags,
+      content,
+      status,
+      featured,
+      faqs,
+      canonicalUrl
+    } = body;
 
     if (!title || !content) {
       return NextResponse.json({ success: false, message: 'Title and content are required' }, { status: 400 });
@@ -73,14 +89,26 @@ export async function POST(request) {
     const db = await getDb();
     await ensureSeedBlogs(db);
 
-    const generatedSlug = slugify(title) || `article-${Date.now()}`;
+    const generatedSlug = (slug ? slugify(slug) : slugify(title)) || `article-${Date.now()}`;
     const newId = `blog_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    // Clean FAQs array
+    const cleanFaqs = Array.isArray(faqs)
+      ? faqs
+          .map((f) => ({
+            question: String(f.question || '').trim(),
+            answer: String(f.answer || '').trim()
+          }))
+          .filter((f) => f.question && f.answer)
+      : [];
 
     const newBlog = {
       id: newId,
       slug: generatedSlug,
       title: title.trim(),
-      summary: (summary || '').trim() || title.substring(0, 140),
+      metaTitle: (metaTitle || '').trim() || title.trim(),
+      metaDescription: (metaDescription || '').trim() || (summary || '').trim() || title.substring(0, 155),
+      summary: (summary || '').trim() || (metaDescription || '').trim() || title.substring(0, 155),
       category: (category || 'Sweepstakes Games').trim(),
       author: (author || 'Winning Heaven Team').trim(),
       date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
@@ -88,6 +116,8 @@ export async function POST(request) {
       image: (image || '/winning_heaven_banner.png').trim(),
       tags: Array.isArray(tags) ? tags : (tags || '').split(',').map((t) => t.trim()).filter(Boolean),
       content,
+      faqs: cleanFaqs,
+      canonicalUrl: (canonicalUrl || '').trim(),
       featured: Boolean(featured),
       status: status === 'draft' ? 'draft' : 'published',
       createdAt: new Date().toISOString(),
@@ -106,7 +136,24 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { id, title, summary, category, author, readTime, image, tags, content, status, featured } = body;
+    const {
+      id,
+      title,
+      slug,
+      metaTitle,
+      metaDescription,
+      summary,
+      category,
+      author,
+      readTime,
+      image,
+      tags,
+      content,
+      status,
+      featured,
+      faqs,
+      canonicalUrl
+    } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: 'Blog ID is required' }, { status: 400 });
@@ -117,10 +164,12 @@ export async function PUT(request) {
       updatedAt: new Date().toISOString()
     };
 
-    if (title !== undefined) {
-      updateData.title = title.trim();
-      updateData.slug = slugify(title);
-    }
+    if (title !== undefined) updateData.title = title.trim();
+    if (slug !== undefined) updateData.slug = slugify(slug || title);
+    else if (title !== undefined) updateData.slug = slugify(title);
+
+    if (metaTitle !== undefined) updateData.metaTitle = metaTitle.trim();
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription.trim();
     if (summary !== undefined) updateData.summary = summary.trim();
     if (category !== undefined) updateData.category = category.trim();
     if (author !== undefined) updateData.author = author.trim();
@@ -132,6 +181,18 @@ export async function PUT(request) {
     if (content !== undefined) updateData.content = content;
     if (featured !== undefined) updateData.featured = Boolean(featured);
     if (status !== undefined) updateData.status = status;
+    if (canonicalUrl !== undefined) updateData.canonicalUrl = canonicalUrl.trim();
+
+    if (faqs !== undefined) {
+      updateData.faqs = Array.isArray(faqs)
+        ? faqs
+            .map((f) => ({
+              question: String(f.question || '').trim(),
+              answer: String(f.answer || '').trim()
+            }))
+            .filter((f) => f.question && f.answer)
+        : [];
+    }
 
     const result = await db.collection('blogs').updateOne({ id }, { $set: updateData });
 
