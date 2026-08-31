@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import PublicNavbar from '../../components/PublicNavbar';
+import PlayerFooter from '../../components/player/PlayerFooter';
 
 export const metadata = {
   title: 'Account Deletion Request | Winning Heaven',
@@ -36,18 +38,14 @@ export default function AccountDeletionPage() {
   };
 
   return (
-    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="info-page-inner" style={{ maxWidth: '820px', margin: '0 auto' }}>
-        <header style={{ marginBottom: '1.5rem' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to login
-          </Link>
-        </header>
+      <PublicNavbar currentPath="/account-deletion" />
 
+      <div className="info-page-inner" style={{ maxWidth: '820px', margin: '0 auto', padding: '2rem 1.25rem' }}>
         <section style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
             <span className="gold-gradient-text">ACCOUNT</span> <span className="cyan-gradient-text">DELETION</span>
@@ -103,6 +101,8 @@ export default function AccountDeletionPage() {
           </p>
         </article>
       </div>
+
+      <PlayerFooter />
     </main>
   );
 }

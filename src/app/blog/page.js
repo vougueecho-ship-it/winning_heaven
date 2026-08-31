@@ -5,6 +5,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { blogPosts as fallbackSeedPosts, blogCategories } from '../../lib/blogData';
 import PlayerFooter from '../../components/player/PlayerFooter';
+import PublicNavbar from '../../components/PublicNavbar';
 
 const fetcher = async (url) => {
   try {
@@ -63,30 +64,14 @@ export default function BlogHubPage() {
   ];
 
   return (
-    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-        {/* Navigation */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Lobby
-          </Link>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Link href="/games" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Games Catalog
-            </Link>
-            <Link href="/how-to-play" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              How to Play
-            </Link>
-            <Link href="/register" className="btn-gold-glow" style={{ textDecoration: 'none' }}>
-              Get $3 Freeplay
-            </Link>
-          </div>
-        </header>
+      <PublicNavbar currentPath="/blog" />
 
+      <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '2rem 1.25rem 0' }}>
         {/* Hero Section */}
         <section style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <span style={{ color: 'var(--gold-primary)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>

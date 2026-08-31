@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { blogPosts as seedPosts } from '../../../lib/blogData';
 import { getDb } from '../../../lib/mongodb';
 import PlayerFooter from '../../../components/player/PlayerFooter';
+import PublicNavbar from '../../../components/PublicNavbar';
 
 async function fetchBlogBySlug(slug) {
   try {
@@ -127,21 +128,23 @@ export default async function BlogPostPage({ params }) {
   }
 
   return (
-    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
+    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div style={{ maxWidth: '840px', margin: '0 auto' }}>
-        {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <Link href="/blog" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
+      <PublicNavbar currentPath="/blog" />
+
+      <div style={{ maxWidth: '840px', margin: '0 auto', padding: '2rem 1.25rem 0' }}>
+        {/* Navigation Breadcrumb */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <Link href="/blog" className="btn-glass-secondary" style={{ textDecoration: 'none', fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}>
             <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Blog Hub
           </Link>
-          <Link href="/register" className="btn-gold-glow" style={{ textDecoration: 'none' }}>
-            Get $3 Freeplay
+          <Link href="/register" className="btn-gold-glow" style={{ textDecoration: 'none', fontSize: '0.82rem', padding: '0.45rem 0.95rem' }}>
+            <i className="fa-solid fa-gift" /> Get $3 Freeplay
           </Link>
-        </header>
+        </div>
 
         {/* Article Header */}
         <article style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '24px', padding: '2rem 1.75rem', marginBottom: '2.5rem' }}>

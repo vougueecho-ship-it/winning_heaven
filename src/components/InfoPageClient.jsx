@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import useSWR from 'swr';
 import { getInfoChannels, isInfoPageEnabled } from '../lib/infoPage';
+import PublicNavbar from './PublicNavbar';
+import PlayerFooter from './player/PlayerFooter';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -21,14 +23,10 @@ export default function InfoPageClient() {
   const supportMailto = emailChannel?.href || `mailto:${supportEmail}`;
 
   return (
-    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)', padding: '2rem 1rem' }}>
-      <div className="info-page-inner" style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
-        
-        <header style={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Login
-          </Link>
-        </header>
+    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-light)' }}>
+      <PublicNavbar currentPath="/info" />
+
+      <div className="info-page-inner" style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
 
         <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: '#000', border: '2px solid var(--gold-primary)', boxShadow: '0 0 25px rgba(255,200,0,0.4)', padding: '0.5rem', overflow: 'hidden' }}>
@@ -115,13 +113,14 @@ export default function InfoPageClient() {
           </>
         )}
 
-        <footer style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
           <Link href="/login" className="btn-gold-glow" style={{ textDecoration: 'none' }}>
             ENTER LOBBY
           </Link>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Winning Heaven</p>
-        </footer>
+        </div>
       </div>
+
+      <PlayerFooter />
     </main>
   );
 }

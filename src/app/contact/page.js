@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import PlayerFooter from '../../components/player/PlayerFooter';
+import PublicNavbar from '../../components/PublicNavbar';
 
 export const metadata = {
   title: 'Contact Us & 24/7 Player Support | Winning Heaven',
@@ -115,30 +116,14 @@ export default function ContactPage() {
   ];
 
   return (
-    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary, #04050b)', color: 'var(--text-light, #fff)', padding: '2rem 1.25rem' }}>
+    <main className="info-page" style={{ minHeight: '100vh', background: 'var(--bg-primary, #04050b)', color: 'var(--text-light, #fff)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-        {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Lobby
-          </Link>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <Link href="/about" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              About Us
-            </Link>
-            <Link href="/games" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Games Catalog
-            </Link>
-            <Link href="/register" className="btn-gold-glow" style={{ textDecoration: 'none' }}>
-              Claim $3 Freeplay
-            </Link>
-          </div>
-        </header>
+      <PublicNavbar currentPath="/contact" />
 
+      <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '2rem 1.25rem 0' }}>
         {/* Hero Section */}
         <section style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
           <span style={{ color: 'var(--gold-primary, #fcd34d)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>

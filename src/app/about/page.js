@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import PlayerFooter from '../../components/player/PlayerFooter';
+import PublicNavbar from '../../components/PublicNavbar';
 
 export const metadata = {
   title: 'About Us - #1 Online Sweepstakes Casino Platform | Winning Heaven',
@@ -106,26 +107,9 @@ export default function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PublicNavbar currentPath="/about" />
 
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1.25rem 0' }}>
-        {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Lobby
-          </Link>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <Link href="/games" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Games Catalog
-            </Link>
-            <Link href="/contact" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Support
-            </Link>
-            <Link href="/register" className="btn-gold-glow" style={{ textDecoration: 'none' }}>
-              Claim $3 Freeplay
-            </Link>
-          </div>
-        </header>
-
         {/* Hero Section */}
         <section style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
           <span style={{ color: 'var(--gold-primary, #fcd34d)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>

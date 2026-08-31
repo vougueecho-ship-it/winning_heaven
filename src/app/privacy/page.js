@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import PlayerFooter from '../../components/player/PlayerFooter';
+import PublicNavbar from '../../components/PublicNavbar';
 
 export const metadata = {
   title: 'Privacy Policy & Data Protection | Winning Heaven',
@@ -99,23 +100,9 @@ export default function PrivacyPolicyPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PublicNavbar currentPath="/privacy" />
 
       <div style={{ maxWidth: '920px', margin: '0 auto', padding: '2rem 1.25rem 0' }}>
-        {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <Link href="/login" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Back to Lobby
-          </Link>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <Link href="/terms" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Terms & Conditions
-            </Link>
-            <Link href="/account-deletion" className="btn-glass-secondary" style={{ textDecoration: 'none' }}>
-              Delete Account
-            </Link>
-          </div>
-        </header>
-
         {/* Hero Section */}
         <section style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <span style={{ color: 'var(--gold-primary, #fcd34d)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
