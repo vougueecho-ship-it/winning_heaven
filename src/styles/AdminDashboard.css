@@ -93,20 +93,19 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    min-height: calc(56px + max(env(safe-area-inset-top, 0px), var(--admin-sat, 0px))) !important;
-    height: auto !important;
-    padding-top: max(env(safe-area-inset-top, 0px), var(--admin-sat, 0px)) !important;
-    padding-bottom: 0.65rem !important;
-    padding-left: max(1rem, env(safe-area-inset-left, 0px)) !important;
-    padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
-    background: rgba(8, 11, 24, 0.98) !important;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.18) !important;
+    padding-top: max(1.1rem, calc(0.85rem + env(safe-area-inset-top, 0px))) !important;
+    padding-bottom: 0.75rem !important;
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
+    background: rgba(6, 9, 20, 0.98) !important;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.22) !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 999 !important;
-    backdrop-filter: blur(16px) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     width: 100% !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6) !important;
     box-sizing: border-box !important;
   }
 

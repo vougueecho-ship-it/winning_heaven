@@ -653,65 +653,94 @@ export default function SupportTab({ adminUser }) {
       <div className="admin-section-card support-chat-window">
         {activeChatEmail ? (
           <>
-            <div className="support-chat-header">
-              <button
-                type="button"
-                className="support-chat-back-btn"
-                onClick={() => setActiveChatEmail(null)}
-              >
-                <i className="fa-solid fa-chevron-left"></i> Chats
-              </button>
-              <div className="support-chat-player-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold-primary)', border: '1px solid rgba(255,215,0,0.2)', flexShrink: 0 }}>
-                  <i className="fa-solid fa-user" style={{ fontSize: '1rem' }}></i>
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <h4 style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeChatDisplayName}
-                  </h4>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeChatEmail}
-                  </span>
-                  <span className="support-chat-player-status">
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Active Live Chat Support
-                  </span>
+            <div className="support-chat-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.85rem', gap: '0.5rem', background: 'rgba(14, 18, 36, 0.98)', borderBottom: '1px solid rgba(255, 215, 0, 0.18)', boxSizing: 'border-box', flexShrink: 0 }}>
+            <button
+              type="button"
+              className="support-chat-back-btn"
+              onClick={() => setActiveChatEmail(null)}
+              style={{
+                background: 'rgba(255, 215, 0, 0.12)',
+                border: '1px solid rgba(255, 215, 0, 0.3)',
+                borderRadius: '8px',
+                color: 'var(--gold-primary)',
+                padding: '0.4rem 0.65rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              <i className="fa-solid fa-chevron-left"></i>
+              <span>Chats</span>
+            </button>
+
+            <div className="support-chat-player-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold-primary)', border: '1px solid rgba(255,215,0,0.2)', flexShrink: 0 }}>
+                <i className="fa-solid fa-user" style={{ fontSize: '0.9rem' }}></i>
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <h4 style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeChatDisplayName}
+                </h4>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeChatEmail}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#10b981', marginTop: '1px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                  <span>Live Chat</span>
                 </div>
               </div>
+            </div>
 
-              {/* Auto Translate Toggle Button in Header */}
+            {/* Action Controls on Right */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setAutoTranslateIncoming((prev) => !prev)}
                 style={{
-                  background: autoTranslateIncoming ? 'rgba(255, 215, 0, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                  background: autoTranslateIncoming ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.06)',
                   border: autoTranslateIncoming ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '8px',
-                  padding: '0.35rem 0.6rem',
+                  padding: '0.35rem 0.55rem',
                   color: autoTranslateIncoming ? 'var(--gold-primary)' : 'var(--text-muted)',
                   fontSize: '0.68rem',
-                  fontWeight: autoTranslateIncoming ? 700 : 500,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.3rem',
-                  transition: 'all 0.2s',
-                  flexShrink: 0,
-                  marginRight: '0.25rem'
+                  whiteSpace: 'nowrap'
                 }}
-                title={autoTranslateIncoming ? 'Auto-translation is ON (translates customer messages to Roman Urdu)' : 'Turn ON auto-translation of customer messages'}
+                title={autoTranslateIncoming ? 'Auto Roman Urdu translation: ON' : 'Turn ON Auto Roman Urdu translation'}
               >
                 <i className="fa-solid fa-language" style={{ fontSize: '0.85rem' }}></i>
-                <span>{autoTranslateIncoming ? 'Auto Ur: ON' : 'Auto Ur'}</span>
+                <span>{autoTranslateIncoming ? 'Auto Ur' : 'Auto Ur'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => { setActiveChatEmail(null); }}
-                className="close-modal"
-                title="Close Chat"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#aaa',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+                title="Close chat window"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
+            </div>
             </div>
 
             <div className="support-chat-messages">
@@ -1103,127 +1132,132 @@ export default function SupportTab({ adminUser }) {
                 }
 
                 return (
-                  <div className="support-chat-compose" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'nowrap' }}>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: '#0c0e17',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        padding: '0.65rem 0.85rem',
-                        color: 'var(--gold-primary)',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        transition: 'all 0.2s',
-                        flexShrink: 0
-                      }}
-                      title="Attach Image Proof"
-                    >
-                      <i className="fa-solid fa-paperclip"></i>
+                  <div className="support-chat-compose" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', width: '100%', boxSizing: 'border-box' }}>
+                    {/* Row 1: Attachment + Input */}
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#0c0e17',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          borderRadius: '8px',
+                          padding: '0.65rem 0.85rem',
+                          color: 'var(--gold-primary)',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          transition: 'all 0.2s',
+                          flexShrink: 0
+                        }}
+                        title="Attach Image Proof"
+                      >
+                        <i className="fa-solid fa-paperclip"></i>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+
                       <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
+                        ref={adminInputRef}
+                        type="text"
+                        placeholder={activeChatMessages.length === 0 ? 'Write in Roman Urdu or English...' : replyingTo ? `Replying to ${replyingTo.senderType === 'admin' ? 'Agent' : 'Player'}...` : 'Type in Roman Urdu or English...'}
+                        value={adminReplyText}
+                        onChange={(e) => setAdminReplyText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            e.preventDefault();
+                            handleTranslateAdminText();
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          background: '#0c0e17',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          borderRadius: '8px',
+                          padding: '0.65rem 0.9rem',
+                          color: '#fff',
+                          fontSize: '0.85rem',
+                          outline: 'none'
+                        }}
+                        required={!adminAttachment}
                       />
-                    </label>
+                    </div>
 
-                    <input
-                      ref={adminInputRef}
-                      type="text"
-                      placeholder={activeChatMessages.length === 0 ? 'Write in Roman Urdu or English...' : replyingTo ? `Replying to ${replyingTo.senderType === 'admin' ? 'Agent' : 'Player'}...` : 'Type in Roman Urdu or English...'}
-                      value={adminReplyText}
-                      onChange={(e) => setAdminReplyText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                          e.preventDefault();
-                          handleTranslateAdminText();
-                        }
-                      }}
-                      style={{
-                        flex: '1 1 auto',
-                        minWidth: 0,
-                        background: '#0c0e17',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        padding: '0.65rem 0.9rem',
-                        color: '#fff',
-                        fontSize: '0.8rem',
-                        outline: 'none'
-                      }}
-                      required={!adminAttachment}
-                    />
+                    {/* Row 2: Action Buttons */}
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
+                      {/* 1-Click Translate & Send English */}
+                      <button
+                        type="button"
+                        onClick={handleTranslateAndSendAdminReply}
+                        disabled={!adminReplyText.trim() || isTranslatingAdmin}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 0.85rem',
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 'bold',
+                          fontSize: '0.78rem',
+                          cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
+                          opacity: !adminReplyText.trim() || isTranslatingAdmin ? 0.5 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Translate Roman Urdu to English and Send to Player instantly"
+                      >
+                        <i className="fa-solid fa-bolt"></i>
+                        <span>Translate & Send</span>
+                      </button>
 
-                    {/* Translate (Preview) Button */}
-                    <button
-                      type="button"
-                      onClick={handleTranslateAdminText}
-                      disabled={!adminReplyText.trim() || isTranslatingAdmin}
-                      style={{
-                        background: adminReplyText.trim() ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                        border: adminReplyText.trim() ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        padding: '0.65rem 0.75rem',
-                        color: adminReplyText.trim() ? 'var(--gold-primary)' : 'var(--text-muted)',
-                        cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        flexShrink: 0,
-                        transition: 'all 0.2s'
-                      }}
-                      title="Translate Roman Urdu to English Preview (or press Ctrl+Enter)"
-                    >
-                      {isTranslatingAdmin ? (
-                        <i className="fa-solid fa-spinner fa-spin"></i>
-                      ) : (
-                        <>
-                          <i className="fa-solid fa-language" style={{ fontSize: '0.9rem' }}></i>
-                          <span>Preview</span>
-                        </>
-                      )}
-                    </button>
+                      {/* Translate (Preview) Button */}
+                      <button
+                        type="button"
+                        onClick={handleTranslateAdminText}
+                        disabled={!adminReplyText.trim() || isTranslatingAdmin}
+                        style={{
+                          background: adminReplyText.trim() ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          border: adminReplyText.trim() ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '8px',
+                          padding: '0.6rem 0.75rem',
+                          color: adminReplyText.trim() ? 'var(--gold-primary)' : 'var(--text-muted)',
+                          cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Translate Roman Urdu to English Preview (or press Ctrl+Enter)"
+                      >
+                        {isTranslatingAdmin ? (
+                          <i className="fa-solid fa-spinner fa-spin"></i>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-language" style={{ fontSize: '0.9rem' }}></i>
+                            <span>Preview</span>
+                          </>
+                        )}
+                      </button>
 
-                    {/* 1-Click Translate & Send English */}
-                    <button
-                      type="button"
-                      onClick={handleTranslateAndSendAdminReply}
-                      disabled={!adminReplyText.trim() || isTranslatingAdmin}
-                      style={{
-                        margin: 0,
-                        padding: '0.65rem 0.95rem',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontWeight: 'bold',
-                        fontSize: '0.75rem',
-                        cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
-                        opacity: !adminReplyText.trim() || isTranslatingAdmin ? 0.6 : 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        flexShrink: 0,
-                        whiteSpace: 'nowrap'
-                      }}
-                      title="Translate Roman Urdu to English and Send to Player instantly"
-                    >
-                      <i className="fa-solid fa-bolt"></i>
-                      <span>Translate & Send</span>
-                    </button>
-
-                    <button
-                      type="submit"
-                      className="submit-btn support-chat-reply-btn"
-                      style={{ margin: 0, padding: '0.65rem 1rem', width: 'auto', background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)', color: '#000', fontWeight: 'bold', flexShrink: 0 }}
-                      title="Send message as is"
-                    >
-                      {activeChatMessages.length === 0 ? 'Send' : 'Reply'}
-                    </button>
+                      <button
+                        type="submit"
+                        className="submit-btn support-chat-reply-btn"
+                        style={{ margin: 0, padding: '0.6rem 0.95rem', width: 'auto', background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)', color: '#000', fontWeight: 'bold', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                        title="Send message directly"
+                      >
+                        {activeChatMessages.length === 0 ? 'Send' : 'Reply'}
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
