@@ -28,14 +28,18 @@ export default function FreeplayTaskModal({
   const [taskId, setTaskId] = useState('');
   const fileInputRef = useRef(null);
 
-  // Auto-fill selected game
+  // Auto-fill selected game ONLY when defaultGameTitle is explicitly provided
   useEffect(() => {
     if (defaultGameTitle) {
       setSelectedGame(defaultGameTitle);
-    } else if (games.length > 0 && !selectedGame) {
-      setSelectedGame(games[0]?.title || '');
+    } else {
+      setSelectedGame('');
     }
-  }, [defaultGameTitle, games]);
+  }, [defaultGameTitle]);
+
+  const hasSelectedGame = Boolean(selectedGame && String(selectedGame).trim());
+  const hasScreenshot = Boolean(screenshot && String(screenshot).trim());
+  const canSubmit = hasSelectedGame && hasScreenshot && !uploading && !submitting;
 
   // Resend cooldown timer
   useEffect(() => {
@@ -499,46 +503,57 @@ export default function FreeplayTaskModal({
             
             {/* Game Selector */}
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                color: '#fff',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                marginBottom: '0.4rem'
-              }}>
-                Select Game for Freeplay
+              <label
+                htmlFor="freeplay-game-select"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  color: '#fff',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  marginBottom: '0.45rem'
+                }}
+              >
+                <i className="fa-solid fa-gamepad" style={{ color: '#ffc800', fontSize: '0.9rem' }} />
+                <span>Select Game for Freeplay <span style={{ color: '#ef4444' }}>*</span></span>
               </label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <i className="fa-solid fa-gamepad" style={{ position: 'absolute', left: '14px', color: '#ffc800', fontSize: '0.9rem', pointerEvents: 'none' }} />
-                <select
-                  value={selectedGame}
-                  onChange={(e) => setSelectedGame(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    background: 'rgba(6, 8, 18, 0.95)',
-                    border: '1.5px solid rgba(255, 200, 0, 0.3)',
-                    borderRadius: '12px',
-                    padding: '0.75rem 1rem 0.75rem 2.6rem',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    outline: 'none',
-                    appearance: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="" disabled>Select a Casino Game...</option>
-                  {games.map((g) => (
-                    <option key={g.id || g.title} value={g.title} style={{ background: '#0a0d16', color: '#fff' }}>
-                      {g.title} {g.category ? `(${g.category})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <i className="fa-solid fa-chevron-down" style={{ position: 'absolute', right: '14px', color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', pointerEvents: 'none' }} />
-              </div>
+              <select
+                id="freeplay-game-select"
+                value={selectedGame}
+                onChange={(e) => setSelectedGame(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  background: 'rgba(6, 8, 18, 0.95)',
+                  border: hasSelectedGame ? '1.5px solid #00e676' : '1.5px solid rgba(255, 200, 0, 0.4)',
+                  borderRadius: '12px',
+                  padding: '0.85rem 1.15rem',
+                  color: hasSelectedGame ? '#fff' : '#94a3b8',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: hasSelectedGame ? '0 0 12px rgba(0, 230, 118, 0.2)' : 'none'
+                }}
+              >
+                <option value="" style={{ background: '#0a0d16', color: '#94a3b8' }}>
+                  -- Choose a Casino Game * --
+                </option>
+                {games.map((g) => (
+                  <option key={g.id || g.title} value={g.title} style={{ background: '#0a0d16', color: '#fff' }}>
+                    {g.title} {g.category ? `(${g.category})` : ''}
+                  </option>
+                ))}
+              </select>
+              {!hasSelectedGame && (
+                <span style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <i className="fa-solid fa-circle-exclamation" /> Please select which casino game you want your freeplay on.
+                </span>
+              )}
             </div>
 
             {/* Screenshot Uploader */}
@@ -707,27 +722,27 @@ export default function FreeplayTaskModal({
             {/* Submit Action Button */}
             <button
               type="submit"
-              disabled={submitting || !screenshot}
+              disabled={!canSubmit}
               style={{
                 width: '100%',
                 padding: '0.95rem',
-                background: !screenshot
-                  ? 'rgba(255, 255, 255, 0.1)'
+                background: !canSubmit
+                  ? 'rgba(255, 255, 255, 0.08)'
                   : 'linear-gradient(135deg, #ffd700 0%, #ff8800 50%, #e65100 100%)',
-                border: 'none',
+                border: !canSubmit ? '1.5px solid rgba(255, 255, 255, 0.12)' : 'none',
                 borderRadius: '14px',
-                color: !screenshot ? '#94a3b8' : '#04050b',
+                color: !canSubmit ? 'rgba(255, 255, 255, 0.35)' : '#04050b',
                 fontSize: '0.92rem',
                 fontWeight: 900,
                 fontFamily: 'var(--font-heading, "Montserrat", sans-serif)',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                cursor: !screenshot || submitting ? 'not-allowed' : 'pointer',
+                cursor: !canSubmit ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.6rem',
-                boxShadow: screenshot ? '0 8px 25px rgba(255, 170, 0, 0.4)' : 'none',
+                boxShadow: canSubmit ? '0 8px 25px rgba(255, 170, 0, 0.4)' : 'none',
                 transition: 'all 0.25s ease'
               }}
             >
@@ -736,10 +751,20 @@ export default function FreeplayTaskModal({
                   <i className="fa-solid fa-spinner fa-spin" />
                   <span>SUBMITTING TASK PROOF...</span>
                 </>
+              ) : !hasSelectedGame ? (
+                <>
+                  <i className="fa-solid fa-gamepad" />
+                  <span>1. SELECT A CASINO GAME FIRST</span>
+                </>
+              ) : !hasScreenshot ? (
+                <>
+                  <i className="fa-solid fa-camera" />
+                  <span>2. UPLOAD INBOX SCREENSHOT TO SUBMIT</span>
+                </>
               ) : (
                 <>
                   <i className="fa-solid fa-paper-plane" />
-                  <span>SUBMIT TASK & CLAIM $3 FREEPLAY &rarr;</span>
+                  <span>SUBMIT TASK &amp; CLAIM $3 FREEPLAY &rarr;</span>
                 </>
               )}
             </button>
