@@ -693,93 +693,87 @@ export async function POST(req) {
         }, { status: 400 });
       }
 
-      const isPromoFreeplay = /promo freeplay/i.test(String(newTx.note || ''));
-
-      // Parallel: pending guard + latest success freeplay (no full history scan)
-      const [pendingFreeplay, lastFp] = await Promise.all([
-        transactionsCollection.findOne(
-          {
-            userEmail,
-            type: 'BONUS',
-            code: { $in: ['SIGNUP-FREE3', 'FREEPLAY'] },
-            status: { $in: ['COINS_LOADING', 'PENDING', 'PENDING_COINS'] }
-          },
-          { projection: { _id: 1 } }
-        ),
-        isPromoFreeplay
-          ? Promise.resolve(null)
-          : transactionsCollection.findOne(
-              {
-                userEmail,
-                type: 'BONUS',
-                code: { $in: ['SIGNUP-FREE3', 'FREEPLAY'] },
-                status: 'SUCCESS'
-              },
-              { sort: { id: -1 }, projection: { id: 1 } }
-            )
-      ]);
+      // Check for any pending freeplay request — user cannot submit another until approved/rejected
+      const pendingFreeplay = await transactionsCollection.findOne(
+        {
+          userEmail,
+          type: 'BONUS',
+          code: { $in: ['SIGNUP-FREE3', 'FREEPLAY'] },
+          status: { $in: ['COINS_LOADING', 'PENDING', 'PENDING_COINS'] }
+        },
+        { projection: { _id: 1, id: 1, date: 1, createdAt: 1 } }
+      );
 
       if (pendingFreeplay) {
         return NextResponse.json({
           success: false,
-          message: 'You already have a freeplay request pending. Please wait for it to be processed.'
+          message: 'You already have a freeplay request pending admin approval. Please wait for staff to verify your submission before requesting again.'
         }, { status: 400 });
       }
 
-      if (!isPromoFreeplay) {
-        if (lastFp) {
-          // Cashout after freeplay resets deposit progress — only count deposits after last cashout (or freeplay)
-          const lastCashoutAfterFp = await transactionsCollection.findOne(
-            {
+      // Check if player has already received freeplay in the past
+      const lastFp = await transactionsCollection.findOne(
+        {
+          userEmail,
+          type: 'BONUS',
+          code: { $in: ['SIGNUP-FREE3', 'FREEPLAY'] },
+          status: 'SUCCESS'
+        },
+        { sort: { id: -1 }, projection: { id: 1 } }
+      );
+
+      if (lastFp) {
+        // Cashout after freeplay resets deposit progress — only count deposits after last cashout (or freeplay)
+        const lastCashoutAfterFp = await transactionsCollection.findOne(
+          {
+            userEmail,
+            type: 'WITHDRAW',
+            status: { $ne: 'FAILED' },
+            id: { $gt: lastFp.id }
+          },
+          { sort: { id: -1 }, projection: { id: 1 } }
+        );
+        const depositAfterId = lastCashoutAfterFp ? lastCashoutAfterFp.id : lastFp.id;
+
+        const depositAgg = await transactionsCollection.aggregate([
+          {
+            $match: {
               userEmail,
-              type: 'WITHDRAW',
-              status: { $ne: 'FAILED' },
-              id: { $gt: lastFp.id }
-            },
-            { sort: { id: -1 }, projection: { id: 1 } }
-          );
-          const depositAfterId = lastCashoutAfterFp ? lastCashoutAfterFp.id : lastFp.id;
-
-          const depositAgg = await transactionsCollection.aggregate([
-            {
-              $match: {
-                userEmail,
-                type: 'DEPOSIT',
-                status: 'SUCCESS',
-                id: { $gt: depositAfterId }
-              }
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: { $toDouble: { $ifNull: ['$amount', 0] } } }
-              }
+              type: 'DEPOSIT',
+              status: 'SUCCESS',
+              id: { $gt: depositAfterId }
             }
-          ]).toArray();
-          const depositTotal = depositAgg[0]?.total || 0;
-
-          let frontendSettings = cache.get('frontend_settings_all');
-          if (!frontendSettings) {
-            frontendSettings = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: { $toDouble: { $ifNull: ['$amount', 0] } } }
+            }
           }
-          const minDepositRequired = frontendSettings.freeplayUnlockDeposit !== undefined
-            ? Number(frontendSettings.freeplayUnlockDeposit)
-            : 10;
+        ]).toArray();
+        const depositTotal = depositAgg[0]?.total || 0;
 
-          if (depositTotal < minDepositRequired) {
-            return NextResponse.json({
-              success: false,
-              message: lastCashoutAfterFp
-                ? `Cashout reset freeplay progress. Deposit at least $${minDepositRequired.toFixed(2)} since your last cashout. Current: $${depositTotal.toFixed(2)}.`
-                : `Deposit at least $${minDepositRequired.toFixed(2)} after your last freeplay to claim again. Current: $${depositTotal.toFixed(2)}.`
-            }, { status: 400 });
-          }
-          newTx.code = 'FREEPLAY';
-          newTx.gateway = newTx.gateway || 'Freeplay';
-        } else {
-          newTx.code = 'SIGNUP-FREE3';
-          newTx.gateway = newTx.gateway || 'Signup Bonus';
+        let frontendSettings = cache.get('frontend_settings_all');
+        if (!frontendSettings) {
+          frontendSettings = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
         }
+        const minDepositRequired = frontendSettings.freeplayUnlockDeposit !== undefined
+          ? Number(frontendSettings.freeplayUnlockDeposit)
+          : 10;
+
+        if (depositTotal < minDepositRequired) {
+          return NextResponse.json({
+            success: false,
+            message: lastCashoutAfterFp
+              ? `You must deposit at least $${minDepositRequired.toFixed(2)} since your last cashout to qualify for freeplay again. Current deposit: $${depositTotal.toFixed(2)}.`
+              : `You have already claimed your signup freeplay. You must deposit at least $${minDepositRequired.toFixed(2)} to claim freeplay again. Current deposit: $${depositTotal.toFixed(2)}.`
+          }, { status: 400 });
+        }
+        newTx.code = 'FREEPLAY';
+        newTx.gateway = newTx.gateway || 'Freeplay';
+      } else {
+        newTx.code = 'SIGNUP-FREE3';
+        newTx.gateway = newTx.gateway || 'Signup Bonus';
       }
     }
 
@@ -910,6 +904,51 @@ export async function POST(req) {
       }));
     }
 
+    let autoAccountCreated = false;
+    let autoAccountRequestId = '';
+    if (isFreeplayBonus && txObject.gameTitle) {
+      try {
+        const cleanTitle = String(txObject.gameTitle).trim();
+        const titleRegex = new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        const existingAccount = await db.collection('gameAccounts').findOne({
+          userEmail: txObject.userEmail,
+          gameTitle: titleRegex
+        });
+
+        if (!existingAccount) {
+          // Check if there is an active pending request already
+          const existingPending = await db.collection('accountRequests').findOne({
+            userEmail: txObject.userEmail,
+            status: 'PENDING',
+            gameTitle: titleRegex
+          });
+
+          if (!existingPending) {
+            autoAccountRequestId = (Date.now() + Math.floor(Math.random() * 100)).toString();
+            writeOps.push(db.collection('accountRequests').insertOne({
+              id: autoAccountRequestId,
+              gameTitle: cleanTitle,
+              userEmail: txObject.userEmail,
+              status: 'PENDING',
+              date: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              distributorId: distId || '',
+              distributorType: distType || '',
+              distributorName: distName || '',
+              freeplayPending: true,
+              freeplayTransactionId: txObject.id,
+              freeplayAmount: parseFloat(txObject.amount || 3),
+              hasScreenshot: Boolean(txObject.screenshot),
+              note: 'Auto-created via Freeplay Verification Task'
+            }));
+            autoAccountCreated = true;
+          }
+        }
+      } catch (checkAccErr) {
+        console.error('Error auto-creating account request for freeplay:', checkAccErr);
+      }
+    }
+
     if (isFreeplayBonus) {
       writeOps.push(notificationsCollection.insertOne({
         id: Date.now().toString() + Math.floor(Math.random() * 100).toString(),
@@ -925,7 +964,12 @@ export async function POST(req) {
         timestamp: new Date().toISOString(),
         transactionId: txObject.id,
         distributorId: distId,
-        distributorType: distType
+        distributorType: distType,
+        screenshot: txObject.screenshot || '',
+        hasScreenshot: Boolean(txObject.screenshot),
+        autoAccountCreated: Boolean(autoAccountCreated),
+        note: autoAccountCreated ? 'New account auto-requested in Requests tab' : (txObject.note || ''),
+        holdNote: autoAccountCreated ? 'Allot game account credentials first in Requests tab' : ''
       }));
     }
 
@@ -947,6 +991,20 @@ export async function POST(req) {
       gameTitle: txObject.gameTitle || '',
       alertKind: 'game'
     }, txObject.distributorId);
+
+    if (autoAccountCreated) {
+      publishAdminEvent('requests', { distributorId: distId || '' });
+      notifyStaffAndDistributorAsync(db, {
+        title: 'New Account & Freeplay Request',
+        body: `${txObject.userEmail} · ${txObject.gameTitle} · $${parseFloat(txObject.amount || 3).toFixed(2)} (with Screenshot)`,
+        adminUrl: '/admin/requests',
+        distributorUrl: '/distributor/requests',
+        url: '/admin/requests',
+        tag: `req-${autoAccountRequestId}`,
+        gameTitle: txObject.gameTitle || '',
+        alertKind: 'game'
+      }, distId);
+    }
 
     // Invalidate stats cache + instant admin SSE
     cache.del('admin_stats');

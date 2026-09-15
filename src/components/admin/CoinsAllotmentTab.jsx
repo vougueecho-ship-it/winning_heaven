@@ -402,6 +402,16 @@ export default function CoinsAllotmentTab({
                             ⚠️ FREEPLAY WIN: MAX $30
                           </div>
                         )}
+                        {noti.isFreeplay && (
+                          <div style={{ fontSize: '0.62rem', color: '#ec4899', background: 'rgba(236, 72, 153, 0.12)', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '0.15rem 0.35rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                            📸 INBOX SCREENSHOT TASK
+                          </div>
+                        )}
+                        {noti.autoAccountCreated && (
+                          <div style={{ fontSize: '0.62rem', color: '#00f0ff', background: 'rgba(0, 240, 255, 0.12)', border: '1px solid rgba(0, 240, 255, 0.3)', padding: '0.15rem 0.35rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                            ⚡ ACCOUNT AUTO-REQUESTED
+                          </div>
+                        )}
                       </div>
                     </td>
 
@@ -530,19 +540,21 @@ export default function CoinsAllotmentTab({
                             </button>
 
                             {/* View Proof Button */}
-                            {onInspectProof && (noti.transactionId || noti.screenshot) && (
+                            {onInspectProof && (noti.transactionId || noti.screenshot || noti.hasScreenshot || noti.isFreeplay) && (
                               <button
                                 type="button"
                                 onClick={() => onInspectProof(noti.screenshot, noti.transactionId, 'screenshot', {
                                   userEmail: noti.userEmail,
-                                  amount: noti.depositAmount,
+                                  amount: noti.isFreeplay ? noti.totalCoins : noti.depositAmount,
                                   gameTitle: noti.gameTitle,
-                                  gateway: noti.gateway || 'Deposit Proof',
+                                  gateway: noti.isFreeplay ? 'Freeplay Task Screenshot' : (noti.gateway || 'Deposit Proof'),
                                   noteCode: noti.noteCode
                                 })}
                                 className="submit-btn"
                                 style={{
-                                  background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+                                  background: (noti.isFreeplay || noti.bonusApplied === -3)
+                                    ? 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)'
+                                    : 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
                                   color: '#fff',
                                   margin: 0,
                                   padding: '0.35rem 0.55rem',
@@ -552,12 +564,15 @@ export default function CoinsAllotmentTab({
                                   alignItems: 'center',
                                   fontWeight: 800,
                                   fontSize: '0.68rem',
-                                  borderRadius: '6px'
+                                  borderRadius: '6px',
+                                  boxShadow: (noti.isFreeplay || noti.bonusApplied === -3)
+                                    ? '0 0 10px rgba(236, 72, 153, 0.35)'
+                                    : 'none'
                                 }}
-                                title="View payment screenshot proof"
+                                title={noti.isFreeplay ? "View Freeplay Spam-to-Inbox Screenshot Proof" : "View payment screenshot proof"}
                               >
-                                <i className="fa-solid fa-receipt" />
-                                <span>PROOF</span>
+                                <i className="fa-solid fa-camera" />
+                                <span>{noti.isFreeplay ? 'VIEW PROOF' : 'PROOF'}</span>
                               </button>
                             )}
 

@@ -585,17 +585,11 @@ export default function Home() {
       newTx.type === 'BONUS' &&
       (newTx.code === 'SIGNUP-FREE3' || newTx.code === 'FREEPLAY' || /promo freeplay/i.test(String(newTx.note || '')));
 
-    // Paint toast before API — freeplay/deposit/withdraw must not wait on Mongo
+    // Paint toast before API for fast deposit/withdraw — freeplay awaits validation response
     if (isDeposit) {
       showToast(`Deposit request of $${parseFloat(newTx.amount).toFixed(2)} submitted with payment proof.`, 'success');
     } else if (isWithdraw) {
       showToast(`Withdrawal request of $${parseFloat(newTx.amount).toFixed(2)} submitted.`, 'success');
-    } else if (isFreeplay || newTx.type === 'BONUS') {
-      const gameBit = newTx.gameTitle ? ` for ${newTx.gameTitle}` : '';
-      showToast(
-        `Freeplay request of $${parseFloat(newTx.amount).toFixed(2)} submitted${gameBit}! Awaiting approval.`,
-        'success'
-      );
     }
     await new Promise((r) => setTimeout(r, 0));
 
@@ -613,10 +607,16 @@ export default function Home() {
       });
       const data = await response.json();
       if (data.success) {
-        // Already toasted optimistically for deposit / withdraw / freeplay
-        if (!isDeposit && !isWithdraw && !isFreeplay && newTx.type !== 'BONUS') {
+        if (isFreeplay || newTx.type === 'BONUS') {
+          const gameBit = newTx.gameTitle ? ` for ${newTx.gameTitle}` : '';
+          showToast(
+            `Freeplay request of $${parseFloat(newTx.amount || 3).toFixed(2)} submitted${gameBit}! Staff is verifying your screenshot.`,
+            'success'
+          );
+        } else if (!isDeposit && !isWithdraw) {
           showToast(data.message || 'Request submitted.', 'success');
         }
+
         if (isDeposit) {
           trackDepositPurchase({
             value: newTx.amount,
@@ -627,6 +627,7 @@ export default function Home() {
         const url = emailQuery ? `/api/transactions?email=${emailQuery}&limit=40` : null;
         mutate(url);
         mutate(emailQuery ? `/api/coins-notifications?email=${emailQuery}` : null);
+        mutate(emailQuery ? `/api/account-requests?email=${emailQuery}` : null);
 
         // Background proof upload — admin already sees the PENDING row from create.
         if (isDeposit && screenshot && data.transaction?.id) {
@@ -637,12 +638,15 @@ export default function Home() {
             mutate(url);
           });
         }
+        return { success: true, transaction: data.transaction };
       } else {
         showToast(data.message || 'Transaction submission failed.', 'error');
+        return { success: false, message: data.message };
       }
     } catch (err) {
       console.error('Submit transaction error:', err);
       showToast('Connection error submitting transaction.', 'error');
+      return { success: false, message: 'Connection error' };
     }
   };
 

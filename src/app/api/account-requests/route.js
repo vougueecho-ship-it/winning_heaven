@@ -79,7 +79,10 @@ export async function GET(req) {
         distributorType: 1,
         distributorName: 1,
         gameAccountUsername: 1,
-        userName: 1
+        userName: 1,
+        freeplayPending: 1,
+        freeplayTransactionId: 1,
+        hasScreenshot: 1
       };
 
       let accountQuery = {};

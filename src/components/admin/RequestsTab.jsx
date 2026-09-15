@@ -372,7 +372,26 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                     </span>
                   </td>
                   <td data-label="Requested Game">
-                    <span className="admin-badge-preview b-hot">{req.gameTitle}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                      <span className="admin-badge-preview b-hot">{req.gameTitle}</span>
+                      {req.freeplayPending && (
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 800,
+                          color: '#00e676',
+                          background: 'rgba(0, 230, 118, 0.12)',
+                          border: '1px solid rgba(0, 230, 118, 0.35)',
+                          padding: '0.15rem 0.4rem',
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <i className="fa-solid fa-gift" />
+                          <span>FREEPLAY ATTACHED</span>
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td data-label="Game Account">
                     {(() => {

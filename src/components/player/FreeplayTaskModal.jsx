@@ -13,6 +13,8 @@ export default function FreeplayTaskModal({
   defaultGameTitle = '',
   games = [],
   transactions = [],
+  gameAccounts = [],
+  accountRequests = [],
   freeplayGate = {},
   onSubmitTransaction,
   showToast,
@@ -39,7 +41,15 @@ export default function FreeplayTaskModal({
 
   const hasSelectedGame = Boolean(selectedGame && String(selectedGame).trim());
   const hasScreenshot = Boolean(screenshot && String(screenshot).trim());
-  const canSubmit = hasSelectedGame && hasScreenshot && !uploading && !submitting;
+  const isBlocked = freeplayGate?.canClaim === false;
+  const canSubmit = hasSelectedGame && hasScreenshot && !uploading && !submitting && !isBlocked;
+
+  const existingGameAccount = React.useMemo(() => {
+    if (!hasSelectedGame || !Array.isArray(gameAccounts)) return null;
+    return gameAccounts.find(
+      (a) => a.gameTitle && a.gameTitle.toLowerCase().trim() === selectedGame.toLowerCase().trim()
+    );
+  }, [selectedGame, hasSelectedGame, gameAccounts]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -139,6 +149,10 @@ export default function FreeplayTaskModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (freeplayGate?.canClaim === false) {
+      if (showToast) showToast(freeplayGate.message || 'Freeplay is not available at this time.', 'error');
+      return;
+    }
     if (!selectedGame || !selectedGame.trim()) {
       if (showToast) showToast('Please select a casino game for your freeplay.', 'error');
       return;
@@ -154,7 +168,7 @@ export default function FreeplayTaskModal({
       const code = freeplayGate?.phase === 'signup' || freeplayGate?.isFirst ? 'SIGNUP-FREE3' : 'FREEPLAY';
 
       if (onSubmitTransaction) {
-        await onSubmitTransaction({
+        const res = await onSubmitTransaction({
           amount: fpAmount,
           type: 'BONUS',
           gameTitle: selectedGame,
@@ -163,11 +177,12 @@ export default function FreeplayTaskModal({
           hasScreenshot: true,
           note: `Freeplay Task Verification (${taskId || 'Inbox Verified'})`
         });
+        if (res && res.success === false) {
+          // If server rejected (e.g. pending exists or deposit required), keep modal open so user sees error
+          return;
+        }
       }
 
-      if (showToast) {
-        showToast(`🎉 Freeplay request for ${selectedGame} submitted! 24/7 staff is verifying your screenshot.`, 'success');
-      }
       onClose();
     } catch (err) {
       console.error('Freeplay submit error:', err);
@@ -275,6 +290,50 @@ export default function FreeplayTaskModal({
           flexDirection: 'column',
           gap: '1.15rem'
         }}>
+
+          {/* Pending Approval Alert */}
+          {freeplayGate?.phase === 'pending' && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(0, 119, 255, 0.1) 100%)',
+              border: '1.5px solid rgba(0, 240, 255, 0.5)',
+              borderRadius: '16px',
+              padding: '1rem 1.15rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem',
+              boxShadow: '0 4px 20px rgba(0, 240, 255, 0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00f0ff', fontWeight: 900, fontSize: '0.85rem' }}>
+                <i className="fa-solid fa-clock fa-spin" />
+                <span>APPROVAL PENDING</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#e0f7fa', lineHeight: 1.45 }}>
+                Your freeplay request is already submitted and waiting for admin review. You cannot submit another request until your current request is processed.
+              </p>
+            </div>
+          )}
+
+          {/* Need Deposit Alert */}
+          {freeplayGate?.phase === 'need_deposit' && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%)',
+              border: '1.5px solid rgba(245, 158, 11, 0.5)',
+              borderRadius: '16px',
+              padding: '1rem 1.15rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem',
+              boxShadow: '0 4px 20px rgba(245, 158, 11, 0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.85rem' }}>
+                <i className="fa-solid fa-lock" />
+                <span>$10.00 DEPOSIT REQUIRED FOR NEXT FREEPLAY</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#fef3c7', lineHeight: 1.45 }}>
+                You have already claimed your signup freeplay. Please deposit at least <strong>${(freeplayGate.remaining !== undefined ? freeplayGate.remaining : 10).toFixed(2)}</strong> more ($${(freeplayGate.depositTotal || 0).toFixed(2)} / $10.00 deposited) to qualify for freeplay again!
+              </p>
+            </div>
+          )}
 
           {/* Rejection Feedback Alert (if previous submission was rejected) */}
           {rejectionReason && (
@@ -549,9 +608,17 @@ export default function FreeplayTaskModal({
                   </option>
                 ))}
               </select>
-              {!hasSelectedGame && (
+              {!hasSelectedGame ? (
                 <span style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <i className="fa-solid fa-circle-exclamation" /> Please select which casino game you want your freeplay on.
+                </span>
+              ) : existingGameAccount ? (
+                <span style={{ fontSize: '0.74rem', color: '#00e676', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700 }}>
+                  <i className="fa-solid fa-circle-check" /> Existing Account Found: Freeplay will be loaded to your account ({existingGameAccount.username || selectedGame}).
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.74rem', color: '#00f0ff', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, background: 'rgba(0, 240, 255, 0.08)', padding: '0.25rem 0.55rem', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.2)' }}>
+                  <i className="fa-solid fa-wand-magic-sparkles" /> No {selectedGame} account yet? A new account request will be auto-created alongside your freeplay!
                 </span>
               )}
             </div>
@@ -750,6 +817,16 @@ export default function FreeplayTaskModal({
                 <>
                   <i className="fa-solid fa-spinner fa-spin" />
                   <span>SUBMITTING TASK PROOF...</span>
+                </>
+              ) : freeplayGate?.phase === 'pending' ? (
+                <>
+                  <i className="fa-solid fa-clock" />
+                  <span>APPROVAL PENDING (WAITING FOR ADMIN)</span>
+                </>
+              ) : freeplayGate?.phase === 'need_deposit' ? (
+                <>
+                  <i className="fa-solid fa-lock" />
+                  <span>DEPOSIT $10.00 TO UNLOCK NEXT FREEPLAY</span>
                 </>
               ) : !hasSelectedGame ? (
                 <>

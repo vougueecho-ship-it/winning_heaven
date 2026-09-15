@@ -558,6 +558,8 @@ export default function UserLobby({
           defaultGameTitle={freeplayGameTitle}
           games={games}
           transactions={transactions}
+          gameAccounts={gameAccounts}
+          accountRequests={accountRequests}
           freeplayGate={freeplayGate}
           onSubmitTransaction={onSubmitTransaction}
           showToast={showToast}

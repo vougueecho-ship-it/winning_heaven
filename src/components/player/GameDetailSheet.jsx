@@ -49,6 +49,7 @@ export default function GameDetailSheet({
     setFreeplaySubmitting(true);
     try {
       if (onRequestFreeplayForGame) {
+        onClose?.();
         await onRequestFreeplayForGame(game.title);
       }
     } finally {
