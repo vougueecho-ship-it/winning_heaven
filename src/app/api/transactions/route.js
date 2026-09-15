@@ -856,14 +856,19 @@ export async function POST(req) {
           },
           { sort: { createdAt: -1, id: -1 } }
         );
-        const depositMin = getDepositBasedMinWithdraw(lastDeposit?.amount);
+        let frontendSettingsForWithdraw = cache.get('frontend_settings_all');
+        if (!frontendSettingsForWithdraw) {
+          frontendSettingsForWithdraw = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
+        }
+        const depositMin = getDepositBasedMinWithdraw(lastDeposit?.amount, frontendSettingsForWithdraw?.cashoutTiers);
         const askAmount = parseFloat(txObject.amount);
         if (depositMin != null && Number.isFinite(askAmount) && askAmount < depositMin) {
-          const mult = Number(lastDeposit.amount) < 50 ? 5 : 3;
+          const lastAmt = parseFloat(lastDeposit.amount || 0);
+          const mult = lastAmt > 0 ? Math.round(depositMin / lastAmt) : 5;
           return NextResponse.json(
             {
               success: false,
-              message: `Minimum cashout is $${depositMin.toFixed(2)} (last deposit $${parseFloat(lastDeposit.amount).toFixed(2)} × ${mult}).`
+              message: `Minimum cashout is $${depositMin.toFixed(2)} (last deposit $${lastAmt.toFixed(2)} × ${mult}x).`
             },
             { status: 400 }
           );

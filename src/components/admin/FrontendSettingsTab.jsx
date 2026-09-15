@@ -30,10 +30,11 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [freeplayMaxCashout, setFreeplayMaxCashout] = useState(30);
   const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(10);
   const [cashoutTiers, setCashoutTiers] = useState([
-    { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
-    { depositRange: '$51 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $153.00 – $300.00', note: 'Standard Instant Payout' },
-    { depositRange: '$101 - $250', multiplier: '2x Deposit', minCashoutExample: 'Min $202.00 – $500.00', note: 'VIP Express Payout' },
-    { depositRange: '$250+', multiplier: '2x Deposit', minCashoutExample: 'Min $500.00+', note: 'Unlimited High Roller' }
+    { depositRange: '$5 - $9', multiplier: '5x', minCashoutExample: '$25.00', note: 'Fast 5-minute payout' },
+    { depositRange: '$10 - $19', multiplier: '5x', minCashoutExample: '$50.00', note: 'Standard Cashout' },
+    { depositRange: '$20 - $49', multiplier: '6x', minCashoutExample: '$120.00', note: 'VIP Express Payout' },
+    { depositRange: '$50 - $99', multiplier: '5x', minCashoutExample: '$250.00', note: 'High Roller Tier' },
+    { depositRange: '$100+', multiplier: '20x+', minCashoutExample: '$2,000.00+', note: 'Unlimited VIP Cashout' }
   ]);
   const [customCashoutRules, setCustomCashoutRules] = useState([
     {

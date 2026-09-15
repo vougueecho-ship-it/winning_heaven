@@ -23,10 +23,11 @@ const DEFAULT_SETTINGS = {
   freeplayMaxCashout: 30,
   freeplayUnlockDeposit: 10,
   cashoutTiers: [
-    { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
-    { depositRange: '$51 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $153.00 – $300.00', note: 'Standard Instant Payout' },
-    { depositRange: '$101 - $250', multiplier: '2x Deposit', minCashoutExample: 'Min $202.00 – $500.00', note: 'VIP Express Payout' },
-    { depositRange: '$250+', multiplier: '2x Deposit', minCashoutExample: 'Min $500.00+', note: 'Unlimited High Roller' }
+    { depositRange: '$5 - $9', multiplier: '5x', minCashoutExample: '$25.00', note: 'Fast 5-minute payout' },
+    { depositRange: '$10 - $19', multiplier: '5x', minCashoutExample: '$50.00', note: 'Standard Cashout' },
+    { depositRange: '$20 - $49', multiplier: '6x', minCashoutExample: '$120.00', note: 'VIP Express Payout' },
+    { depositRange: '$50 - $99', multiplier: '6x', minCashoutExample: '$250.00', note: 'High Roller Tier' },
+    { depositRange: '$100+', multiplier: '12x+', minCashoutExample: '$2,000.00+', note: 'Unlimited VIP Cashout' }
   ],
   customCashoutRules: [
     {
@@ -45,7 +46,7 @@ const DEFAULT_SETTINGS = {
   // Withdrawal form proof requirements (Super Admin toggles)
   withdrawRequireGameScreenshot: false,
   withdrawRequireTagQrScreenshot: true,
-  
+
   // Landing Page Texts
   landingWelcome: 'WELCOME TO WINNING HEAVEN',
   landingGrab: 'Celestial Vegas Casino & Instant Cashouts',
@@ -53,7 +54,7 @@ const DEFAULT_SETTINGS = {
   landingSignupWithGoogle: 'Sign up with Google',
   landingOrCreate: 'or create account with email',
   landingMessengerWarning: 'Google sign-in is not supported inside Messenger. Please open this page in Chrome or Safari.',
-  
+
   // Lobby Homepage Hero & Freeplay Texts
   lobbyHeroPromo: 'GET 300% SIGNUP BONUS ON YOUR FIRST DEPOSIT',
   lobbyTrustBadge1: 'Instant Withdrawals',
@@ -72,7 +73,7 @@ const DEFAULT_SETTINGS = {
   lobbyHeroSideImage: '/lobby-app-download-promo.png',
   lobbyHeroSideImageAlt: 'Download mobile app and get $3 freeplay',
   lobbyHeroSideEnabled: true,
-  
+
   // Marquee Cards
   marqueePayouts: [
     { name: 'Elizabeth Audrey', amount: '$208.00', time: '1 hour ago', color: 'av-purple', init: 'EA' },
@@ -82,7 +83,7 @@ const DEFAULT_SETTINGS = {
     { name: 'Ryan G.', amount: '$420.00', time: '2 hours ago', color: 'av-red', init: 'RG' },
     { name: 'Michael S.', amount: '$150.00', time: '2 hours ago', color: 'av-purple', init: 'MS' }
   ],
-  
+
   // Accordion cashout rules
   cashoutRules: [
     { title: '1. Account Verification', description: 'Before requesting your first cashout, your email must be verified. Go to customer support if you need assistance updating details.' },
@@ -139,9 +140,9 @@ export async function GET() {
 
     const db = await getDb();
     const settingsCollection = db.collection('settings');
-    
+
     let settings = await settingsCollection.findOne({ id: 'frontend_settings' });
-    
+
     if (!settings) {
       settings = { ...DEFAULT_SETTINGS };
       await settingsCollection.insertOne(settings);
@@ -159,7 +160,7 @@ export async function GET() {
         await settingsCollection.updateOne({ id: 'frontend_settings' }, { $set: settings });
       }
     }
-    
+
     const publicSettings = {
       ...settings,
       notificationSoundUrl: typeof settings.notificationSoundUrl === 'string' && settings.notificationSoundUrl.startsWith('data:')
@@ -184,7 +185,7 @@ export async function PUT(req) {
 
     const updateFields = {};
     const allowedKeys = Object.keys(DEFAULT_SETTINGS).filter(k => k !== 'id');
-    
+
     for (const key of allowedKeys) {
       if (body[key] !== undefined) {
         if (typeof DEFAULT_SETTINGS[key] === 'boolean') {
