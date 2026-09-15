@@ -17,7 +17,7 @@ export default function CasinoRulesAccordion({ frontendSettings = {} }) {
   const minWith = frontendSettings.minimumWithdrawalLimit !== undefined ? Number(frontendSettings.minimumWithdrawalLimit) : 5;
   const fpAmount = frontendSettings.signupFreeplay !== undefined ? Number(frontendSettings.signupFreeplay) : 3;
   const fpMaxCashout = frontendSettings.freeplayMaxCashout !== undefined ? Number(frontendSettings.freeplayMaxCashout) : 30;
-  const fpUnlock = frontendSettings.freeplayUnlockDeposit !== undefined ? Number(frontendSettings.freeplayUnlockDeposit) : 25;
+  const fpUnlock = frontendSettings.freeplayUnlockDeposit !== undefined ? Number(frontendSettings.freeplayUnlockDeposit) : 10;
   const firstBonus = frontendSettings.firstDepositBonus !== undefined ? Number(frontendSettings.firstDepositBonus) : 300;
   const regBonus = frontendSettings.regularDepositBonus !== undefined ? Number(frontendSettings.regularDepositBonus) : 20;
 
@@ -86,23 +86,23 @@ export default function CasinoRulesAccordion({ frontendSettings = {} }) {
       icon: 'fa-solid fa-gift',
       iconColor: '#00f0ff',
       title: 'SIGNUP FREEPLAY & BONUS CASHOUT RULES',
-      subtitle: `$${fpAmount}.00 Freeplay, $${fpMaxCashout}.00 max cashout & $${fpUnlock}.00 hold balance unlock`,
+      subtitle: `$${fpAmount}.00 Freeplay, $${fpMaxCashout}.00 max cashout & $${fpUnlock}.00 deposit unlock / re-claim`,
       items: [
         {
-          highlight: `$${fpAmount}.00 Instant Signup Freeplay:`,
-          text: `All newly registered players receive $${fpAmount}.00 Freeplay on their first game of choice without any initial deposit.`
+          highlight: `$${fpAmount}.00 Verification Freeplay Task:`,
+          text: `All players can claim $${fpAmount}.00 Freeplay by completing the simple Spam-to-Inbox verification task on their chosen game.`
         },
         {
           highlight: `$${fpMaxCashout}.00 Max Cashout on Freeplay:`,
           text: `The maximum allowable cashout redeemed from $${fpAmount}.00 freeplay winnings is $${fpMaxCashout}.00.`
         },
         {
-          highlight: `Hold Balance Unlock with $${fpUnlock}.00 Deposit:`,
-          text: `Any excess winnings above $${fpMaxCashout}.00 are safely preserved in your Cashout Hold and unlocked as deposit bonus after depositing $${fpUnlock}.00.`
+          highlight: `Deposit $${fpUnlock}.00 to Unlock Hold & Claim Again:`,
+          text: `Excess winnings are preserved in your Cashout Hold and unlocked upon a $${fpUnlock}.00 deposit. Depositing $${fpUnlock}.00 also qualifies you for ongoing freeplay bonuses!`
         },
         {
-          highlight: '1 Freeplay Per Player Account:',
-          text: 'Freeplay promotions are strictly limited to one claim per person, device, and household.'
+          highlight: 'Fast 24/7 Verification:',
+          text: 'Upload a clear screenshot showing our verification email in your Inbox for instant review.'
         }
       ]
     },

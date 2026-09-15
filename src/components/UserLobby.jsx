@@ -22,6 +22,7 @@ import CasinoRulesAccordion from './player/CasinoRulesAccordion';
 import LivePayoutsMarquee from './player/LivePayoutsMarquee';
 import SubscribePromptModal from './player/SubscribePromptModal';
 import PlayerPromoModal from './player/PlayerPromoModal';
+import FreeplayTaskModal from './player/FreeplayTaskModal';
 import { PlayerDepositModal, PlayerWithdrawModal, PlayerGameAccountModal } from './player/PlayerModals';
 import { canShowClaimRemainderButton } from '../lib/remainderClaim';
 
@@ -52,8 +53,10 @@ export default function UserLobby({
   // Modals & Active Game Hub State
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [freeplayModalOpen, setFreeplayModalOpen] = useState(false);
   const [depositGameTitle, setDepositGameTitle] = useState('');
   const [withdrawGameTitle, setWithdrawGameTitle] = useState('');
+  const [freeplayGameTitle, setFreeplayGameTitle] = useState('');
 
   const [gameRequestModalOpen, setGameRequestModalOpen] = useState(false);
   const [selectedGameForRequest, setSelectedGameForRequest] = useState(null);
@@ -105,6 +108,33 @@ export default function UserLobby({
     return !hasDepositAfter && !hasFreeplayWithdrawAfter;
   }, [transactions]);
 
+  const unlockDepositTarget = useMemo(() => {
+    return frontendSettings?.settings?.freeplayUnlockDeposit !== undefined
+      ? Number(frontendSettings.settings.freeplayUnlockDeposit)
+      : 10;
+  }, [frontendSettings]);
+
+  // Check if player's latest freeplay was rejected by admin
+  const lastRejectedFreeplay = useMemo(() => {
+    const sorted = [...(transactions || [])].sort((a, b) => {
+      if (a.id && b.id) return parseFloat(b.id) - parseFloat(a.id);
+      return new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0);
+    });
+    const isFreeplayTx = (t) => t.type === 'BONUS' && (t.code === 'SIGNUP-FREE3' || t.code === 'FREEPLAY');
+    const lastSuccess = sorted.find((t) => isFreeplayTx(t) && t.status === 'SUCCESS');
+    const lastFail = sorted.find((t) => isFreeplayTx(t) && (t.status === 'FAILED' || t.status === 'REJECTED' || Boolean(t.rejectionReason)));
+    if (lastFail) {
+      if (!lastSuccess) return lastFail;
+      const isFailAfter = (lastFail.id && lastSuccess.id)
+        ? parseFloat(lastFail.id) > parseFloat(lastSuccess.id)
+        : new Date(lastFail.createdAt || lastFail.date || 0) > new Date(lastSuccess.createdAt || lastSuccess.date || 0);
+      if (isFailAfter) return lastFail;
+    }
+    return null;
+  }, [transactions]);
+
+  const freeplayRejectionReason = lastRejectedFreeplay?.rejectionReason || lastRejectedFreeplay?.note || '';
+
   const freeplayGate = useMemo(() => {
     const sorted = [...(transactions || [])].sort((a, b) => {
       if (a.id && b.id) return parseFloat(b.id) - parseFloat(a.id);
@@ -133,7 +163,7 @@ export default function UserLobby({
         canClaim: true,
         phase: 'signup',
         isFirst: true,
-        message: 'Select one game and claim your signup freeplay.'
+        message: 'Complete the email verification task to claim your signup freeplay.'
       };
     }
 
@@ -158,16 +188,16 @@ export default function UserLobby({
       return sum;
     }, 0);
 
-    if (depositTotalAfter >= 25) {
+    if (depositTotalAfter >= unlockDepositTarget) {
       return {
         canClaim: true,
         phase: 'deposit',
         isFirst: false,
-        message: 'You qualify for another freeplay after depositing $25+.'
+        message: `You qualify for another freeplay after depositing $${unlockDepositTarget}+.`
       };
     }
 
-    const remaining = Math.max(0, 25 - depositTotalAfter);
+    const remaining = Math.max(0, unlockDepositTarget - depositTotalAfter);
     return {
       canClaim: false,
       phase: 'need_deposit',
@@ -175,37 +205,19 @@ export default function UserLobby({
       depositTotal: depositTotalAfter,
       remaining,
       message: lastCashoutAfterFreeplay
-        ? `You will be eligible for freeplay after depositing $${remaining.toFixed(2)} more since your last cashout ($${depositTotalAfter.toFixed(2)} / $25.00).`
-        : `You will be eligible for freeplay after depositing $${remaining.toFixed(2)} more ($${depositTotalAfter.toFixed(2)} / $25.00).`
+        ? `You will be eligible for freeplay after depositing $${remaining.toFixed(2)} more since your last cashout ($${depositTotalAfter.toFixed(2)} / $${unlockDepositTarget.toFixed(2)}).`
+        : `You will be eligible for freeplay after depositing $${remaining.toFixed(2)} more ($${depositTotalAfter.toFixed(2)} / $${unlockDepositTarget.toFixed(2)}).`
     };
-  }, [transactions]);
+  }, [transactions, unlockDepositTarget]);
 
   const canClaimRemainder = useMemo(() => {
     if (!Array.isArray(transactions) || transactions.length === 0) return false;
     return transactions.some((t) => canShowClaimRemainderButton(t));
   }, [transactions]);
 
-  const handleRequestFreeplayForGame = async (gameTitle) => {
-    if (!onSubmitTransaction || !gameTitle) return;
-    if (!freeplayGate.canClaim) {
-      if (showToast) showToast(freeplayGate.message || 'Freeplay request not available right now.', 'error');
-      return;
-    }
-    const fpAmount = frontendSettings?.settings?.signupFreeplay !== undefined
-      ? Number(frontendSettings.settings.signupFreeplay)
-      : 3;
-    try {
-      await onSubmitTransaction({
-        amount: fpAmount,
-        type: 'BONUS',
-        gameTitle,
-        code: freeplayGate.phase === 'signup' ? 'SIGNUP-FREE3' : 'FREEPLAY',
-        note: `Promo Freeplay request for ${gameTitle}`
-      });
-      if (showToast) showToast(`Freeplay request for ${gameTitle} submitted!`, 'success');
-    } catch (err) {
-      if (showToast) showToast(err?.message || 'Freeplay request failed', 'error');
-    }
+  const handleRequestFreeplayForGame = (gameTitle = '') => {
+    setFreeplayGameTitle(gameTitle || '');
+    setFreeplayModalOpen(true);
   };
 
   const handleOpenDepositForGame = (gameTitle = '') => {
@@ -295,7 +307,96 @@ export default function UserLobby({
               frontendSettings={frontendSettings}
               onOpenDeposit={() => { setDepositGameTitle(''); setDepositModalOpen(true); }}
               onOpenReferrals={() => setActiveTab('referrals')}
+              onOpenFreeplay={() => { setFreeplayGameTitle(''); setFreeplayModalOpen(true); }}
             />
+
+            {/* Prominent Freeplay Task Showcase Banner */}
+            <div
+              onClick={() => { setFreeplayGameTitle(''); setFreeplayModalOpen(true); }}
+              style={{
+                background: 'linear-gradient(135deg, rgba(20, 24, 52, 0.95) 0%, rgba(10, 14, 28, 0.95) 100%)',
+                border: '1.5px solid rgba(255, 200, 0, 0.4)',
+                borderRadius: '20px',
+                padding: '1.1rem 1.4rem',
+                margin: '0.85rem 0 1.25rem 0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.6), 0 0 20px rgba(255, 200, 0, 0.15)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Background Glow */}
+              <div style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '160px',
+                height: '160px',
+                background: 'radial-gradient(circle, rgba(0,230,118,0.2) 0%, transparent 70%)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '260px' }}>
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, rgba(255,200,0,0.25) 0%, rgba(0,230,118,0.25) 100%)',
+                  border: '1.5px solid #ffc800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffc800',
+                  fontSize: '1.45rem',
+                  boxShadow: '0 0 15px rgba(255,200,0,0.3)',
+                  flexShrink: 0
+                }}>
+                  <i className="fa-solid fa-gift" />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                    <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem' }}>
+                      TASK BONUS
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#00e676', fontWeight: 800 }}>
+                      ⚡ 30-Sec Verification
+                    </span>
+                  </div>
+                  <h4 style={{
+                    fontSize: '1.05rem',
+                    fontWeight: 900,
+                    color: '#fff',
+                    margin: '0 0 0.2rem 0',
+                    fontFamily: 'var(--font-heading)'
+                  }}>
+                    CLAIM $3.00 SIGNUP FREEPLAY
+                  </h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    Move our email from <strong style={{ color: '#fff' }}>Spam to Inbox</strong> &amp; upload screenshot. Deposit just <strong style={{ color: '#ffc800' }}>$10.00</strong> to qualify for recurring freeplays!
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-gold-glow"
+                style={{
+                  padding: '0.65rem 1.25rem',
+                  fontSize: '0.82rem',
+                  background: 'linear-gradient(135deg, #00e676 0%, #00a152 100%)',
+                  color: '#000',
+                  fontWeight: 900,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fa-solid fa-camera" /> CLAIM $3 FREEPLAY &rarr;
+              </button>
+            </div>
 
             {/* Game Catalog & Categories */}
             <GameGrid
@@ -444,6 +545,23 @@ export default function UserLobby({
           defaultGameTitle={withdrawGameTitle}
           games={games}
           transactions={transactions}
+        />
+      )}
+
+      {/* --- Centered Freeplay Task Modal --- */}
+      {freeplayModalOpen && (
+        <FreeplayTaskModal
+          isOpen={true}
+          onClose={() => setFreeplayModalOpen(false)}
+          currentUser={currentUser}
+          userEmail={currentUserEmail}
+          defaultGameTitle={freeplayGameTitle}
+          games={games}
+          transactions={transactions}
+          freeplayGate={freeplayGate}
+          onSubmitTransaction={onSubmitTransaction}
+          showToast={showToast}
+          rejectionReason={freeplayRejectionReason}
         />
       )}
 

@@ -728,7 +728,7 @@ export async function POST(req) {
 
       if (!isPromoFreeplay) {
         if (lastFp) {
-          // Cashout after freeplay resets $25 progress — only count deposits after last cashout (or freeplay)
+          // Cashout after freeplay resets deposit progress — only count deposits after last cashout (or freeplay)
           const lastCashoutAfterFp = await transactionsCollection.findOne(
             {
               userEmail,
@@ -757,12 +757,21 @@ export async function POST(req) {
             }
           ]).toArray();
           const depositTotal = depositAgg[0]?.total || 0;
-          if (depositTotal < 25) {
+
+          let frontendSettings = cache.get('frontend_settings_all');
+          if (!frontendSettings) {
+            frontendSettings = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
+          }
+          const minDepositRequired = frontendSettings.freeplayUnlockDeposit !== undefined
+            ? Number(frontendSettings.freeplayUnlockDeposit)
+            : 10;
+
+          if (depositTotal < minDepositRequired) {
             return NextResponse.json({
               success: false,
               message: lastCashoutAfterFp
-                ? `Cashout reset freeplay progress. Deposit at least $25.00 since your last cashout. Current: $${depositTotal.toFixed(2)}.`
-                : `Deposit at least $25.00 after your last freeplay to claim again. Current: $${depositTotal.toFixed(2)}.`
+                ? `Cashout reset freeplay progress. Deposit at least $${minDepositRequired.toFixed(2)} since your last cashout. Current: $${depositTotal.toFixed(2)}.`
+                : `Deposit at least $${minDepositRequired.toFixed(2)} after your last freeplay to claim again. Current: $${depositTotal.toFixed(2)}.`
             }, { status: 400 });
           }
           newTx.code = 'FREEPLAY';

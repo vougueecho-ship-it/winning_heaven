@@ -1025,6 +1025,40 @@ export default function LedgerTab({
                 </div>
               </div>
 
+              {targetNewStatus === 'FAILED' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>Quick Guidance Templates (Shown to Player):</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {[
+                      'Email not shown in Inbox. Please click "Report Not Spam" in Spam folder, move to Inbox, and take a screenshot of your Inbox.',
+                      'Screenshot is unreadable or blurry. Please upload a clear screenshot showing the email in your Inbox.',
+                      'Email sender/subject not visible. Please take a full screenshot inside your Primary Inbox.',
+                      'Invalid screenshot. Please complete the 30-second task and upload your Inbox proof.',
+                      'Declined by Admin'
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setOverrideReason(preset)}
+                        style={{
+                          background: overrideReason === preset ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.05)',
+                          border: overrideReason === preset ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                          color: overrideReason === preset ? '#fca5a5' : '#cbd5e1',
+                          borderRadius: '6px',
+                          padding: '3px 7px',
+                          fontSize: '0.65rem',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          lineHeight: '1.3'
+                        }}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"

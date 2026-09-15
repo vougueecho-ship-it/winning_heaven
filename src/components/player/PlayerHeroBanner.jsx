@@ -3,8 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit, onOpenReferrals }) {
+export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit, onOpenReferrals, onOpenFreeplay }) {
   const announcements = frontendSettings.announcements || [
+    {
+      title: '🎁 $3 FREEPLAY BONUS TASK',
+      subtitle: 'Move our verification email from Spam to Inbox, upload proof, and get $3 instant credits! Deposit just $10 to qualify for ongoing freeplay.',
+      cta: 'CLAIM $3 FREEPLAY',
+      action: 'freeplay',
+      badge: 'TASK REWARD',
+      bg: 'linear-gradient(135deg, rgba(28,18,50,0.95) 0%, rgba(10,14,32,0.95) 100%)'
+    },
     {
       title: 'WELCOME TO WINNING HEAVEN',
       subtitle: 'Experience 100% Instant Deposit Bonuses & VIP Rewards Daily!',
@@ -117,6 +125,10 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
             {current.action === 'referrals' ? (
               <button onClick={onOpenReferrals} className="btn-cyan-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>
                 <i className="fa-solid fa-users-viewfinder" /> {current.cta || 'REFER FRIENDS'}
+              </button>
+            ) : current.action === 'freeplay' ? (
+              <button onClick={onOpenFreeplay} className="btn-gold-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #00e676 0%, #00a152 100%)', color: '#000' }}>
+                <i className="fa-solid fa-gift" /> {current.cta || 'CLAIM $3 FREEPLAY'}
               </button>
             ) : (
               <button onClick={onOpenDeposit} className="btn-gold-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>

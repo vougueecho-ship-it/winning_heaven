@@ -28,7 +28,7 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [minimumDepositLimit, setMinimumDepositLimit] = useState(5);
   const [minimumWithdrawalLimit, setMinimumWithdrawalLimit] = useState(5);
   const [freeplayMaxCashout, setFreeplayMaxCashout] = useState(30);
-  const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(25);
+  const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(10);
   const [cashoutTiers, setCashoutTiers] = useState([
     { depositRange: '$5 - $50', multiplier: '3x Deposit', minCashoutExample: 'Min $15.00 – $150.00', note: 'Fast 5-Minute Payout' },
     { depositRange: '$51 - $100', multiplier: '3x Deposit', minCashoutExample: 'Min $153.00 – $300.00', note: 'Standard Instant Payout' },
@@ -46,7 +46,7 @@ export default function FrontendSettingsTab({ adminUser }) {
     },
     {
       title: 'Freeplay Cashout Limit & Hold Balance',
-      description: 'Freeplay ($3 Signup) allows a maximum cashout of $30.00. Excess balance remains on hold and is unlocked upon a $25.00 deposit.'
+      description: 'Freeplay ($3 Signup) allows a maximum cashout of $30.00. Excess balance remains on hold and is unlocked upon a $10.00 deposit.'
     }
   ]);
   const [withdrawRequireGameScreenshot, setWithdrawRequireGameScreenshot] = useState(false);
@@ -128,7 +128,7 @@ export default function FrontendSettingsTab({ adminUser }) {
       setMinimumDepositLimit(s.minimumDepositLimit !== undefined ? s.minimumDepositLimit : 5);
       setMinimumWithdrawalLimit(s.minimumWithdrawalLimit !== undefined ? s.minimumWithdrawalLimit : 5);
       setFreeplayMaxCashout(s.freeplayMaxCashout !== undefined ? s.freeplayMaxCashout : 30);
-      setFreeplayUnlockDeposit(s.freeplayUnlockDeposit !== undefined ? s.freeplayUnlockDeposit : 25);
+      setFreeplayUnlockDeposit(s.freeplayUnlockDeposit !== undefined ? s.freeplayUnlockDeposit : 10);
       if (Array.isArray(s.cashoutTiers) && s.cashoutTiers.length > 0) {
         setCashoutTiers(s.cashoutTiers);
       }
@@ -1016,7 +1016,7 @@ export default function FrontendSettingsTab({ adminUser }) {
                     />
                   </div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                    Deposit amount required to unlock excess Freeplay Hold (Default: $25.00)
+                    Deposit amount required to unlock excess Freeplay Hold / qualify for re-claim (Default: $10.00)
                   </span>
                 </div>
               </div>
