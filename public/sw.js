@@ -1,4 +1,4 @@
-const SW_VERSION = 'winning-heaven-static-v7';
+const SW_VERSION = 'winning-heaven-static-v8';
 const APP_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
@@ -135,7 +135,7 @@ self.addEventListener('push', (event) => {
     renotify: true,
     silent: false,
     vibrate: [200, 100, 200],
-    requireInteraction: false,
+    requireInteraction: true,
     ...(data.image ? { image: data.image } : {}),
     data: {
       url: data.url || '/lobby',

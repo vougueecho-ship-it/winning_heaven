@@ -80,15 +80,17 @@ function getFirebaseMessaging() {
 }
 
 export async function sendPromotionPush(db, promotion, targetEmails) {
-  if (!Array.isArray(targetEmails) || targetEmails.length === 0) {
-    return { sent: 0, failed: 0, skipped: true };
-  }
+  const normalizedEmails = Array.isArray(targetEmails)
+    ? [...new Set(targetEmails.map((email) => String(email || '').trim().toLowerCase()).filter(Boolean))]
+    : [];
 
-  const normalizedEmails = [...new Set(
-    targetEmails.map((email) => String(email || '').trim().toLowerCase()).filter(Boolean)
-  )];
+  const isTargetAll = !promotion.targetGroup || String(promotion.targetGroup).toLowerCase() === 'all';
+  const query = isTargetAll
+    ? { audience: { $ne: 'distributor' } }
+    : { userEmail: { $in: normalizedEmails }, audience: { $ne: 'distributor' } };
+
   const subscriptions = await db.collection('pushSubscriptions')
-    .find({ userEmail: { $in: normalizedEmails } })
+    .find(query)
     .toArray();
 
   if (subscriptions.length === 0) {
@@ -105,15 +107,14 @@ export async function sendPromotionPush(db, promotion, targetEmails) {
     .replace(/\/$/, '');
   const remoteImage = /^https?:\/\//i.test(promotion.image || '') ? promotion.image : undefined;
 
-  // Calm lock-screen copy for web (Chrome often hides flashy marketing as "Possible spam").
-  // Full promo title/message still open inside the lobby when they tap through.
-  const webTitle = 'Winning Heaven';
-  const webBody = 'A new offer is waiting in your lobby.';
+  const webTitle = String(promotion.title || 'Winning Heaven').slice(0, 100);
+  const webBody = String(promotion.message || 'A new offer is waiting in your lobby.').slice(0, 250);
   const webPayload = JSON.stringify({
     title: webTitle,
     body: webBody,
     icon: `${siteUrl}/icon-192.png`,
     badge: `${siteUrl}/icon-192.png`,
+    ...(remoteImage ? { image: remoteImage } : {}),
     tag: `promotion-${promotion.id}`,
     promotionId: promotion.id,
     url: `/lobby?promotion=${encodeURIComponent(promotion.id)}`
@@ -145,7 +146,7 @@ export async function sendPromotionPush(db, promotion, targetEmails) {
 
         failed += 1;
         const statusCode = result.reason?.statusCode;
-        if (statusCode === 404 || statusCode === 410) {
+        if (statusCode === 403 || statusCode === 404 || statusCode === 410) {
           expiredEndpoints.push(batch[resultIndex].endpoint);
         }
         console.error('Promotion web push delivery failed:', statusCode || result.reason?.message);

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { subscribeToPromoPush, getWebPushPromptState } from '../../lib/pushClient';
+import { subscribeToPromoPush, getWebPushPromptState, initFirstGesturePushPrompt } from '../../lib/pushClient';
 
 export default function SubscribePromptModal({ currentUser, showToast }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,16 +11,24 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
   useEffect(() => {
     if (!currentUser || !currentUser.email) return;
 
+    // Direct first-gesture trigger: When user taps anywhere on screen, Chrome native Allow prompt appears
+    const cleanupGesture = initFirstGesturePushPrompt(currentUser.email, (sub, alreadySubscribed) => {
+      setIsOpen(false);
+      if (!alreadySubscribed && showToast) {
+        showToast('Notifications enabled! You will receive lock-screen bonus drops.', 'success');
+      }
+    });
+
     try {
-      // Don't show if already subscribed
+      // Don't show modal if already subscribed
       const isSubscribed = localStorage.getItem('wh_push_subscribed') === 'true' || currentUser.isSubscribed === true;
-      if (isSubscribed) return;
+      if (isSubscribed) return cleanupGesture;
 
       // Check if dismissed within last 7 days
       const dismissedTs = localStorage.getItem('wh_push_dismissed_ts');
       const now = Date.now();
       if (dismissedTs && now - Number(dismissedTs) < 7 * 24 * 60 * 60 * 1000) {
-        return;
+        return cleanupGesture;
       }
 
       // Check push state
@@ -28,17 +36,22 @@ export default function SubscribePromptModal({ currentUser, showToast }) {
       if (state && state.permission === 'granted') {
         // Auto-subscribe silently
         subscribeToPromoPush(currentUser.email).catch(() => {});
-        return;
+        return cleanupGesture;
       }
 
-      // Display prompt after a smooth delay on lobby load
+      // If user hasn't clicked or interacted after 4 seconds and permission is still default, show modal as fallback
       const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 1500);
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          setIsOpen(true);
+        }
+      }, 4000);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (cleanupGesture) cleanupGesture();
+      };
     } catch {
-      // Storage unavailable
+      return cleanupGesture;
     }
   }, [currentUser]);
 

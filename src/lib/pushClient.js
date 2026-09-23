@@ -430,3 +430,70 @@ export function initPushAudioListener(customSoundUrl) {
   });
 }
 
+/**
+ * Auto-prompts native Chrome / Safari notification permission on first user tap/click anywhere.
+ * If user grants, silently saves push subscription with userEmail.
+ * If already granted, auto-subscribes silently in the background.
+ */
+export function initFirstGesturePushPrompt(userEmail, onSubscribed) {
+  if (typeof window === 'undefined' || !userEmail) return () => {};
+  if (!supportsWebPush()) return () => {};
+
+  // If already granted, auto-subscribe silently in background
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    subscribeToPromoPush(userEmail)
+      .then((sub) => {
+        try { localStorage.setItem('wh_push_subscribed', 'true'); } catch {}
+        if (onSubscribed) onSubscribed(sub, true);
+      })
+      .catch(() => {});
+    return () => {};
+  }
+
+  // If already denied, browser won't show prompt anyway
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+    return () => {};
+  }
+
+  // Don't re-prompt if user dismissed within the last 2 days
+  try {
+    const dismissedTs = localStorage.getItem('wh_push_dismissed_ts');
+    if (dismissedTs && Date.now() - Number(dismissedTs) < 2 * 24 * 60 * 60 * 1000) {
+      return () => {};
+    }
+  } catch {}
+
+  let triggered = false;
+  const triggerPrompt = async () => {
+    if (triggered) return;
+    triggered = true;
+    cleanListeners();
+
+    try {
+      if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        const sub = await subscribeToPromoPush(userEmail);
+        try { localStorage.setItem('wh_push_subscribed', 'true'); } catch {}
+        if (onSubscribed) onSubscribed(sub, false);
+      } else if (perm === 'denied') {
+        try { localStorage.setItem('wh_push_dismissed_ts', String(Date.now())); } catch {}
+      }
+    } catch (err) {
+      console.warn('First gesture push prompt error:', err);
+    }
+  };
+
+  const cleanListeners = () => {
+    window.removeEventListener('pointerdown', triggerPrompt, true);
+    window.removeEventListener('click', triggerPrompt, true);
+    window.removeEventListener('touchend', triggerPrompt, true);
+  };
+
+  window.addEventListener('pointerdown', triggerPrompt, { capture: true, once: true });
+  window.addEventListener('click', triggerPrompt, { capture: true, once: true });
+  window.addEventListener('touchend', triggerPrompt, { capture: true, once: true });
+
+  return cleanListeners;
+}
+
