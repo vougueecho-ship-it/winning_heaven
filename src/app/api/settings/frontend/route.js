@@ -20,6 +20,12 @@ const DEFAULT_SETTINGS = {
   signupFreeplay: 3,
   minimumDepositLimit: 5,
   minimumWithdrawalLimit: 5,
+  freeplayMinWithdraw: 30,
+  defaultMinWithdraw: 25,
+  withdrawTier1Multiplier: 5,
+  withdrawTier2Multiplier: 3,
+  withdrawTier1MinDeposit: 5,
+  withdrawTier1MaxDeposit: 50,
   freeplayMaxCashout: 30,
   freeplayUnlockDeposit: 10,
   cashoutTiers: [
@@ -223,13 +229,23 @@ export async function PUT(req) {
       { upsert: true }
     );
 
-    if (updateFields.firstDepositBonus !== undefined) {
+    const syncToGlobal = {};
+    if (updateFields.firstDepositBonus !== undefined) syncToGlobal.firstDepositBonus = Number(updateFields.firstDepositBonus);
+    if (updateFields.freeplayMinWithdraw !== undefined) syncToGlobal.freeplayMinWithdraw = Number(updateFields.freeplayMinWithdraw);
+    if (updateFields.defaultMinWithdraw !== undefined) syncToGlobal.defaultMinWithdraw = Number(updateFields.defaultMinWithdraw);
+    if (updateFields.withdrawTier1Multiplier !== undefined) syncToGlobal.withdrawTier1Multiplier = Number(updateFields.withdrawTier1Multiplier);
+    if (updateFields.withdrawTier2Multiplier !== undefined) syncToGlobal.withdrawTier2Multiplier = Number(updateFields.withdrawTier2Multiplier);
+    if (updateFields.withdrawTier1MinDeposit !== undefined) syncToGlobal.withdrawTier1MinDeposit = Number(updateFields.withdrawTier1MinDeposit);
+    if (updateFields.withdrawTier1MaxDeposit !== undefined) syncToGlobal.withdrawTier1MaxDeposit = Number(updateFields.withdrawTier1MaxDeposit);
+
+    if (Object.keys(syncToGlobal).length > 0) {
       await settingsCollection.updateOne(
         { id: 'global_settings' },
-        { $set: { firstDepositBonus: Number(updateFields.firstDepositBonus) } },
+        { $set: syncToGlobal },
         { upsert: true }
       );
       cache.del('settings_all');
+      cache.del('global_settings');
       cache.del('admin_stats');
     }
 

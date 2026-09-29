@@ -9,7 +9,7 @@ import { publishAdminEvent } from '../../../lib/adminEvents';
 import { accountLookupKey, buildGameUsernameMap } from '../../../lib/resolveGameUsername';
 import { compressDataUrlIfNeeded } from '../../../lib/serverImageCompress';
 import { applyStaffGameFilter } from '../../../lib/staffGameAccess';
-import { getDepositBasedMinWithdraw } from '../../../lib/withdrawRules';
+import { getDepositBasedMinWithdraw, getDepositWithdrawRule } from '../../../lib/withdrawRules';
 
 // GET transactions (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -168,6 +168,8 @@ export async function GET(req) {
         allottedBy: 1,
         isFreeplayWithdraw: 1,
         isDepositFromCashout: 1,
+        totalCoins: 1,
+        bonusApplied: 1,
         gameAmount: 1,
         proofPending: 1,
         coinsHoldNote: 1,
@@ -833,11 +835,25 @@ export async function POST(req) {
         console.error('Error checking freeplay session state:', checkErr);
         txObject.isFreeplayWithdraw = false;
       }
+      // Fetch settings for cashout validation
+      let frontendSettingsForWithdraw = cache.get('frontend_settings_all');
+      let globalSettingsForWithdraw = cache.get('global_settings');
+      if (!frontendSettingsForWithdraw || !globalSettingsForWithdraw) {
+        const [s1, s2] = await Promise.all([
+          db.collection('settings').findOne({ id: 'frontend_settings' }),
+          db.collection('settings').findOne({ id: 'global_settings' })
+        ]);
+        if (s1) { frontendSettingsForWithdraw = s1; cache.set('frontend_settings_all', s1, 60); }
+        if (s2) { globalSettingsForWithdraw = s2; cache.set('global_settings', s2, 60); }
+      }
+      const withdrawSettings = { ...(globalSettingsForWithdraw || {}), ...(frontendSettingsForWithdraw || {}) };
+      const freeplayMin = Number(withdrawSettings?.freeplayMinWithdraw ?? 30);
+
       // Keep full amount on the transaction — coins admin needs the real amount to deduct
-      // The amount will be capped to $30 when the coins admin approves (in coins-notifications PUT)
-      if (txObject.isFreeplayWithdraw && parseFloat(txObject.amount) < 100) {
+      // The amount will be capped to $30 (or freeplayMin) when the coins admin approves (in coins-notifications PUT)
+      if (txObject.isFreeplayWithdraw && parseFloat(txObject.amount) < freeplayMin) {
         return NextResponse.json(
-          { success: false, message: 'Freeplay withdraw request must be at least $100.' },
+          { success: false, message: `Freeplay withdraw request must be at least $${freeplayMin.toFixed(2)}.` },
           { status: 400 }
         );
       }
@@ -845,7 +861,7 @@ export async function POST(req) {
       // Deposit-based cashout floor (skip remainder claims + freeplay withdraw)
       if (!txObject.isRemainderRequest && !txObject.isFreeplayWithdraw) {
         const gameTitle = txObject.gameTitle || '';
-        const lastDeposit = await transactionsCollection.findOne(
+        let lastDeposit = await transactionsCollection.findOne(
           {
             userEmail: txObject.userEmail,
             type: 'DEPOSIT',
@@ -856,19 +872,24 @@ export async function POST(req) {
           },
           { sort: { createdAt: -1, id: -1 } }
         );
-        let frontendSettingsForWithdraw = cache.get('frontend_settings_all');
-        if (!frontendSettingsForWithdraw) {
-          frontendSettingsForWithdraw = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
+        if (!lastDeposit) {
+          lastDeposit = await transactionsCollection.findOne(
+            {
+              userEmail: txObject.userEmail,
+              type: 'DEPOSIT',
+              status: 'SUCCESS'
+            },
+            { sort: { createdAt: -1, id: -1 } }
+          );
         }
-        const depositMin = getDepositBasedMinWithdraw(lastDeposit?.amount, frontendSettingsForWithdraw?.cashoutTiers);
+
+        const rule = getDepositWithdrawRule(lastDeposit, withdrawSettings);
         const askAmount = parseFloat(txObject.amount);
-        if (depositMin != null && Number.isFinite(askAmount) && askAmount < depositMin) {
-          const lastAmt = parseFloat(lastDeposit.amount || 0);
-          const mult = lastAmt > 0 ? Math.round(depositMin / lastAmt) : 5;
+        if (rule != null && Number.isFinite(askAmount) && askAmount < rule.minWithdraw) {
           return NextResponse.json(
             {
               success: false,
-              message: `Minimum cashout is $${depositMin.toFixed(2)} (last deposit $${lastAmt.toFixed(2)} × ${mult}x).`
+              message: `Minimum cashout is $${rule.minWithdraw.toFixed(2)} (${rule.allottedCoins} allotted coins × ${rule.multiplier}x).`
             },
             { status: 400 }
           );
@@ -1319,6 +1340,8 @@ export async function PUT(req) {
         const amount = parseFloat(originalTx.amount);
         const rawCoins = isBonus ? amount : (amount * (1 + bonusPercentage / 100));
         const totalCoins = Math.floor(Number(rawCoins) || 0);
+        updateFields.totalCoins = totalCoins;
+        updateFields.bonusApplied = bonusPercentage;
 
         // Coins Manager task — upsert keyed on transactionId so two overlapping
         // approve requests can only ever produce ONE allotment row.

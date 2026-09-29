@@ -25,6 +25,14 @@ export default function SettingsTab({ onUpdateSettings }) {
   const [adBudgetLimit, setAdBudgetLimit] = useState(6000);
   const [enforceDeviceLimitInput, setEnforceDeviceLimitInput] = useState(true);
 
+  // Cashout rules & deposit multiplier settings
+  const [freeplayMinWithdraw, setFreeplayMinWithdraw] = useState(30);
+  const [defaultMinWithdraw, setDefaultMinWithdraw] = useState(25);
+  const [withdrawTier1Multiplier, setWithdrawTier1Multiplier] = useState(5);
+  const [withdrawTier2Multiplier, setWithdrawTier2Multiplier] = useState(3);
+  const [withdrawTier1MinDeposit, setWithdrawTier1MinDeposit] = useState(5);
+  const [withdrawTier1MaxDeposit, setWithdrawTier1MaxDeposit] = useState(50);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -47,6 +55,12 @@ export default function SettingsTab({ onUpdateSettings }) {
       setAdPaymentQrCode(settingsData.settings.adPaymentQrCode || '');
       setAdBudgetLimit(settingsData.settings.adBudgetLimit ?? 6000);
       setEnforceDeviceLimitInput(settingsData.settings.enforceDeviceLimit !== false);
+      setFreeplayMinWithdraw(settingsData.settings.freeplayMinWithdraw !== undefined ? settingsData.settings.freeplayMinWithdraw : 30);
+      setDefaultMinWithdraw(settingsData.settings.defaultMinWithdraw !== undefined ? settingsData.settings.defaultMinWithdraw : 25);
+      setWithdrawTier1Multiplier(settingsData.settings.withdrawTier1Multiplier !== undefined ? settingsData.settings.withdrawTier1Multiplier : 5);
+      setWithdrawTier2Multiplier(settingsData.settings.withdrawTier2Multiplier !== undefined ? settingsData.settings.withdrawTier2Multiplier : 3);
+      setWithdrawTier1MinDeposit(settingsData.settings.withdrawTier1MinDeposit !== undefined ? settingsData.settings.withdrawTier1MinDeposit : 5);
+      setWithdrawTier1MaxDeposit(settingsData.settings.withdrawTier1MaxDeposit !== undefined ? settingsData.settings.withdrawTier1MaxDeposit : 50);
     }
   }, [settingsData]);
 
@@ -93,7 +107,13 @@ export default function SettingsTab({ onUpdateSettings }) {
           adPaymentWallet: adPaymentWallet.trim(),
           adPaymentQrCode,
           adBudgetLimit: Number(adBudgetLimit),
-          enforceDeviceLimit: Boolean(enforceDeviceLimitInput)
+          enforceDeviceLimit: Boolean(enforceDeviceLimitInput),
+          freeplayMinWithdraw: Number(freeplayMinWithdraw),
+          defaultMinWithdraw: Number(defaultMinWithdraw),
+          withdrawTier1Multiplier: Number(withdrawTier1Multiplier),
+          withdrawTier2Multiplier: Number(withdrawTier2Multiplier),
+          withdrawTier1MinDeposit: Number(withdrawTier1MinDeposit),
+          withdrawTier1MaxDeposit: Number(withdrawTier1MaxDeposit)
         })
       });
       const data = await res.json();
@@ -413,7 +433,268 @@ export default function SettingsTab({ onUpdateSettings }) {
           </div>
         </section>
 
-        {/* SECTION 2: PLATFORM OWNER WALLET */}
+        {/* SECTION 2: CASHOUT RULES & ALLOTTED COINS MULTIPLIERS */}
+        <section style={{
+          background: 'rgba(14, 18, 36, 0.85)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(0, 255, 204, 0.22)',
+          borderRadius: '20px',
+          padding: '1.75rem',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, margin: 0, fontFamily: 'var(--font-heading, "Outfit", sans-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fa-solid fa-money-bill-transfer" style={{ color: '#00ffcc' }} />
+              <span>Cashout Rules &amp; Allotted Coins Multipliers Engine</span>
+            </h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
+              Configure minimum cashout floor for Freeplay wins, and multiplier thresholds based on player's allotted coins from their last approved deposit.
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            
+            {/* Freeplay Min Cashout */}
+            <div style={{
+              background: 'rgba(6, 8, 18, 0.8)',
+              border: '1.5px solid rgba(168, 85, 247, 0.3)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Freeplay Min Cashout ($)
+                </span>
+                <i className="fa-solid fa-gift" style={{ color: '#c084fc' }} />
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-dollar-sign" style={{ position: 'absolute', left: '14px', color: '#c084fc', fontSize: '0.88rem' }} />
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  placeholder="30"
+                  value={freeplayMinWithdraw}
+                  onChange={(e) => setFreeplayMinWithdraw(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1.5px solid rgba(168, 85, 247, 0.35)',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem 0.75rem 2.6rem',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{
+                background: 'rgba(168, 85, 247, 0.08)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                borderRadius: '10px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.72rem',
+                color: 'rgba(255,255,255,0.85)',
+                lineHeight: 1.35
+              }}>
+                Freeplay winners cannot submit or cash out less than this amount (Default: <strong style={{ color: '#c084fc' }}>$30.00</strong>).
+              </div>
+            </div>
+
+            {/* Tier 1 Multiplier ($5 to $50) */}
+            <div style={{
+              background: 'rgba(6, 8, 18, 0.8)',
+              border: '1.5px solid rgba(255, 215, 0, 0.3)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ffd700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Tier 1 Multiplier ({withdrawTier1MinDeposit || 5}$ - {withdrawTier1MaxDeposit || 50}$)
+                </span>
+                <i className="fa-solid fa-coins" style={{ color: '#ffd700' }} />
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-xmark" style={{ position: 'absolute', left: '14px', color: '#ffd700', fontSize: '0.88rem' }} />
+                <input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  placeholder="5"
+                  value={withdrawTier1Multiplier}
+                  onChange={(e) => setWithdrawTier1Multiplier(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1.5px solid rgba(255, 215, 0, 0.35)',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem 0.75rem 2.6rem',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{
+                background: 'rgba(255, 215, 0, 0.08)',
+                border: '1px solid rgba(255, 215, 0, 0.2)',
+                borderRadius: '10px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.72rem',
+                color: 'rgba(255,255,255,0.85)',
+                lineHeight: 1.35
+              }}>
+                Multiplies <strong>allotted coins</strong> by <strong style={{ color: '#ffd700' }}>{withdrawTier1Multiplier || 5}x</strong> for deposits from ${withdrawTier1MinDeposit || 5} to ${withdrawTier1MaxDeposit || 50}.
+              </div>
+            </div>
+
+            {/* Tier 2 Multiplier (> $50) */}
+            <div style={{
+              background: 'rgba(6, 8, 18, 0.8)',
+              border: '1.5px solid rgba(255, 107, 107, 0.3)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ff6b6b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Tier 2 Multiplier (&gt; {withdrawTier1MaxDeposit || 50}$)
+                </span>
+                <i className="fa-solid fa-fire" style={{ color: '#ff6b6b' }} />
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-xmark" style={{ position: 'absolute', left: '14px', color: '#ff6b6b', fontSize: '0.88rem' }} />
+                <input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  placeholder="3"
+                  value={withdrawTier2Multiplier}
+                  onChange={(e) => setWithdrawTier2Multiplier(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1.5px solid rgba(255, 107, 107, 0.35)',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem 0.75rem 2.6rem',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{
+                background: 'rgba(255, 107, 107, 0.08)',
+                border: '1px solid rgba(255, 107, 107, 0.2)',
+                borderRadius: '10px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.72rem',
+                color: 'rgba(255,255,255,0.85)',
+                lineHeight: 1.35
+              }}>
+                Multiplies <strong>allotted coins</strong> by <strong style={{ color: '#ff6b6b' }}>{withdrawTier2Multiplier || 3}x</strong> for deposits strictly greater than ${withdrawTier1MaxDeposit || 50}.
+              </div>
+            </div>
+
+            {/* Default Min Cashout (No prior deposit) */}
+            <div style={{
+              background: 'rgba(6, 8, 18, 0.8)',
+              border: '1.5px solid rgba(0, 255, 204, 0.3)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00ffcc', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Default Minimum Cashout ($)
+                </span>
+                <i className="fa-solid fa-shield-halved" style={{ color: '#00ffcc' }} />
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-dollar-sign" style={{ position: 'absolute', left: '14px', color: '#00ffcc', fontSize: '0.88rem' }} />
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  placeholder="25"
+                  value={defaultMinWithdraw}
+                  onChange={(e) => setDefaultMinWithdraw(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1.5px solid rgba(0, 255, 204, 0.35)',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem 0.75rem 2.6rem',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{
+                background: 'rgba(0, 255, 204, 0.08)',
+                border: '1px solid rgba(0, 255, 204, 0.2)',
+                borderRadius: '10px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.72rem',
+                color: 'rgba(255,255,255,0.85)',
+                lineHeight: 1.35
+              }}>
+                Fallback minimum cashout when player has no previous deposit history (Default: <strong style={{ color: '#00ffcc' }}>$25.00</strong>).
+              </div>
+            </div>
+
+          </div>
+
+          {/* Real-time Formula Demonstration Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(0, 255, 204, 0.06) 0%, rgba(14, 18, 36, 0.9) 100%)',
+            border: '1.5px dashed rgba(0, 255, 204, 0.35)',
+            borderRadius: '16px',
+            padding: '1.1rem 1.4rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.6rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00ffcc', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase' }}>
+              <i className="fa-solid fa-calculator" />
+              <span>Live Multiplier Calculation Preview (Based on Active Settings)</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
+                <div style={{ color: '#c084fc', fontWeight: 700 }}>Freeplay Client:</div>
+                <div>Request minimum: <strong style={{ color: '#fff' }}>${Number(freeplayMinWithdraw || 30).toFixed(2)}</strong></div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
+                <div style={{ color: '#ffd700', fontWeight: 700 }}>$10 Deposit (12 Coins @ 20% bonus):</div>
+                <div>Min Cashout: 12 × {withdrawTier1Multiplier || 5} = <strong style={{ color: '#00ff66' }}>${(12 * Number(withdrawTier1Multiplier || 5)).toFixed(2)}</strong></div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
+                <div style={{ color: '#ff6b6b', fontWeight: 700 }}>$100 Deposit (120 Coins @ 20% bonus):</div>
+                <div>Min Cashout: 120 × {withdrawTier2Multiplier || 3} = <strong style={{ color: '#00ff66' }}>${(120 * Number(withdrawTier2Multiplier || 3)).toFixed(2)}</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: PLATFORM OWNER WALLET */}
         <section style={{
           background: 'rgba(14, 18, 36, 0.85)',
           backdropFilter: 'blur(20px)',

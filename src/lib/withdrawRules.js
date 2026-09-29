@@ -1,51 +1,99 @@
 /**
- * Cashout minimum from last successful deposit:
- * - $5 - $19   → amount × 5
- * - $20 - $49  → amount × 6
- * - $50 - $99  → amount × 5
- * - $100+      → amount × 20
- * Returns null when there is no usable last deposit.
+ * Cashout minimum rules:
+ * - Freeplay session minimum cashout: $30 (or configured freeplayMinWithdraw).
+ * - Deposit between $5 and $50 (inclusive): allotted coins × 5 (or configured tier 1 multiplier).
+ * - Deposit strictly above $50: allotted coins × 3 (or configured tier 2 multiplier).
+ * All tiers and limits are fully configurable from the admin panel.
  */
-export function getDepositBasedMinWithdraw(lastDepositAmount, tiers = null) {
-  const deposit = Number(lastDepositAmount);
-  if (!Number.isFinite(deposit) || deposit <= 0) return null;
 
-  if (Array.isArray(tiers) && tiers.length > 0) {
-    for (const t of tiers) {
-      const rangeStr = String(t.depositRange || '').replace(/[^0-9\-+]/g, '');
-      const multVal = parseFloat(String(t.multiplier || '').replace(/[^0-9.]/g, '')) || 5;
-      if (rangeStr.includes('+')) {
-        const minVal = parseFloat(rangeStr.replace('+', ''));
-        if (deposit >= minVal) return Math.round(deposit * multVal * 100) / 100;
-      } else if (rangeStr.includes('-')) {
-        const [minVal, maxVal] = rangeStr.split('-').map(Number);
-        if (deposit >= minVal && deposit <= maxVal) {
-          return Math.round(deposit * multVal * 100) / 100;
-        }
-      }
-    }
+export function resolveAllottedCoins(lastDeposit, settings = {}) {
+  if (!lastDeposit) return 0;
+  if (typeof lastDeposit === 'number') {
+    const defaultBonus = Number(settings?.regularDepositBonus ?? 20);
+    return Math.floor(lastDeposit * (1 + (Number.isFinite(defaultBonus) ? defaultBonus : 20) / 100));
+  }
+  if (lastDeposit.totalCoins !== undefined && lastDeposit.totalCoins !== null && !isNaN(Number(lastDeposit.totalCoins)) && Number(lastDeposit.totalCoins) > 0) {
+    return Math.floor(Number(lastDeposit.totalCoins));
+  }
+  if (lastDeposit.gameAmount !== undefined && lastDeposit.gameAmount !== null && !isNaN(Number(lastDeposit.gameAmount)) && Number(lastDeposit.gameAmount) > 0) {
+    return Math.floor(Number(lastDeposit.gameAmount));
+  }
+  const deposit = Number(lastDeposit.amount || 0);
+  if (!Number.isFinite(deposit) || deposit <= 0) return 0;
+  const bonus = Number(lastDeposit.bonusApplied !== undefined ? lastDeposit.bonusApplied : (settings?.regularDepositBonus ?? 20));
+  return Math.floor(deposit * (1 + (Number.isFinite(bonus) ? bonus : 20) / 100));
+}
+
+export function getDepositWithdrawRule(lastDepositOrAmount, settings = {}) {
+  if (!lastDepositOrAmount) return null;
+
+  let depositAmount = 0;
+  let allottedCoins = 0;
+
+  if (typeof lastDepositOrAmount === 'object' && lastDepositOrAmount !== null) {
+    depositAmount = Number(lastDepositOrAmount.amount || 0);
+    allottedCoins = resolveAllottedCoins(lastDepositOrAmount, settings);
+  } else {
+    depositAmount = Number(lastDepositOrAmount || 0);
+    allottedCoins = resolveAllottedCoins(depositAmount, settings);
   }
 
-  let multiplier = 5;
-  if (deposit >= 20 && deposit < 50) {
-    multiplier = 6;
-  } else if (deposit >= 50 && deposit < 100) {
-    multiplier = 5;
-  } else if (deposit >= 100) {
-    multiplier = 20;
+  if (!Number.isFinite(depositAmount) || depositAmount <= 0) return null;
+
+  const tier1Min = Number(settings?.withdrawTier1MinDeposit ?? 5);
+  const tier1Max = Number(settings?.withdrawTier1MaxDeposit ?? 50);
+  const tier1Mult = Number(settings?.withdrawTier1Multiplier ?? 5);
+  const tier2Mult = Number(settings?.withdrawTier2Multiplier ?? 3);
+
+  // Fallback if allotted coins resulted in 0 or less
+  if (allottedCoins <= 0) {
+    allottedCoins = Math.max(1, Math.floor(depositAmount));
   }
-  return Math.round(deposit * multiplier * 100) / 100;
+
+  // Tier 1: deposit between $5 and $50 (inclusive)
+  if (depositAmount >= tier1Min && depositAmount <= tier1Max) {
+    const minWithdraw = Math.round(allottedCoins * tier1Mult * 100) / 100;
+    return {
+      minWithdraw,
+      multiplier: tier1Mult,
+      allottedCoins,
+      depositAmount,
+      tier: 1
+    };
+  }
+
+  // Tier 2: deposit strictly above $50
+  if (depositAmount > tier1Max) {
+    const minWithdraw = Math.round(allottedCoins * tier2Mult * 100) / 100;
+    return {
+      minWithdraw,
+      multiplier: tier2Mult,
+      allottedCoins,
+      depositAmount,
+      tier: 2
+    };
+  }
+
+  return null;
+}
+
+export function getDepositBasedMinWithdraw(lastDepositOrAmount, settings = {}) {
+  if (Array.isArray(settings)) {
+    return getDepositWithdrawRule(lastDepositOrAmount, {})?.minWithdraw ?? null;
+  }
+  const rule = getDepositWithdrawRule(lastDepositOrAmount, settings);
+  return rule ? rule.minWithdraw : null;
 }
 
 export function findLastSuccessDeposit(transactions, { userEmail, gameTitle } = {}) {
   const email = String(userEmail || '').toLowerCase().trim();
   const game = String(gameTitle || '').toLowerCase().trim();
-  const rows = (Array.isArray(transactions) ? transactions : [])
+  const filterRows = (matchGame) => (Array.isArray(transactions) ? transactions : [])
     .filter((t) => {
       if (String(t.type || '').toUpperCase() !== 'DEPOSIT') return false;
       if (String(t.status || '').toUpperCase() !== 'SUCCESS') return false;
       if (email && String(t.userEmail || '').toLowerCase().trim() !== email) return false;
-      if (game && String(t.gameTitle || '').toLowerCase().trim() !== game) return false;
+      if (matchGame && game && String(t.gameTitle || '').toLowerCase().trim() !== game) return false;
       return true;
     })
     .sort((a, b) => {
@@ -54,5 +102,9 @@ export function findLastSuccessDeposit(transactions, { userEmail, gameTitle } = 
       if (tb !== ta) return tb - ta;
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
-  return rows[0] || null;
+
+  const withGame = filterRows(true);
+  if (withGame.length > 0) return withGame[0];
+  const anyDeposit = filterRows(false);
+  return anyDeposit[0] || null;
 }

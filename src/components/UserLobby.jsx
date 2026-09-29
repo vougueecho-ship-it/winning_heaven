@@ -545,6 +545,7 @@ export default function UserLobby({
           defaultGameTitle={withdrawGameTitle}
           games={games}
           transactions={transactions}
+          frontendSettings={frontendSettings}
         />
       )}
 

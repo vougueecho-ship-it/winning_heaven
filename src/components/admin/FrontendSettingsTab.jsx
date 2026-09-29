@@ -27,6 +27,12 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [signupFreeplay, setSignupFreeplay] = useState(3);
   const [minimumDepositLimit, setMinimumDepositLimit] = useState(5);
   const [minimumWithdrawalLimit, setMinimumWithdrawalLimit] = useState(5);
+  const [freeplayMinWithdraw, setFreeplayMinWithdraw] = useState(30);
+  const [defaultMinWithdraw, setDefaultMinWithdraw] = useState(25);
+  const [withdrawTier1Multiplier, setWithdrawTier1Multiplier] = useState(5);
+  const [withdrawTier2Multiplier, setWithdrawTier2Multiplier] = useState(3);
+  const [withdrawTier1MinDeposit, setWithdrawTier1MinDeposit] = useState(5);
+  const [withdrawTier1MaxDeposit, setWithdrawTier1MaxDeposit] = useState(50);
   const [freeplayMaxCashout, setFreeplayMaxCashout] = useState(30);
   const [freeplayUnlockDeposit, setFreeplayUnlockDeposit] = useState(10);
   const [cashoutTiers, setCashoutTiers] = useState([
@@ -128,6 +134,12 @@ export default function FrontendSettingsTab({ adminUser }) {
       setSignupFreeplay(s.signupFreeplay !== undefined ? s.signupFreeplay : 3);
       setMinimumDepositLimit(s.minimumDepositLimit !== undefined ? s.minimumDepositLimit : 5);
       setMinimumWithdrawalLimit(s.minimumWithdrawalLimit !== undefined ? s.minimumWithdrawalLimit : 5);
+      setFreeplayMinWithdraw(s.freeplayMinWithdraw !== undefined ? s.freeplayMinWithdraw : 30);
+      setDefaultMinWithdraw(s.defaultMinWithdraw !== undefined ? s.defaultMinWithdraw : 25);
+      setWithdrawTier1Multiplier(s.withdrawTier1Multiplier !== undefined ? s.withdrawTier1Multiplier : 5);
+      setWithdrawTier2Multiplier(s.withdrawTier2Multiplier !== undefined ? s.withdrawTier2Multiplier : 3);
+      setWithdrawTier1MinDeposit(s.withdrawTier1MinDeposit !== undefined ? s.withdrawTier1MinDeposit : 5);
+      setWithdrawTier1MaxDeposit(s.withdrawTier1MaxDeposit !== undefined ? s.withdrawTier1MaxDeposit : 50);
       setFreeplayMaxCashout(s.freeplayMaxCashout !== undefined ? s.freeplayMaxCashout : 30);
       setFreeplayUnlockDeposit(s.freeplayUnlockDeposit !== undefined ? s.freeplayUnlockDeposit : 10);
       if (Array.isArray(s.cashoutTiers) && s.cashoutTiers.length > 0) {
@@ -321,6 +333,12 @@ export default function FrontendSettingsTab({ adminUser }) {
         signupFreeplay: Number(signupFreeplay),
         minimumDepositLimit: Number(minimumDepositLimit),
         minimumWithdrawalLimit: Number(minimumWithdrawalLimit),
+        freeplayMinWithdraw: Number(freeplayMinWithdraw),
+        defaultMinWithdraw: Number(defaultMinWithdraw),
+        withdrawTier1Multiplier: Number(withdrawTier1Multiplier),
+        withdrawTier2Multiplier: Number(withdrawTier2Multiplier),
+        withdrawTier1MinDeposit: Number(withdrawTier1MinDeposit),
+        withdrawTier1MaxDeposit: Number(withdrawTier1MaxDeposit),
         freeplayMaxCashout: Number(freeplayMaxCashout),
         freeplayUnlockDeposit: Number(freeplayUnlockDeposit),
         cashoutTiers,
@@ -1019,6 +1037,125 @@ export default function FrontendSettingsTab({ adminUser }) {
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
                     Deposit amount required to unlock excess Freeplay Hold / qualify for re-claim (Default: $10.00)
                   </span>
+                </div>
+              </div>
+
+              {/* Cashout Rules & Multipliers Engine Card */}
+              <div style={{
+                background: 'rgba(6, 8, 18, 0.85)',
+                border: '1.5px solid rgba(0, 255, 204, 0.3)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00ffcc', fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                  <i className="fa-solid fa-money-bill-transfer" />
+                  <span>Withdrawal Rules &amp; Allotted Coins Multipliers Engine</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#c084fc', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Freeplay Min Cashout ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={freeplayMinWithdraw}
+                      onChange={(e) => setFreeplayMinWithdraw(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(168, 85, 247, 0.35)',
+                        borderRadius: '12px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Freeplay client minimum cashout (Default: $30.00)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#ffd700', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Tier 1 Multiplier ({withdrawTier1MinDeposit || 5}$ - {withdrawTier1MaxDeposit || 50}$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={withdrawTier1Multiplier}
+                      onChange={(e) => setWithdrawTier1Multiplier(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(255, 215, 0, 0.35)',
+                        borderRadius: '12px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Multiplies allotted coins by {withdrawTier1Multiplier || 5}x (Default: 5x)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#ff6b6b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Tier 2 Multiplier (&gt; {withdrawTier1MaxDeposit || 50}$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={withdrawTier2Multiplier}
+                      onChange={(e) => setWithdrawTier2Multiplier(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(255, 107, 107, 0.35)',
+                        borderRadius: '12px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Multiplies allotted coins by {withdrawTier2Multiplier || 3}x (Default: 3x)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#00ffcc', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Default Min Cashout ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={defaultMinWithdraw}
+                      onChange={(e) => setDefaultMinWithdraw(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(10, 14, 28, 0.9)',
+                        border: '1.5px solid rgba(0, 255, 204, 0.35)',
+                        borderRadius: '12px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Fallback when player has no deposit (Default: $25.00)
+                    </span>
+                  </div>
                 </div>
               </div>
 

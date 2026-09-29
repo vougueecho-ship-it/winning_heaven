@@ -13,8 +13,11 @@ import {
   pendingMatchesGame,
   DEPOSIT_CODE_TTL_MS
 } from '../../lib/pendingDeposit';
-import { getDepositBasedMinWithdraw, findLastSuccessDeposit } from '../../lib/withdrawRules';
+import useSWR from 'swr';
+import { getDepositBasedMinWithdraw, getDepositWithdrawRule, findLastSuccessDeposit } from '../../lib/withdrawRules';
 import { cleanErrorMessage } from '../../lib/safeFetch';
+
+const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
 /** Player Centered Deposit Modal */
 export function PlayerDepositModal({
@@ -950,7 +953,8 @@ export function PlayerWithdrawModal({
   userEmail,
   defaultGameTitle = '',
   games = [],
-  transactions = []
+  transactions = [],
+  frontendSettings
 }) {
   const [amount, setAmount] = useState('');
   const [targetGameTitle, setTargetGameTitle] = useState(defaultGameTitle);
@@ -966,6 +970,13 @@ export function PlayerWithdrawModal({
 
   const gameShotInputRef = useRef(null);
   const tagQrInputRef = useRef(null);
+
+  const { data: feData } = useSWR('/api/settings/frontend', fetcher);
+  const activeSettings = React.useMemo(() => {
+    return frontendSettings?.settings || frontendSettings || feData?.settings || {};
+  }, [frontendSettings, feData]);
+
+  const freeplayMin = Number(activeSettings?.freeplayMinWithdraw ?? 30);
 
   useEffect(() => {
     if (defaultGameTitle) setTargetGameTitle(defaultGameTitle);
@@ -999,11 +1010,23 @@ export function PlayerWithdrawModal({
     return findLastSuccessDeposit(sortedTx, { userEmail, gameTitle: targetGameTitle });
   }, [sortedTx, userEmail, targetGameTitle]);
 
-  const calculatedMinWithdraw = React.useMemo(() => {
-    if (isFreeplaySession) return 100;
-    const depositMin = getDepositBasedMinWithdraw(lastDeposit?.amount);
-    return depositMin != null ? depositMin : 25;
-  }, [isFreeplaySession, lastDeposit]);
+  const withdrawRule = React.useMemo(() => {
+    if (isFreeplaySession) {
+      return {
+        minWithdraw: freeplayMin,
+        isFreeplay: true
+      };
+    }
+    const rule = getDepositWithdrawRule(lastDeposit, activeSettings);
+    if (rule) return rule;
+    const defaultMin = Number(activeSettings?.defaultMinWithdraw ?? 25);
+    return {
+      minWithdraw: defaultMin,
+      isDefault: true
+    };
+  }, [isFreeplaySession, lastDeposit, activeSettings, freeplayMin]);
+
+  const calculatedMinWithdraw = withdrawRule.minWithdraw;
 
   if (!isOpen) return null;
 
@@ -1057,17 +1080,16 @@ export function PlayerWithdrawModal({
       return;
     }
 
-    if (isFreeplaySession && numAmt < 100) {
-      if (showToast) showToast('Freeplay withdraw request must be at least $100.', 'error');
+    if (isFreeplaySession && numAmt < freeplayMin) {
+      if (showToast) showToast(`Freeplay withdraw request must be at least $${freeplayMin.toFixed(2)}.`, 'error');
       return;
     }
 
     if (!isFreeplaySession && numAmt < calculatedMinWithdraw) {
-      const mult = Number(lastDeposit?.amount) < 50 ? 5 : 3;
       if (showToast) {
         showToast(
-          lastDeposit
-            ? `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)} (last deposit $${parseFloat(lastDeposit.amount).toFixed(2)} × ${mult}).`
+          lastDeposit && withdrawRule?.multiplier
+            ? `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.allottedCoins} allotted coins × ${withdrawRule.multiplier}x).`
             : `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)}.`,
           'error'
         );
@@ -1172,7 +1194,7 @@ export function PlayerWithdrawModal({
                 <i className="fa-solid fa-gift" style={{ color: '#9b59b6', marginRight: '0.4rem' }}></i>
                 FREEPLAY CASHOUT SESSION
               </strong>
-              Freeplay withdraw request must be at least <strong>$100.00</strong>. Maximum payout allowed on freeplay wins is strictly capped at <strong>$30.00</strong>.
+              Freeplay withdraw request must be at least <strong>${freeplayMin.toFixed(2)}</strong>. Maximum payout allowed on freeplay wins is strictly capped at <strong>$30.00</strong>.
             </div>
           )}
 
@@ -1212,7 +1234,9 @@ export function PlayerWithdrawModal({
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount to redeem"
+                placeholder={isFreeplaySession ? String(freeplayMin) : '25'}
+                min={calculatedMinWithdraw}
+                step="any"
                 style={{
                   width: '100%',
                   background: 'rgba(6, 8, 18, 0.8)',
@@ -1228,9 +1252,9 @@ export function PlayerWithdrawModal({
               />
               <div style={{ fontSize: '0.75rem', color: 'var(--gold-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
                 {isFreeplaySession ? (
-                  'Minimum freeplay cashout: $100.00'
-                ) : lastDeposit ? (
-                  `Minimum cashout for ${targetGameTitle || 'this platform'}: $${calculatedMinWithdraw.toFixed(2)} (Last deposit $${parseFloat(lastDeposit.amount).toFixed(2)} × ${Number(lastDeposit.amount) < 50 ? 5 : 3})`
+                  `Minimum freeplay cashout: $${freeplayMin.toFixed(2)}`
+                ) : lastDeposit && withdrawRule?.multiplier ? (
+                  `Minimum cashout for ${targetGameTitle || 'this platform'}: $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.allottedCoins} allotted coins × ${withdrawRule.multiplier}x)`
                 ) : (
                   `Minimum cashout: $${calculatedMinWithdraw.toFixed(2)}`
                 )}

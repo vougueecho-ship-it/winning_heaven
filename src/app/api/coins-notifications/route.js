@@ -447,10 +447,16 @@ export async function PUT(req) {
           if (parentTx.type === 'WITHDRAW') {
             txUpdate.status = 'PENDING';
             if (originalNoti.isFreeplayWithdraw) {
-              txUpdate.payoutAmount = 30;
-              txUpdate.amount = 30.0;
+              let feSettings = cache.get('frontend_settings_all');
+              if (!feSettings) {
+                feSettings = await db.collection('settings').findOne({ id: 'frontend_settings' });
+                if (feSettings) cache.set('frontend_settings_all', feSettings, 60);
+              }
+              const maxCashout = Number(feSettings?.freeplayMinWithdraw ?? feSettings?.freeplayMaxCashout ?? 30);
+              txUpdate.payoutAmount = maxCashout;
+              txUpdate.amount = maxCashout;
               txUpdate.isFreeplayWithdraw = true;
-              txUpdate.note = 'Freeplay win capped at $30 max cashout.';
+              txUpdate.note = `Freeplay win capped at $${maxCashout.toFixed(2)} max cashout.`;
             }
             notifyStaffAndDistributorAsync(db, {
               title: 'Withdrawal Payout Ready',
@@ -464,6 +470,8 @@ export async function PUT(req) {
             }, parentTx.distributorId);
           } else if (parentTx.type === 'DEPOSIT' || parentTx.type === 'BONUS') {
             txUpdate.status = 'SUCCESS';
+            if (originalNoti.totalCoins !== undefined) txUpdate.totalCoins = originalNoti.totalCoins;
+            if (originalNoti.bonusApplied !== undefined) txUpdate.bonusApplied = originalNoti.bonusApplied;
             if (originalNoti.isDepositFromCashout || parentTx.isDepositFromCashout) {
               txUpdate.note = 'Added deposit from remaining cashout';
             }
