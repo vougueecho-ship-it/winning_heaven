@@ -889,7 +889,7 @@ export async function POST(req) {
           return NextResponse.json(
             {
               success: false,
-              message: `Minimum cashout is $${rule.minWithdraw.toFixed(2)} (${rule.allottedCoins} allotted coins × ${rule.multiplier}x).`
+              message: `Minimum cashout is $${rule.minWithdraw.toFixed(2)} (${rule.basis === 'deposit' ? `last deposit $${rule.depositAmount.toFixed(2)}` : `${rule.allottedCoins} allotted coins`} × ${rule.multiplier}x).`
             },
             { status: 400 }
           );

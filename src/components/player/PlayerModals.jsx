@@ -1089,7 +1089,7 @@ export function PlayerWithdrawModal({
       if (showToast) {
         showToast(
           lastDeposit && withdrawRule?.multiplier
-            ? `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.allottedCoins} allotted coins × ${withdrawRule.multiplier}x).`
+            ? `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.basis === 'deposit' ? `last deposit $${withdrawRule.depositAmount.toFixed(2)}` : `${withdrawRule.allottedCoins} allotted coins`} × ${withdrawRule.multiplier}x).`
             : `Minimum cashout is $${calculatedMinWithdraw.toFixed(2)}.`,
           'error'
         );
@@ -1254,7 +1254,7 @@ export function PlayerWithdrawModal({
                 {isFreeplaySession ? (
                   `Minimum freeplay cashout: $${freeplayMin.toFixed(2)}`
                 ) : lastDeposit && withdrawRule?.multiplier ? (
-                  `Minimum cashout for ${targetGameTitle || 'this platform'}: $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.allottedCoins} allotted coins × ${withdrawRule.multiplier}x)`
+                  `Minimum cashout for ${targetGameTitle || 'this platform'}: $${calculatedMinWithdraw.toFixed(2)} (${withdrawRule.basis === 'deposit' ? `last deposit $${withdrawRule.depositAmount.toFixed(2)}` : `${withdrawRule.allottedCoins} allotted coins`} × ${withdrawRule.multiplier}x)`
                 ) : (
                   `Minimum cashout: $${calculatedMinWithdraw.toFixed(2)}`
                 )}

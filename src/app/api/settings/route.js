@@ -28,6 +28,9 @@ export async function GET() {
         withdrawTier2Multiplier: 3,
         withdrawTier1MinDeposit: 5,
         withdrawTier1MaxDeposit: 50,
+        withdrawTier1Basis: 'coins',
+        withdrawTier2Basis: 'deposit',
+        withdrawCalculationBasis: '',
         usdtAddress: '',
         usdtQrCode: '',
         affiliatePayoutNetwork: 'TRC20',
@@ -78,6 +81,21 @@ export async function GET() {
       if (settings.withdrawTier1MaxDeposit === undefined) {
         updates.withdrawTier1MaxDeposit = 50;
         settings.withdrawTier1MaxDeposit = 50;
+        needsUpdate = true;
+      }
+      if (settings.withdrawTier1Basis === undefined) {
+        updates.withdrawTier1Basis = 'coins';
+        settings.withdrawTier1Basis = 'coins';
+        needsUpdate = true;
+      }
+      if (settings.withdrawTier2Basis === undefined) {
+        updates.withdrawTier2Basis = 'deposit';
+        settings.withdrawTier2Basis = 'deposit';
+        needsUpdate = true;
+      }
+      if (settings.withdrawCalculationBasis === undefined) {
+        updates.withdrawCalculationBasis = '';
+        settings.withdrawCalculationBasis = '';
         needsUpdate = true;
       }
       if (settings.usdtAddress === undefined) {
@@ -153,6 +171,9 @@ export async function PUT(req) {
       withdrawTier2Multiplier,
       withdrawTier1MinDeposit,
       withdrawTier1MaxDeposit,
+      withdrawTier1Basis,
+      withdrawTier2Basis,
+      withdrawCalculationBasis,
       usdtAddress,
       usdtQrCode,
       affiliatePayoutNetwork,
@@ -198,6 +219,15 @@ export async function PUT(req) {
     }
     if (withdrawTier1MaxDeposit !== undefined) {
       updateFields.withdrawTier1MaxDeposit = Number(withdrawTier1MaxDeposit);
+    }
+    if (withdrawTier1Basis !== undefined) {
+      updateFields.withdrawTier1Basis = String(withdrawTier1Basis) === 'deposit' ? 'deposit' : 'coins';
+    }
+    if (withdrawTier2Basis !== undefined) {
+      updateFields.withdrawTier2Basis = String(withdrawTier2Basis) === 'coins' ? 'coins' : 'deposit';
+    }
+    if (withdrawCalculationBasis !== undefined) {
+      updateFields.withdrawCalculationBasis = ['coins', 'deposit'].includes(String(withdrawCalculationBasis)) ? String(withdrawCalculationBasis) : '';
     }
     if (usdtAddress !== undefined) {
       updateFields.usdtAddress = String(usdtAddress).trim();
@@ -254,6 +284,9 @@ export async function PUT(req) {
     if (updateFields.withdrawTier2Multiplier !== undefined) syncToFrontend.withdrawTier2Multiplier = Number(updateFields.withdrawTier2Multiplier);
     if (updateFields.withdrawTier1MinDeposit !== undefined) syncToFrontend.withdrawTier1MinDeposit = Number(updateFields.withdrawTier1MinDeposit);
     if (updateFields.withdrawTier1MaxDeposit !== undefined) syncToFrontend.withdrawTier1MaxDeposit = Number(updateFields.withdrawTier1MaxDeposit);
+    if (updateFields.withdrawTier1Basis !== undefined) syncToFrontend.withdrawTier1Basis = updateFields.withdrawTier1Basis;
+    if (updateFields.withdrawTier2Basis !== undefined) syncToFrontend.withdrawTier2Basis = updateFields.withdrawTier2Basis;
+    if (updateFields.withdrawCalculationBasis !== undefined) syncToFrontend.withdrawCalculationBasis = updateFields.withdrawCalculationBasis;
 
     if (Object.keys(syncToFrontend).length > 0) {
       await settingsCollection.updateOne(

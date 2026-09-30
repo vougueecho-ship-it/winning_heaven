@@ -26,6 +26,9 @@ const DEFAULT_SETTINGS = {
   withdrawTier2Multiplier: 3,
   withdrawTier1MinDeposit: 5,
   withdrawTier1MaxDeposit: 50,
+  withdrawTier1Basis: 'coins',
+  withdrawTier2Basis: 'deposit',
+  withdrawCalculationBasis: '',
   freeplayMaxCashout: 30,
   freeplayUnlockDeposit: 10,
   cashoutTiers: [
@@ -237,6 +240,9 @@ export async function PUT(req) {
     if (updateFields.withdrawTier2Multiplier !== undefined) syncToGlobal.withdrawTier2Multiplier = Number(updateFields.withdrawTier2Multiplier);
     if (updateFields.withdrawTier1MinDeposit !== undefined) syncToGlobal.withdrawTier1MinDeposit = Number(updateFields.withdrawTier1MinDeposit);
     if (updateFields.withdrawTier1MaxDeposit !== undefined) syncToGlobal.withdrawTier1MaxDeposit = Number(updateFields.withdrawTier1MaxDeposit);
+    if (updateFields.withdrawTier1Basis !== undefined) syncToGlobal.withdrawTier1Basis = String(updateFields.withdrawTier1Basis);
+    if (updateFields.withdrawTier2Basis !== undefined) syncToGlobal.withdrawTier2Basis = String(updateFields.withdrawTier2Basis);
+    if (updateFields.withdrawCalculationBasis !== undefined) syncToGlobal.withdrawCalculationBasis = String(updateFields.withdrawCalculationBasis);
 
     if (Object.keys(syncToGlobal).length > 0) {
       await settingsCollection.updateOne(

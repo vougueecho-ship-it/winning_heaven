@@ -32,6 +32,9 @@ export default function SettingsTab({ onUpdateSettings }) {
   const [withdrawTier2Multiplier, setWithdrawTier2Multiplier] = useState(3);
   const [withdrawTier1MinDeposit, setWithdrawTier1MinDeposit] = useState(5);
   const [withdrawTier1MaxDeposit, setWithdrawTier1MaxDeposit] = useState(50);
+  const [withdrawTier1Basis, setWithdrawTier1Basis] = useState('coins');
+  const [withdrawTier2Basis, setWithdrawTier2Basis] = useState('deposit');
+  const [withdrawCalculationBasis, setWithdrawCalculationBasis] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -61,6 +64,9 @@ export default function SettingsTab({ onUpdateSettings }) {
       setWithdrawTier2Multiplier(settingsData.settings.withdrawTier2Multiplier !== undefined ? settingsData.settings.withdrawTier2Multiplier : 3);
       setWithdrawTier1MinDeposit(settingsData.settings.withdrawTier1MinDeposit !== undefined ? settingsData.settings.withdrawTier1MinDeposit : 5);
       setWithdrawTier1MaxDeposit(settingsData.settings.withdrawTier1MaxDeposit !== undefined ? settingsData.settings.withdrawTier1MaxDeposit : 50);
+      setWithdrawTier1Basis(settingsData.settings.withdrawTier1Basis || 'coins');
+      setWithdrawTier2Basis(settingsData.settings.withdrawTier2Basis || 'deposit');
+      setWithdrawCalculationBasis(settingsData.settings.withdrawCalculationBasis || '');
     }
   }, [settingsData]);
 
@@ -113,7 +119,10 @@ export default function SettingsTab({ onUpdateSettings }) {
           withdrawTier1Multiplier: Number(withdrawTier1Multiplier),
           withdrawTier2Multiplier: Number(withdrawTier2Multiplier),
           withdrawTier1MinDeposit: Number(withdrawTier1MinDeposit),
-          withdrawTier1MaxDeposit: Number(withdrawTier1MaxDeposit)
+          withdrawTier1MaxDeposit: Number(withdrawTier1MaxDeposit),
+          withdrawTier1Basis,
+          withdrawTier2Basis,
+          withdrawCalculationBasis
         })
       });
       const data = await res.json();
@@ -448,11 +457,61 @@ export default function SettingsTab({ onUpdateSettings }) {
           <div>
             <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, margin: 0, fontFamily: 'var(--font-heading, "Outfit", sans-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <i className="fa-solid fa-money-bill-transfer" style={{ color: '#00ffcc' }} />
-              <span>Cashout Rules &amp; Allotted Coins Multipliers Engine</span>
+              <span>Cashout Rules &amp; Multipliers Engine</span>
             </h3>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
-              Configure minimum cashout floor for Freeplay wins, and multiplier thresholds based on player's allotted coins from their last approved deposit.
+              Configure minimum cashout floor for Freeplay wins, multiplier values, and whether calculations multiply by Allotted Coins or Deposit Amount ($).
             </span>
+          </div>
+
+          {/* Master Calculation Basis (All Rules) */}
+          <div style={{
+            background: 'rgba(6, 8, 18, 0.85)',
+            border: '1.5px solid rgba(0, 255, 204, 0.3)',
+            borderRadius: '16px',
+            padding: '1.15rem 1.35rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#00ffcc', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fa-solid fa-sliders" />
+                Master Multiplier Calculation Basis (All Cashout Rules)
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>
+                Applies globally or per-tier
+              </span>
+            </div>
+            <select
+              value={withdrawCalculationBasis}
+              onChange={(e) => setWithdrawCalculationBasis(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'rgba(10, 14, 28, 0.95)',
+                border: '1.5px solid rgba(0, 255, 204, 0.35)',
+                borderRadius: '12px',
+                padding: '0.75rem 1rem',
+                color: '#fff',
+                fontSize: '0.92rem',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">⚙️ Custom Per-Tier Basis (Tier 1: Coins, Tier 2: Deposit Amount)</option>
+              <option value="deposit">💵 Multiply by Deposit Amount ($) across ALL Rules</option>
+              <option value="coins">🪙 Multiply by Allotted Coins across ALL Rules</option>
+            </select>
+            <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>
+              {withdrawCalculationBasis === 'deposit' ? (
+                <span>🔥 <strong style={{ color: '#00e676' }}>All cashout rules</strong> are set to multiply directly by <strong>Deposit Amount ($)</strong>.</span>
+              ) : withdrawCalculationBasis === 'coins' ? (
+                <span>🪙 <strong style={{ color: '#ffd700' }}>All cashout rules</strong> are set to multiply by <strong>Allotted Coins</strong>.</span>
+              ) : (
+                <span>✨ <strong style={{ color: '#00ffcc' }}>Per-Tier rules active:</strong> Tier 1 and Tier 2 use their individual basis configurations below.</span>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
@@ -546,6 +605,35 @@ export default function SettingsTab({ onUpdateSettings }) {
                   }}
                 />
               </div>
+
+              {/* Tier 1 Basis Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
+                  Tier 1 Multiplier Basis:
+                </span>
+                <select
+                  value={withdrawTier1Basis}
+                  disabled={!!withdrawCalculationBasis}
+                  onChange={(e) => setWithdrawTier1Basis(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1px solid rgba(255, 215, 0, 0.3)',
+                    borderRadius: '10px',
+                    padding: '0.55rem 0.75rem',
+                    color: '#ffd700',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    outline: 'none',
+                    cursor: withdrawCalculationBasis ? 'not-allowed' : 'pointer',
+                    opacity: withdrawCalculationBasis ? 0.6 : 1
+                  }}
+                >
+                  <option value="coins">🪙 Allotted Coins (Default)</option>
+                  <option value="deposit">💵 Deposit Amount ($)</option>
+                </select>
+              </div>
+
               <div style={{
                 background: 'rgba(255, 215, 0, 0.08)',
                 border: '1px solid rgba(255, 215, 0, 0.2)',
@@ -555,7 +643,7 @@ export default function SettingsTab({ onUpdateSettings }) {
                 color: 'rgba(255,255,255,0.85)',
                 lineHeight: 1.35
               }}>
-                Multiplies <strong>allotted coins</strong> by <strong style={{ color: '#ffd700' }}>{withdrawTier1Multiplier || 5}x</strong> for deposits from ${withdrawTier1MinDeposit || 5} to ${withdrawTier1MaxDeposit || 50}.
+                Multiplies <strong>{(withdrawCalculationBasis || withdrawTier1Basis) === 'deposit' ? 'deposit amount ($)' : 'allotted coins'}</strong> by <strong style={{ color: '#ffd700' }}>{withdrawTier1Multiplier || 5}x</strong> for deposits from ${withdrawTier1MinDeposit || 5} to ${withdrawTier1MaxDeposit || 50}.
               </div>
             </div>
 
@@ -597,6 +685,35 @@ export default function SettingsTab({ onUpdateSettings }) {
                   }}
                 />
               </div>
+
+              {/* Tier 2 Basis Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
+                  Tier 2 Multiplier Basis:
+                </span>
+                <select
+                  value={withdrawTier2Basis}
+                  disabled={!!withdrawCalculationBasis}
+                  onChange={(e) => setWithdrawTier2Basis(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(10, 14, 28, 0.95)',
+                    border: '1px solid rgba(255, 107, 107, 0.3)',
+                    borderRadius: '10px',
+                    padding: '0.55rem 0.75rem',
+                    color: '#ff6b6b',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    outline: 'none',
+                    cursor: withdrawCalculationBasis ? 'not-allowed' : 'pointer',
+                    opacity: withdrawCalculationBasis ? 0.6 : 1
+                  }}
+                >
+                  <option value="deposit">💵 Deposit Amount ($) (Default)</option>
+                  <option value="coins">🪙 Allotted Coins</option>
+                </select>
+              </div>
+
               <div style={{
                 background: 'rgba(255, 107, 107, 0.08)',
                 border: '1px solid rgba(255, 107, 107, 0.2)',
@@ -606,7 +723,7 @@ export default function SettingsTab({ onUpdateSettings }) {
                 color: 'rgba(255,255,255,0.85)',
                 lineHeight: 1.35
               }}>
-                Multiplies <strong>allotted coins</strong> by <strong style={{ color: '#ff6b6b' }}>{withdrawTier2Multiplier || 3}x</strong> for deposits strictly greater than ${withdrawTier1MaxDeposit || 50}.
+                Multiplies <strong>{(withdrawCalculationBasis || withdrawTier2Basis) === 'deposit' ? 'deposit amount ($)' : 'allotted coins'}</strong> by <strong style={{ color: '#ff6b6b' }}>{withdrawTier2Multiplier || 3}x</strong> for deposits strictly greater than ${withdrawTier1MaxDeposit || 50}.
               </div>
             </div>
 
@@ -677,18 +794,32 @@ export default function SettingsTab({ onUpdateSettings }) {
               <i className="fa-solid fa-calculator" />
               <span>Live Multiplier Calculation Preview (Based on Active Settings)</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
                 <div style={{ color: '#c084fc', fontWeight: 700 }}>Freeplay Client:</div>
                 <div>Request minimum: <strong style={{ color: '#fff' }}>${Number(freeplayMinWithdraw || 30).toFixed(2)}</strong></div>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
                 <div style={{ color: '#ffd700', fontWeight: 700 }}>$10 Deposit (12 Coins @ 20% bonus):</div>
-                <div>Min Cashout: 12 × {withdrawTier1Multiplier || 5} = <strong style={{ color: '#00ff66' }}>${(12 * Number(withdrawTier1Multiplier || 5)).toFixed(2)}</strong></div>
+                <div>
+                  Min Cashout:&nbsp;
+                  {(withdrawCalculationBasis || withdrawTier1Basis) === 'deposit' ? (
+                    <span>$10 (Deposit) × {withdrawTier1Multiplier || 5} = <strong style={{ color: '#00ff66' }}>${(10 * Number(withdrawTier1Multiplier || 5)).toFixed(2)}</strong></span>
+                  ) : (
+                    <span>12 (Coins) × {withdrawTier1Multiplier || 5} = <strong style={{ color: '#00ff66' }}>${(12 * Number(withdrawTier1Multiplier || 5)).toFixed(2)}</strong></span>
+                  )}
+                </div>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.6rem 0.8rem', borderRadius: '10px' }}>
                 <div style={{ color: '#ff6b6b', fontWeight: 700 }}>$100 Deposit (120 Coins @ 20% bonus):</div>
-                <div>Min Cashout: 120 × {withdrawTier2Multiplier || 3} = <strong style={{ color: '#00ff66' }}>${(120 * Number(withdrawTier2Multiplier || 3)).toFixed(2)}</strong></div>
+                <div>
+                  Min Cashout:&nbsp;
+                  {(withdrawCalculationBasis || withdrawTier2Basis) === 'deposit' ? (
+                    <span>$100 (Deposit) × {withdrawTier2Multiplier || 3} = <strong style={{ color: '#00ff66' }}>${(100 * Number(withdrawTier2Multiplier || 3)).toFixed(2)}</strong></span>
+                  ) : (
+                    <span>120 (Coins) × {withdrawTier2Multiplier || 3} = <strong style={{ color: '#00ff66' }}>${(120 * Number(withdrawTier2Multiplier || 3)).toFixed(2)}</strong></span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
