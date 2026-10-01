@@ -131,6 +131,45 @@ export default function PlayerFooter() {
             </ul>
           </div>
 
+          {/* Featured Guides */}
+          <div>
+            <h4
+              style={{
+                fontFamily: 'var(--font-heading, "Outfit", sans-serif)',
+                color: '#fcd34d',
+                fontSize: '1rem',
+                fontWeight: 800,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                margin: '0 0 1rem'
+              }}
+            >
+              Player Guides
+            </h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <li>
+                <Link href="/blog/top-7-sweepstakes-games-instant-cashouts-2026" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>
+                  <i className="fa-solid fa-fire" style={{ width: '20px', color: '#f59e0b' }} /> Top 7 Games & Cashouts
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/how-to-claim-freeplay-bonuses-instant-cashouts" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>
+                  <i className="fa-solid fa-gift" style={{ width: '20px', color: '#ec4899' }} /> How to Claim Freeplay
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/winning-heaven-apk-download-ios-setup-guide" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>
+                  <i className="fa-solid fa-mobile-screen" style={{ width: '20px', color: '#10b981' }} /> Mobile App Setup Guide
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/sweepstakes-casino-vs-traditional-casino-guide" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>
+                  <i className="fa-solid fa-scale-balanced" style={{ width: '20px', color: '#6366f1' }} /> Sweepstakes vs Casino
+                </Link>
+              </li>
+            </ul>
+          </div>
+
           {/* Company & Support */}
           <div>
             <h4

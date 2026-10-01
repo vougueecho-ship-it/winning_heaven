@@ -56,6 +56,7 @@ function getDepositBonusSubtitle(percent) {
 }
 
 export default function AuthPortal({
+  initialTab = 'login',
   onLoginSuccess,
   onRegisterSuccess,
   onGoogleWarning,
@@ -84,7 +85,14 @@ export default function AuthPortal({
   const landingWelcome = settings.landingWelcome || 'PLAY CELESTIAL VEGAS SWEEPS';
   const landingGrab = settings.landingGrab || 'Instant deposit bonuses, certified RNG games & lightning cashouts.';
 
-  const [tab, setTab] = useState('login'); // 'login' | 'register' | 'forgot'
+  const [tab, setTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.startsWith('/register')) return 'register';
+      if (p.startsWith('/forgot')) return 'forgot';
+    }
+    return initialTab || 'login';
+  }); // 'login' | 'register' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);

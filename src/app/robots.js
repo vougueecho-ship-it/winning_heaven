@@ -23,7 +23,9 @@ export default function robots() {
           '/coins-staff/',
           '/support-staff',
           '/support-staff/',
-          '/api/'
+          '/api/',
+          '/auth',
+          '/auth/'
         ]
       }
     ],

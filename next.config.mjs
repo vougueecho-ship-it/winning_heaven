@@ -57,6 +57,15 @@ const nextConfig = {
         destination: '/',
       },
     ];
+  },
+  async redirects() {
+    return [
+      {
+        source: '/auth/google',
+        destination: '/login',
+        permanent: false,
+      },
+    ];
   }
 };
 

@@ -110,7 +110,7 @@ function markSupportMessagesSeen(email, messages) {
   }
 }
 
-export default function Home() {
+export default function Home({ initialAuthTab = 'login' }) {
   const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState(null);
   const [view, setView] = useState('loading');
@@ -770,20 +770,7 @@ export default function Home() {
       )}
 
       {/* Screen Views Wrapper */}
-      {view === 'loading' ? (
-        <LoadingOverlay active={true} />
-      ) : view === 'auth' ? (
-        <AuthPortal
-          onLoginSuccess={handleLoginSuccess}
-          onRegisterSuccess={handleRegisterSuccess}
-          onGoogleWarning={() => setGoogleWarnOpen(true)}
-          triggerLoading={triggerLoading}
-          showToast={showToast}
-          onOpenSupport={openSupport}
-          supportUnread={supportUnread}
-          frontendSettings={frontendSettings}
-        />
-      ) : (
+      {view === 'lobby' ? (
         <UserLobby
           games={games}
           accountRequests={accountRequests}
@@ -828,6 +815,21 @@ export default function Home() {
             ]);
           }}
         />
+      ) : (
+        <>
+          <AuthPortal
+            initialTab={initialAuthTab}
+            onLoginSuccess={handleLoginSuccess}
+            onRegisterSuccess={handleRegisterSuccess}
+            onGoogleWarning={() => setGoogleWarnOpen(true)}
+            triggerLoading={triggerLoading}
+            showToast={showToast}
+            onOpenSupport={openSupport}
+            supportUnread={supportUnread}
+            frontendSettings={frontendSettings}
+          />
+          {view === 'loading' && <LoadingOverlay active={true} />}
+        </>
       )}
 
       {/* Modals */}
