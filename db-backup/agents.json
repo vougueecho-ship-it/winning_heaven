@@ -1,0 +1,1 @@
+{"_id":{"$oid":"6a7d8f69ec63bebd51866d34"},"id":"agent_30b4c","name":"Anees","email":"admin@jackpot.com","password":"admin123","agentCode":"AGT345415","accountType":"agent","role":"Agent","status":"ACTIVE","commissionRate":{"$numberInt":"10"},"parentAgentCode":"","createdAt":"2026-08-13T09:33:29.499Z"}

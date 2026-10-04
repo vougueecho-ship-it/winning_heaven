@@ -1,0 +1,402 @@
+{
+  "gameAccounts": [
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1
+      },
+      "name": "userEmail_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "gameTitle": 1
+      },
+      "name": "gameTitle_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1,
+        "gameTitle": 1
+      },
+      "name": "userEmail_1_gameTitle_1"
+    }
+  ],
+  "emailOtps": [],
+  "coinsNotifications": [
+    {
+      "v": 2,
+      "key": {
+        "distributorId": 1,
+        "status": 1
+      },
+      "name": "distributorId_1_status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "transactionId": 1
+      },
+      "name": "transactionId_1",
+      "unique": true,
+      "partialFilterExpression": {
+        "transactionId": {
+          "$type": "string"
+        }
+      }
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1
+      },
+      "name": "userEmail_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1
+      },
+      "name": "status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "timestamp": -1
+      },
+      "name": "timestamp_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "timestamp": -1
+      },
+      "name": "status_1_timestamp_-1"
+    }
+  ],
+  "accountRequests": [
+    {
+      "v": 2,
+      "key": {
+        "distributorId": 1,
+        "status": 1
+      },
+      "name": "distributorId_1_status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1
+      },
+      "name": "userEmail_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1
+      },
+      "name": "status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "createdAt": -1
+      },
+      "name": "status_1_createdAt_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "distributorType": 1,
+        "createdAt": -1
+      },
+      "name": "status_1_distributorType_1_createdAt_-1"
+    }
+  ],
+  "freeplayTasks": [],
+  "blogs": [],
+  "supportMessages": [
+    {
+      "v": 2,
+      "key": {
+        "distributorId": 1,
+        "read": 1,
+        "senderType": 1
+      },
+      "name": "distributorId_1_read_1_senderType_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1,
+        "timestamp": -1
+      },
+      "name": "userEmail_1_timestamp_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "timestamp": 1
+      },
+      "name": "timestamp_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "senderType": 1,
+        "read": 1,
+        "distributorType": 1
+      },
+      "name": "senderType_1_read_1_distributorType_1"
+    }
+  ],
+  "deletedUsers": [
+    {
+      "v": 2,
+      "key": {
+        "deletedAt": 1
+      },
+      "name": "deletedAt_1",
+      "expireAfterSeconds": 2592000
+    }
+  ],
+  "pushSubscriptions": [
+    {
+      "v": 2,
+      "key": {
+        "endpoint": 1
+      },
+      "name": "endpoint_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1
+      },
+      "name": "userEmail_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "audience": 1,
+        "distributorId": 1
+      },
+      "name": "audience_1_distributorId_1"
+    }
+  ],
+  "settings": [],
+  "gateways": [
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    }
+  ],
+  "oauthTickets": [],
+  "transactions": [
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1
+      },
+      "name": "userEmail_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1
+      },
+      "name": "status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1
+      },
+      "name": "type_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "userEmail": 1,
+        "type": 1,
+        "status": 1
+      },
+      "name": "userEmail_1_type_1_status_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "distributorId": 1,
+        "status": 1,
+        "type": 1
+      },
+      "name": "distributorId_1_status_1_type_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "type": 1,
+        "date": -1
+      },
+      "name": "status_1_type_1_date_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "date": -1
+      },
+      "name": "date_-1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "type": 1,
+        "gateway": 1
+      },
+      "name": "status_1_type_1_gateway_1"
+    }
+  ],
+  "agents": [
+    {
+      "v": 2,
+      "key": {
+        "agentCode": 1
+      },
+      "name": "agentCode_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "parentAgentCode": 1
+      },
+      "name": "parentAgentCode_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "email": 1
+      },
+      "name": "email_1"
+    }
+  ],
+  "users": [
+    {
+      "v": 2,
+      "key": {
+        "email": 1
+      },
+      "name": "email_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "referredBy": 1
+      },
+      "name": "referredBy_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "referralCode": 1
+      },
+      "name": "referralCode_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "distributorId": 1,
+        "role": 1
+      },
+      "name": "distributorId_1_role_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "agentCode": 1,
+        "role": 1
+      },
+      "name": "agentCode_1_role_1"
+    }
+  ],
+  "games": [
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    }
+  ],
+  "campaignRequests": [
+    {
+      "v": 2,
+      "key": {
+        "status": 1,
+        "createdAt": -1
+      },
+      "name": "status_1_createdAt_-1"
+    }
+  ],
+  "promotions": [],
+  "distributors": [
+    {
+      "v": 2,
+      "key": {
+        "id": 1
+      },
+      "name": "id_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "type": 1
+      },
+      "name": "type_1"
+    },
+    {
+      "v": 2,
+      "key": {
+        "email": 1
+      },
+      "name": "email_1"
+    }
+  ]
+}

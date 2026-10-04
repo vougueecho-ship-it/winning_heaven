@@ -1,0 +1,25 @@
+{
+  "databaseName": "test",
+  "exportedAt": "2026-10-04T15:51:15.294Z",
+  "summary": {
+    "gameAccounts": 390,
+    "emailOtps": 61,
+    "coinsNotifications": 233,
+    "accountRequests": 455,
+    "freeplayTasks": 588,
+    "blogs": 6,
+    "supportMessages": 3077,
+    "deletedUsers": 5,
+    "pushSubscriptions": 67,
+    "settings": 2,
+    "gateways": 3,
+    "oauthTickets": 30,
+    "transactions": 241,
+    "agents": 1,
+    "users": 248,
+    "games": 29,
+    "campaignRequests": 0,
+    "promotions": 1,
+    "distributors": 0
+  }
+}
