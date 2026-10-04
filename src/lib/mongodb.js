@@ -63,16 +63,20 @@ const DEFAULT_SEEDS = {
   transactions: []
 };
 
+const isAtlas = MONGODB_URI && (MONGODB_URI.startsWith('mongodb+srv://') || MONGODB_URI.includes('ssl=true') || MONGODB_URI.includes('tls=true'));
+
 const clientOptions = {
   maxPoolSize: 20,
   minPoolSize: 2,
   maxIdleTimeMS: 60000,
-  connectTimeoutMS: 8000,
-  serverSelectionTimeoutMS: 5000,
+  connectTimeoutMS: 20000,
+  serverSelectionTimeoutMS: 15000,
   socketTimeoutMS: 45000,
-  tls: true,
-  tlsAllowInvalidCertificates: true,
-  tlsAllowInvalidHostnames: true
+  ...(isAtlas ? {
+    tls: true,
+    tlsAllowInvalidCertificates: true,
+    tlsAllowInvalidHostnames: true
+  } : {})
 };
 
 let clientPromise;
@@ -205,11 +209,9 @@ export async function getDb() {
     // after Atlas network access or connectivity is corrected.
     clientPromise = undefined;
     databaseReadyPromise = undefined;
-    if (process.env.NODE_ENV === 'development') {
-      global._mongoClientPromise = undefined;
-    }
+    global._mongoClientPromise = undefined;
 
-    console.error('MongoDB Atlas connection failed. Local fallback is disabled:', err);
+    console.error('MongoDB connection failed:', err);
     throw err;
   }
 }
