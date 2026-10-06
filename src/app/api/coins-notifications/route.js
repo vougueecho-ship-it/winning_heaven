@@ -6,6 +6,7 @@ import { accountLookupKey, buildGameUsernameMap } from '../../../lib/resolveGame
 import { typeBExclusionFilter } from '../../../lib/typeBDistributors';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 
 // GET all coins notifications (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -564,6 +565,37 @@ export async function PUT(req) {
           );
         }
       }
+    }
+
+    if (status === 'COMPLETED' && originalNoti.status !== 'COMPLETED' && originalNoti.userEmail) {
+      const coinCount = originalNoti.totalCoins || originalNoti.depositAmount || 0;
+      notifyUserAsync(db, {
+        userEmail: originalNoti.userEmail,
+        title: 'Coins Loaded to Your Game ⚡',
+        message: `${coinCount} coins have been successfully loaded to your ${originalNoti.gameTitle || 'game'} account! Login and enjoy playing.`,
+        type: 'coins_loaded',
+        url: '/lobby',
+        details: [
+          { label: 'Game', value: originalNoti.gameTitle || 'Lobby' },
+          { label: 'Coins Loaded', value: `${coinCount} Coins` },
+          { label: 'Status', value: 'Loaded & Ready to Play' }
+        ],
+        actionButton: { text: 'PLAY NOW', url: '/lobby' }
+      });
+    } else if (status === 'HOLD' && holdNote && originalNoti.userEmail) {
+      notifyUserAsync(db, {
+        userEmail: originalNoti.userEmail,
+        title: 'Coins Allotment Update ⏳',
+        message: `Your coin loading for ${originalNoti.gameTitle || 'game'} is on hold: ${holdNote}`,
+        type: 'coins_hold',
+        url: '/lobby',
+        details: [
+          { label: 'Game', value: originalNoti.gameTitle || 'Lobby' },
+          { label: 'Status', value: 'On Hold' },
+          { label: 'Note', value: String(holdNote) }
+        ],
+        actionButton: { text: 'VIEW LOBBY', url: '/lobby' }
+      });
     }
 
     // Invalidate stats cache + SSE

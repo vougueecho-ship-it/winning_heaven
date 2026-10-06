@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
 import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { typeBExclusionFilter } from '../../../lib/typeBDistributors';
 
@@ -430,6 +431,22 @@ export async function POST(req) {
         tag: `support-${newMsg.id}`,
         alertKind: 'support'
       }, distId);
+    } else if (senderType === 'admin') {
+      const isGuest = userEmail.includes('@winningheavenguest.com') || userEmail.startsWith('guest_');
+      if (!isGuest) {
+        notifyUserAsync(db, {
+          userEmail,
+          title: 'Winning Heaven Support 💬',
+          message: `${(message || 'Support sent an image/attachment').slice(0, 140)}`,
+          type: 'support_reply',
+          url: '/?support=open',
+          details: [
+            { label: 'Sender', value: 'VIP Support Agent' },
+            { label: 'Message', value: (message || 'Attachment').slice(0, 80) }
+          ],
+          actionButton: { text: 'OPEN LIVE CHAT', url: '/?support=open' }
+        });
+      }
     }
 
     return NextResponse.json({ success: true, message: newMsg });

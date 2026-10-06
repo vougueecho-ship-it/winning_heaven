@@ -725,3 +725,146 @@ export function notifyStaffAndDistributorAsync(db, alert, distributorId) {
     })
     .catch((err) => console.error('notifyStaffAndDistributorAsync failed:', err));
 }
+
+/**
+ * Lock-screen, native APK, and Chrome Web Push alerts for an individual player/user.
+ * Sent when admin approves a deposit, cashout, game account, or takes any account action.
+ */
+export async function sendUserPush(
+  db,
+  {
+    userEmail,
+    title,
+    body,
+    url = '/lobby',
+    tag = 'user-alert',
+    soundUrl = '/api/settings/audio',
+    data = {}
+  } = {}
+) {
+  try {
+    const cleanEmail = String(userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return { sent: 0, failed: 0, skipped: true };
+    }
+
+    // Match all player subscriptions for this user (exclude portal/distributor staff APKs)
+    const subscriptions = await db
+      .collection('pushSubscriptions')
+      .find({
+        userEmail: cleanEmail,
+        audience: { $nin: ['staff', 'distributor'] }
+      })
+      .toArray();
+
+    if (subscriptions.length === 0) {
+      return { sent: 0, failed: 0, skipped: true };
+    }
+
+    const webSubscriptions = subscriptions.filter(
+      (record) => record.type !== 'native' && record.subscription
+    );
+    const nativeSubscriptions = subscriptions.filter(
+      (record) => record.type === 'native' && record.nativeToken
+    );
+
+    const siteUrl = (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.SITE_URL ||
+      'https://winningheaven.com'
+    ).replace(/\/$/, '');
+
+    const safeTitle = String(title || 'Winning Heaven').slice(0, 100);
+    const safeBody = String(body || 'Account notification from Winning Heaven.').slice(0, 250);
+    const safeUrl = String(url || '/lobby');
+    const safeTag = String(tag || `alert-${Date.now()}`);
+
+    const payload = JSON.stringify({
+      title: safeTitle,
+      body: safeBody,
+      icon: `${siteUrl}/icon-192.png`,
+      badge: `${siteUrl}/icon-192.png`,
+      tag: safeTag,
+      url: safeUrl,
+      soundUrl,
+      ...data
+    });
+
+    let sent = 0;
+    let failed = 0;
+    const expiredEndpoints = [];
+
+    if (configureWebPush()) {
+      for (const record of webSubscriptions) {
+        try {
+          await webpush.sendNotification(record.subscription, payload);
+          sent += 1;
+        } catch (error) {
+          failed += 1;
+          const statusCode = error?.statusCode;
+          if (statusCode === 404 || statusCode === 410 || statusCode === 403) {
+            expiredEndpoints.push(record.endpoint);
+          }
+        }
+      }
+    }
+
+    const messaging = getFirebaseMessaging();
+    if (messaging && nativeSubscriptions.length > 0) {
+      for (let index = 0; index < nativeSubscriptions.length; index += 500) {
+        const batch = nativeSubscriptions.slice(index, index + 500);
+        const response = await messaging.sendEachForMulticast({
+          tokens: batch.map((record) => record.nativeToken),
+          notification: {
+            title: safeTitle,
+            body: safeBody
+          },
+          data: {
+            url: safeUrl,
+            tag: safeTag,
+            ...Object.fromEntries(
+              Object.entries(data || {}).map(([k, v]) => [k, String(v ?? '')])
+            )
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'winning_heaven_promotions',
+              sound: 'default'
+            }
+          }
+        });
+
+        sent += response.successCount;
+        failed += response.failureCount;
+        response.responses.forEach((result, resultIndex) => {
+          const code = result.error?.code;
+          if (
+            code === 'messaging/registration-token-not-registered' ||
+            code === 'messaging/invalid-registration-token'
+          ) {
+            expiredEndpoints.push(batch[resultIndex].endpoint);
+          }
+        });
+      }
+    }
+
+    if (expiredEndpoints.length > 0) {
+      await db.collection('pushSubscriptions').deleteMany({
+        endpoint: { $in: expiredEndpoints }
+      });
+    }
+
+    return { sent, failed, skipped: false };
+  } catch (error) {
+    console.error('User push error:', error);
+    return { sent: 0, failed: 0, skipped: true, error: error.message };
+  }
+}
+
+export function notifyUserPushAsync(db, alert) {
+  Promise.resolve()
+    .then(() => sendUserPush(db, alert))
+    .catch((err) => console.error('notifyUserPushAsync failed:', err));
+}
+

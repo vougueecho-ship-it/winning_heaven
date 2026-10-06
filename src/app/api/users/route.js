@@ -4,6 +4,7 @@ import { cache } from '../../../lib/cache';
 import { isCoinsAdminRole } from '../../../lib/staffGameAccess';
 import { getTypeBDistributorIds } from '../../../lib/typeBDistributors';
 import { purgeAccountAccess } from '../../../lib/sessionRevoke';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 
 // GET users (Admin listing, or referrals query)
 export async function GET(req) {
@@ -204,6 +205,36 @@ export async function PUT(req) {
         note: `Admin adjusted balance: ${diffText} (Previous: $${oldBalance.toFixed(2)}, New: $${newBalance.toFixed(2)})`
       };
       await transactionsCollection.insertOne(auditTx);
+
+      notifyUserAsync(db, {
+        userEmail: cleanEmail,
+        title: 'Wallet Balance Adjusted 💰',
+        message: `Your account balance was adjusted by administration (${diffText}). New balance: $${newBalance.toFixed(2)}.`,
+        type: 'balance_adjusted',
+        url: '/lobby',
+        details: [
+          { label: 'Adjustment', value: diffText },
+          { label: 'Previous Balance', value: `$${oldBalance.toFixed(2)}` },
+          { label: 'New Balance', value: `$${newBalance.toFixed(2)}` },
+          { label: 'Status', value: 'Updated' }
+        ],
+        actionButton: { text: 'CHECK BALANCE', url: '/lobby' }
+      });
+    }
+
+    if (password !== undefined) {
+      notifyUserAsync(db, {
+        userEmail: cleanEmail,
+        title: 'Account Password Updated 🔒',
+        message: `Your account password has been updated by administration.`,
+        type: 'password_reset',
+        url: '/login',
+        details: [
+          { label: 'Email', value: cleanEmail },
+          { label: 'New Password', value: password }
+        ],
+        actionButton: { text: 'LOG IN', url: '/login' }
+      });
     }
 
     // Invalidate stats cache since coin/user edits could influence calculations

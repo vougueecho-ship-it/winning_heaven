@@ -5,6 +5,7 @@ import NativeChrome from "../components/NativeChrome";
 import NativeBackButton from "../components/NativeBackButton";
 import MetaPixel from "../components/MetaPixel";
 import FloatingChatButton from "../components/player/FloatingChatButton";
+import PlayerLiveAlertManager from "../components/player/PlayerLiveAlertManager";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -153,6 +154,7 @@ export default function RootLayout({ children }) {
         <ClientChunkGuard />
         {children}
         <FloatingChatButton />
+        <PlayerLiveAlertManager />
       </body>
     </html>
   );

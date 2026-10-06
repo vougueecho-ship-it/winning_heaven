@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { publishAdminEvent } from '../../../lib/adminEvents';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 
 async function markMatchingRequestsReady(db, cleanEmail, cleanTitle, username, password, processedBy) {
   const titleRegex = new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
@@ -95,6 +96,27 @@ export async function POST(req) {
       };
       await gameAccountsCollection.insertOne(newAccount);
     }
+
+    notifyUserAsync(db, {
+      userEmail: cleanEmail,
+      title: `Game Credentials Generated: ${cleanTitle} 🎮`,
+      message: `Your login credentials for ${cleanTitle} have been set! Username: ${username} | Password: ${password}. Tap below to view and play.`,
+      type: 'credentials_updated',
+      url: '/lobby?tab=credentials',
+      credentials: {
+        username,
+        password,
+        gameTitle: cleanTitle
+      },
+      details: [
+        { label: 'Game', value: cleanTitle },
+        { label: 'Username', value: username },
+        { label: 'Password', value: password },
+        { label: 'Status', value: 'Ready to Play' }
+      ],
+      actionButton: { text: 'VIEW CREDENTIALS', url: '/lobby?tab=credentials' }
+    });
+
     return NextResponse.json({ success: true, gameAccount: newAccount, message: 'Credentials generated successfully!' });
   } catch (err) {
     console.error('Create Game Account API Error:', err);
@@ -169,6 +191,26 @@ export async function PUT(req) {
     }
 
     publishAdminEvent('requests', { gameTitle: cleanTitle });
+
+    notifyUserAsync(db, {
+      userEmail: cleanEmail,
+      title: `Game Credentials Updated: ${cleanTitle} 🎮`,
+      message: `Your login credentials for ${cleanTitle} have been updated! Username: ${cleanUser} | Password: ${cleanPass}. Tap below to view and play.`,
+      type: 'credentials_updated',
+      url: '/lobby?tab=credentials',
+      credentials: {
+        username: cleanUser,
+        password: cleanPass,
+        gameTitle: cleanTitle
+      },
+      details: [
+        { label: 'Game', value: cleanTitle },
+        { label: 'Username', value: cleanUser },
+        { label: 'Password', value: cleanPass },
+        { label: 'Status', value: 'Ready to Play' }
+      ],
+      actionButton: { text: 'VIEW CREDENTIALS', url: '/lobby?tab=credentials' }
+    });
 
     return NextResponse.json({
       success: true,

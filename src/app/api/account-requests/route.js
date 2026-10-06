@@ -3,6 +3,7 @@ import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
 import { applyStaffGameFilter, getStaffAllowedGameTitles, staffCanAccessGame } from '../../../lib/staffGameAccess';
 import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { getTypeBDistributorIds, typeBExclusionFilter } from '../../../lib/typeBDistributors';
 import { healOrphanedDistributorPlayer } from '../../../lib/orphanDistributorPlayer';
@@ -823,6 +824,42 @@ export async function PUT(req) {
     }
 
     await requestsCollection.updateOne({ _id: requestDoc._id }, { $set: updateFields });
+
+    if (finalStatus === 'READY' && requestDoc.userEmail) {
+      notifyUserAsync(db, {
+        userEmail: requestDoc.userEmail,
+        title: `Game Account Ready: ${requestDoc.gameTitle || 'Game'} 🎮`,
+        message: `Your credentials for ${requestDoc.gameTitle || 'your game'} are now ready! Username: ${credUser} | Password: ${credPass}. Tap below to copy and play!`,
+        type: 'account_ready',
+        url: '/lobby?tab=credentials',
+        credentials: {
+          username: credUser,
+          password: credPass,
+          gameTitle: requestDoc.gameTitle || ''
+        },
+        details: [
+          { label: 'Game', value: requestDoc.gameTitle || 'Game' },
+          { label: 'Username', value: credUser },
+          { label: 'Password', value: credPass },
+          { label: 'Status', value: 'Ready to Play' }
+        ],
+        actionButton: { text: 'VIEW CREDENTIALS & PLAY', url: '/lobby?tab=credentials' }
+      });
+    } else if (finalStatus === 'REJECTED' && requestDoc.userEmail) {
+      notifyUserAsync(db, {
+        userEmail: requestDoc.userEmail,
+        title: `Account Request Declined ❌`,
+        message: `Your account request for ${requestDoc.gameTitle || 'game'} was declined.${effectiveRejection ? ` Reason: ${effectiveRejection}` : ''}`,
+        type: 'account_rejected',
+        url: '/lobby',
+        details: [
+          { label: 'Game', value: requestDoc.gameTitle || 'Game' },
+          { label: 'Status', value: 'Declined' },
+          { label: 'Reason', value: String(effectiveRejection || 'Declined by administration') }
+        ],
+        actionButton: { text: 'CONTACT SUPPORT', url: '/?support=open' }
+      });
+    }
 
     // Respond immediately — referral bonus + cache bust happen in background
     const referralId = requestDoc.referralRewardId;

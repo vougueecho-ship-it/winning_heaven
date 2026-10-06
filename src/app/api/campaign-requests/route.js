@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
 import { notifyStaffAsync } from '../../../lib/pushNotifications';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 
 async function getAdBudgetLimit(db) {
   const settings = await db.collection('settings').findOne({ id: 'global_settings' });
@@ -168,6 +169,39 @@ export async function PUT(req) {
     );
 
     cache.del('admin_stats');
+
+    if (matched.agentEmail) {
+      if (status === 'APPROVED') {
+        notifyUserAsync(db, {
+          userEmail: matched.agentEmail,
+          title: 'Campaign Request Approved 🚀',
+          message: `Your campaign "${matched.campaignName}" has been approved! Your tracking link is ready.`,
+          type: 'campaign_approved',
+          url: '/affiliates',
+          details: [
+            { label: 'Campaign', value: matched.campaignName },
+            { label: 'Budget', value: `$${parseFloat(matched.budget || 0).toFixed(2)}` },
+            { label: 'Tracking Link', value: updateFields.trackingLink || '' },
+            { label: 'Status', value: 'Approved & Active' }
+          ],
+          actionButton: { text: 'VIEW CAMPAIGN', url: '/affiliates' }
+        });
+      } else if (status === 'REJECTED') {
+        notifyUserAsync(db, {
+          userEmail: matched.agentEmail,
+          title: 'Campaign Request Declined ❌',
+          message: `Your campaign request "${matched.campaignName}" was declined.`,
+          type: 'campaign_rejected',
+          url: '/affiliates',
+          details: [
+            { label: 'Campaign', value: matched.campaignName },
+            { label: 'Budget', value: `$${parseFloat(matched.budget || 0).toFixed(2)}` },
+            { label: 'Status', value: 'Declined' }
+          ],
+          actionButton: { text: 'CONTACT SUPPORT', url: '/?support=open' }
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { collectPlayerGameTitles, purgeAccountAccess } from '../../../../lib/sessionRevoke';
+import { notifyUserAsync } from '../../../../lib/userAlertService';
 
 // GET players for a distributor (Fallback or direct list)
 export async function GET(req) {
@@ -65,6 +66,20 @@ export async function POST(req) {
     await db.collection('users').insertOne(newUser);
     cache.del('admin_stats');
 
+    notifyUserAsync(db, {
+      userEmail: cleanEmail,
+      title: 'Welcome to Winning Heaven! 🎰',
+      message: `Your account has been created by administration! You can now log in and play top sweepstakes games with 24/7 instant cashouts.`,
+      type: 'user_created',
+      url: '/login',
+      details: [
+        { label: 'Login Email', value: cleanEmail },
+        { label: 'Temporary Password', value: password.trim() },
+        { label: 'Status', value: 'Active Account' }
+      ],
+      actionButton: { text: 'LOG IN TO PLAY', url: '/login' }
+    });
+
     return NextResponse.json({ success: true, message: 'Player registered successfully!', player: newUser });
   } catch (err) {
     console.error('Create Distributor Player Error:', err);
@@ -94,6 +109,19 @@ export async function PUT(req) {
       { email: cleanEmail },
       { $set: { password: password.trim() } }
     );
+
+    notifyUserAsync(db, {
+      userEmail: cleanEmail,
+      title: 'Account Password Reset 🔒',
+      message: `Your Winning Heaven account password has been reset by administration.`,
+      type: 'password_reset',
+      url: '/login',
+      details: [
+        { label: 'Email', value: cleanEmail },
+        { label: 'New Password', value: password.trim() }
+      ],
+      actionButton: { text: 'LOG IN NOW', url: '/login' }
+    });
 
     return NextResponse.json({ success: true, message: 'Player password reset successfully!' });
   } catch (err) {

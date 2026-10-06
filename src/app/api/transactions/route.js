@@ -5,6 +5,7 @@ import { buildRemainderClaimAvailableAt } from '../../../lib/claimWait';
 import { calcCommissionFromProfit } from '../../../lib/commission';
 import { typeBExclusionFilter } from '../../../lib/typeBDistributors';
 import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
+import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { accountLookupKey, buildGameUsernameMap } from '../../../lib/resolveGameUsername';
 import { compressDataUrlIfNeeded } from '../../../lib/serverImageCompress';
@@ -1266,6 +1267,22 @@ export async function PUT(req) {
       } catch (poolErr) {
         console.error('Failed to update game coin pool for withdrawal success:', poolErr);
       }
+
+      notifyUserAsync(db, {
+        userEmail: originalTx.userEmail,
+        title: 'Withdrawal Approved & Paid 💰',
+        message: `Your cashout request of $${parseFloat(originalTx.amount || 0).toFixed(2)} has been approved and sent! Thank you for playing at Winning Heaven.`,
+        type: 'withdraw_approved',
+        url: '/lobby',
+        details: [
+          { label: 'Transaction ID', value: String(originalTx.id) },
+          { label: 'Amount', value: `$${parseFloat(originalTx.amount || 0).toFixed(2)}` },
+          { label: 'Game', value: originalTx.gameTitle || 'Lobby' },
+          { label: 'Payment Gateway', value: originalTx.gateway || 'Bank/Crypto/App' },
+          { label: 'Status', value: 'Completed & Paid' }
+        ],
+        actionButton: { text: 'VIEW WALLET', url: '/lobby' }
+      });
     }
 
     // Trigger Coins notification if this transaction is approved as SUCCESS and it is a DEPOSIT or a BONUS.
@@ -1458,6 +1475,25 @@ export async function PUT(req) {
             distributorId: originalTx.distributorId || '',
             status: 'COINS_LOADING'
           });
+
+          notifyUserAsync(db, {
+            userEmail: originalTx.userEmail,
+            title: isFreeplayNoti ? 'Freeplay Bonus Approved 🎁' : 'Deposit Approved ✅',
+            message: isFreeplayNoti
+              ? `Your freeplay bonus request for ${originalTx.gameTitle || 'Lobby'} has been approved! Coins are being prepared.`
+              : `Your deposit of $${amount.toFixed(2)} for ${originalTx.gameTitle || 'Lobby'} has been approved! ${totalCoins} coins are being loaded to your game account.`,
+            type: 'deposit_approved',
+            url: '/lobby',
+            details: [
+              { label: 'Transaction ID', value: String(originalTx.id) },
+              { label: 'Deposit Amount', value: `$${amount.toFixed(2)}` },
+              { label: 'Bonus Applied', value: `${bonusPercentage}%` },
+              { label: 'Total Coins', value: `${totalCoins} coins` },
+              { label: 'Game', value: originalTx.gameTitle || 'Lobby' },
+              { label: 'Status', value: 'Approved & Coins Queued' }
+            ],
+            actionButton: { text: 'OPEN LOBBY', url: '/lobby' }
+          });
         }
 
         // Consume promo / referral off the hot path
@@ -1506,6 +1542,40 @@ export async function PUT(req) {
       publishAdminEvent('transactions', {
         distributorId: originalTx.distributorId || '',
         status: finalStatus
+      });
+    }
+
+    if (finalStatus === 'FAILED' || finalStatus === 'REJECTED') {
+      const isDep = originalTx.type === 'DEPOSIT';
+      notifyUserAsync(db, {
+        userEmail: originalTx.userEmail,
+        title: isDep ? 'Deposit Request Declined ❌' : 'Withdrawal Request Declined ❌',
+        message: `Your ${isDep ? 'deposit' : 'cashout'} request of $${parseFloat(originalTx.amount || 0).toFixed(2)} was declined.${effectiveNote ? ` Reason: ${effectiveNote}` : ''}`,
+        type: isDep ? 'deposit_rejected' : 'withdraw_rejected',
+        url: '/lobby',
+        details: [
+          { label: 'Transaction ID', value: String(originalTx.id) },
+          { label: 'Amount', value: `$${parseFloat(originalTx.amount || 0).toFixed(2)}` },
+          { label: 'Type', value: originalTx.type },
+          { label: 'Status', value: 'Declined' },
+          { label: 'Reason', value: String(effectiveNote || 'Declined by administration') }
+        ],
+        actionButton: { text: 'CONTACT SUPPORT', url: '/?support=open' }
+      });
+    } else if ((coinsHoldNote || holdNote) && status === 'HOLD') {
+      notifyUserAsync(db, {
+        userEmail: originalTx.userEmail,
+        title: 'Withdrawal Update: On Hold ⏳',
+        message: `Your cashout request of $${parseFloat(originalTx.amount || 0).toFixed(2)} has been placed on hold: ${coinsHoldNote || holdNote}`,
+        type: 'withdraw_hold',
+        url: '/lobby',
+        details: [
+          { label: 'Transaction ID', value: String(originalTx.id) },
+          { label: 'Amount', value: `$${parseFloat(originalTx.amount || 0).toFixed(2)}` },
+          { label: 'Status', value: 'On Hold' },
+          { label: 'Note', value: String(coinsHoldNote || holdNote) }
+        ],
+        actionButton: { text: 'VIEW DETAILS', url: '/lobby' }
       });
     }
 
