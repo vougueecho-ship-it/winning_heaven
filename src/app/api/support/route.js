@@ -617,9 +617,13 @@ export async function DELETE(req) {
     }
 
     if (email) {
-      await supportCollection.deleteMany({ userEmail: email.toLowerCase().trim() });
-      cache.del('admin_stats');
-      return NextResponse.json({ success: true, message: 'Chat history cleared successfully.' });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Chat conversation history cannot be deleted to preserve records and support compliance.'
+        },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({ success: false, message: 'Missing email or message ID.' }, { status: 400 });

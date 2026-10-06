@@ -488,28 +488,6 @@ export default function PlayerSupportModal({
     URL.revokeObjectURL(url);
   };
 
-  // Clear chat history
-  const handleClearHistory = async () => {
-    if (!window.confirm('Are you sure you want to clear your support chat history? This cannot be undone.')) {
-      return;
-    }
-    try {
-      const res = await fetch(`/api/support?email=${encodeURIComponent(identity.email)}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessages([]);
-        setShowSettingsModal(false);
-      } else {
-        alert(data.message || 'Failed to clear chat history.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error clearing chat history.');
-    }
-  };
-
   if (!isOpen) return null;
 
   const unreadCount = messages.filter((m) => m.senderType === 'admin' && !m.read).length;
@@ -884,49 +862,28 @@ export default function PlayerSupportModal({
                     </button>
                   </div>
 
-                  {/* Setting 4: Actions (Export & Clear) */}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                  {/* Setting 4: Actions (Export Transcript) */}
+                  <div style={{ display: 'flex', marginTop: '0.35rem' }}>
                     <button
                       type="button"
                       onClick={handleExportChat}
                       style={{
-                        flex: 1,
+                        width: '100%',
                         background: 'rgba(0, 240, 255, 0.12)',
                         border: '1px solid rgba(0, 240, 255, 0.35)',
                         color: '#00f0ff',
                         borderRadius: '10px',
-                        padding: '0.45rem',
-                        fontSize: '0.74rem',
+                        padding: '0.5rem',
+                        fontSize: '0.76rem',
                         fontWeight: 800,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '0.35rem'
+                        gap: '0.4rem'
                       }}
                     >
-                      <i className="fa-solid fa-download" /> Export Transcript
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleClearHistory}
-                      style={{
-                        flex: 1,
-                        background: 'rgba(239, 68, 68, 0.12)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#ef4444',
-                        borderRadius: '10px',
-                        padding: '0.45rem',
-                        fontSize: '0.74rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem'
-                      }}
-                    >
-                      <i className="fa-solid fa-trash-can" /> Clear History
+                      <i className="fa-solid fa-download" /> Export Chat Transcript
                     </button>
                   </div>
                 </motion.div>
