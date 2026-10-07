@@ -67,6 +67,25 @@
   --admin-sab: env(safe-area-inset-bottom, 0px);
 }
 
+/* Ensure native apps and installed PWAs never overlap system status & navigation bars */
+.admin-native-shell,
+.player-native-shell,
+.distributor-native-shell {
+  --sat: max(48px, env(safe-area-inset-top, 48px));
+  --sab: max(20px, env(safe-area-inset-bottom, 20px));
+  --admin-sat: max(48px, env(safe-area-inset-top, 48px));
+  --admin-sab: max(20px, env(safe-area-inset-bottom, 20px));
+}
+
+@media all and (display-mode: standalone) {
+  :root {
+    --sat: max(48px, env(safe-area-inset-top, 48px));
+    --sab: max(20px, env(safe-area-inset-bottom, 20px));
+    --admin-sat: max(48px, env(safe-area-inset-top, 48px));
+    --admin-sab: max(20px, env(safe-area-inset-bottom, 20px));
+  }
+}
+
 /* --- Base Resets --- */
 * {
   box-sizing: border-box;

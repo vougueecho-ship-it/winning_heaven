@@ -1382,8 +1382,9 @@ export default function DistributorPortal() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button
             type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.35rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            className="admin-menu-toggle-btn"
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label={sidebarOpen ? 'Close Menu' : 'Open Menu'}
             title="Toggle Menu"
           >
             <i className={`fa-solid ${sidebarOpen ? 'fa-xmark' : 'fa-bars'}`}></i>
@@ -1408,16 +1409,27 @@ export default function DistributorPortal() {
       
       {/* SIDEBAR NAVIGATION */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'mobile-show' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem 1.25rem 1rem' }}>
-          <i className="fa-solid fa-crown gold-text" style={{ fontSize: '1.5rem', color: 'var(--gold-primary)' }}></i>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)', margin: 0 }}>
-              WINNING<span className="accent-red" style={{ color: '#ef4444' }}>HEAVEN</span>
-            </h2>
-            <span style={{ fontSize: '0.55rem', background: 'rgba(255,215,0,0.1)', color: 'var(--gold-primary)', padding: '0.1rem 0.3rem', borderRadius: '3px', textTransform: 'uppercase', fontWeight: 'bold', display: 'inline-block', marginTop: '0.15rem' }}>
-              Distributor Portal
-            </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '1.25rem 1.25rem 1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <i className="fa-solid fa-crown gold-text" style={{ fontSize: '1.5rem', color: 'var(--gold-primary)' }}></i>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                WINNING<span className="accent-red" style={{ color: '#ef4444' }}>HEAVEN</span>
+              </h2>
+              <span style={{ fontSize: '0.55rem', background: 'rgba(255,215,0,0.1)', color: 'var(--gold-primary)', padding: '0.1rem 0.3rem', borderRadius: '3px', textTransform: 'uppercase', fontWeight: 'bold', display: 'inline-block', marginTop: '0.15rem' }}>
+                Distributor Portal
+              </span>
+            </div>
           </div>
+          <button
+            type="button"
+            className="admin-sidebar-close-btn"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            title="Close menu"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, padding: '0 1rem', overflowY: 'auto' }}>

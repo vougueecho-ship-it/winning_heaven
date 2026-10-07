@@ -99,9 +99,9 @@ export default function NativeChrome() {
       // On Android native apps / WebViews where env(safe-area) returns 0
       // but the status bar overlays the WebView, apply safe physical defaults.
       if (topPx < 1 && isNative) {
-        topPx = isAndroid ? 38 : 44;
+        topPx = isAndroid ? 48 : 44;
       } else if (topPx > 0) {
-        topPx = Math.max(topPx, isAndroid ? 32 : 44);
+        topPx = Math.max(topPx, isAndroid ? 44 : 44);
       }
 
       if (bottomPx < 1 && isNative && isAndroid) {

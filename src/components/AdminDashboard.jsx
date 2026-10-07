@@ -398,8 +398,10 @@ export default function AdminDashboard({
       <div className="admin-mobile-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.35rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            type="button"
+            className="admin-menu-toggle-btn"
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label={sidebarOpen ? 'Close Menu' : 'Open Menu'}
             title="Toggle Menu"
           >
             <i className={`fa-solid ${sidebarOpen ? 'fa-xmark' : 'fa-bars'}`}></i>
@@ -415,7 +417,8 @@ export default function AdminDashboard({
             overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
           }}>
             <img src="/winning_heaven_logo.png" alt="Mascot Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
@@ -440,12 +443,23 @@ export default function AdminDashboard({
 
       {/* Left Sidebar Menu */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'mobile-show' : ''}`}>
-        {/* Brand logo */}
-        <div className="admin-logo" style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <img src="/winning_heaven_logo.png" alt="Winning Heaven Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)' }}>
-            WINNING <span className="gold-gradient-text">HEAVEN</span>
-          </h2>
+        {/* Brand logo & mobile close */}
+        <div className="admin-logo" style={{ padding: '1.25rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <img src="/winning_heaven_logo.png" alt="Winning Heaven Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)', margin: 0 }}>
+              WINNING <span className="gold-gradient-text">HEAVEN</span>
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="admin-sidebar-close-btn"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            title="Close menu"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
         {/* Tab List */}

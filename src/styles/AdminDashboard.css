@@ -35,6 +35,10 @@
     display: none !important;
   }
 
+  .admin-sidebar-close-btn {
+    display: none !important;
+  }
+
   .admin-sidebar {
     width: 260px !important;
     min-width: 260px !important;
@@ -93,7 +97,14 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding-top: max(1.1rem, calc(0.85rem + env(safe-area-inset-top, 0px))) !important;
+    padding-top: calc(
+      max(
+        env(safe-area-inset-top, 0px),
+        var(--admin-sat, 0px),
+        var(--sat, 0px),
+        var(--safe-area-top, 0px)
+      ) + 0.85rem
+    ) !important;
     padding-bottom: 0.75rem !important;
     padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
     padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
@@ -107,6 +118,73 @@
     width: 100% !important;
     box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6) !important;
     box-sizing: border-box !important;
+  }
+
+  .admin-native-shell .admin-mobile-header {
+    padding-top: calc(max(48px, var(--admin-sat, 48px), env(safe-area-inset-top, 0px)) + 0.85rem) !important;
+  }
+
+  .admin-menu-toggle-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 215, 0, 0.35) !important;
+    color: #fff !important;
+    font-size: 1.25rem !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(255, 215, 0, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
+    z-index: 10 !important;
+  }
+
+  .admin-menu-toggle-btn:hover {
+    background: rgba(255, 215, 0, 0.15) !important;
+    border-color: rgba(255, 215, 0, 0.6) !important;
+    color: var(--gold-primary) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+  }
+
+  .admin-menu-toggle-btn:active {
+    background: rgba(255, 215, 0, 0.25) !important;
+    transform: scale(0.92) !important;
+  }
+
+  .admin-sidebar-close-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    color: #fff !important;
+    font-size: 1.15rem !important;
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .admin-sidebar-close-btn:active {
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: #f87171 !important;
+    color: #f87171 !important;
+    transform: scale(0.92) !important;
   }
 
   .admin-sidebar-overlay {

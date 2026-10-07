@@ -87,7 +87,7 @@ public class MainActivity extends BridgeActivity {
         if (webView == null) {
             return;
         }
-        int safe = Math.max(cssTop, 40);
+        int safe = Math.max(cssTop, 48);
         String js =
             "(function(){"
                 + "var r=document.documentElement;"

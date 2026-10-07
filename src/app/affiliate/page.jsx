@@ -749,7 +749,13 @@ function AffiliatePortal() {
           <i className="fa-solid fa-user-tie" style={{ color: 'var(--gold-primary)', fontSize: '1.1rem' }}></i>
           <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Affiliate Portal</span>
         </div>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.25rem', cursor: 'pointer' }}>
+        <button
+          type="button"
+          className="admin-menu-toggle-btn"
+          onClick={() => setSidebarOpen(prev => !prev)}
+          aria-label={sidebarOpen ? 'Close Menu' : 'Open Menu'}
+          title="Toggle Menu"
+        >
           <i className={sidebarOpen ? 'fa-solid fa-xmark' : 'fa-solid fa-bars'}></i>
         </button>
       </div>
@@ -760,16 +766,27 @@ function AffiliatePortal() {
 
       {/* SIDEBAR */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'mobile-show' : ''}`}>
-        <div style={{ padding: '1.5rem 1.25rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '1.25rem 1.25rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Brand Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.75rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="fa-solid fa-user-tie" style={{ color: 'var(--gold-primary)', fontSize: '1.1rem' }}></i>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="fa-solid fa-user-tie" style={{ color: 'var(--gold-primary)', fontSize: '1.1rem' }}></i>
+              </div>
+              <div>
+                <h2 style={{ fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.2 }}>Agent & Distributor<br/>Network</h2>
+                <span style={{ fontSize: '0.55rem', color: '#888' }}>Performance Control Room</span>
+              </div>
             </div>
-            <div>
-              <h2 style={{ fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.2 }}>Agent & Distributor<br/>Network</h2>
-              <span style={{ fontSize: '0.55rem', color: '#888' }}>Performance Control Room</span>
-            </div>
+            <button
+              type="button"
+              className="admin-sidebar-close-btn"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+              title="Close menu"
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
           </div>
 
           {/* Nav Items */}
