@@ -1216,42 +1216,14 @@ input[type="checkbox"]:checked::after {
 /* =========================================================================
    FLOATING SUPPORT FAB
    ========================================================================= */
-.portal-support-fab {
-  position: fixed;
-  bottom: calc(2rem + max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)));
-  right: calc(2rem + max(env(safe-area-inset-right, 0px), var(--sar, 0px)));
-  z-index: 99990;
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ffd700 0%, #ff9900 100%);
-  color: #000;
-  border: none;
-  box-shadow: 0 8px 25px rgba(255, 170, 0, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.portal-support-fab:hover {
-  transform: translateY(-3px) scale(1.04);
-  box-shadow: 0 12px 30px rgba(255, 170, 0, 0.6);
-}
-
-.portal-support-fab:active {
-  transform: scale(0.95);
-}
-
-@media (max-width: 768px) {
-  .portal-support-fab {
-    bottom: calc(4.5rem + max(env(safe-area-inset-bottom, 0px), var(--admin-sab, 0px)));
-    right: calc(1.25rem + max(env(safe-area-inset-right, 0px), var(--sar, 0px)));
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    font-size: 1.15rem;
-  }
+.portal-support-fab,
+.floating-chat-button-root:has(.admin-dashboard-layout),
+body:has(.admin-dashboard-layout) .portal-support-fab,
+body:has(.admin-dashboard-layout) .floating-chat-button-root,
+.admin-dashboard-layout ~ .portal-support-fab,
+.admin-dashboard-layout ~ .floating-chat-button-root {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
 }

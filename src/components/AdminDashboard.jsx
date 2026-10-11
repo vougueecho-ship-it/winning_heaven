@@ -392,6 +392,34 @@ export default function AdminDashboard({
     }
   }, [adminUser, activeTab]);
 
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'wh-hide-admin-floating-chat';
+    styleEl.innerHTML = `
+      .floating-chat-button-root,
+      .portal-support-fab,
+      button[aria-label="Open 24/7 Live Chat Support"],
+      button[aria-label="Open support chat"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.floating-chat-button-root, .portal-support-fab').forEach((el) => {
+        el.style.setProperty('display', 'none', 'important');
+      });
+    }
+
+    return () => {
+      const el = document.getElementById('wh-hide-admin-floating-chat');
+      if (el) el.remove();
+    };
+  }, []);
+
   return (
     <div id="view-admin-dashboard" className="admin-dashboard-layout">
       <OfflineBanner />

@@ -1018,17 +1018,7 @@ export default function AdminPage({ portalName, forcedRole }) {
         proofMeta={proofMeta}
       />
 
-      {authenticated && !supportOpen && (
-        <button
-          type="button"
-          className="portal-support-fab"
-          onClick={() => setSupportOpen(true)}
-          aria-label="Open support chat"
-          title="Support Desk"
-        >
-          <i className="fa-solid fa-headset" />
-        </button>
-      )}
+      {/* Floating support button removed from admin panel per user request */}
 
       <SupportModal
         isOpen={supportOpen}

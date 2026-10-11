@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { playNotificationSound, initAudioUnlock } from '../../lib/notificationSound';
 
 export default function PlayerLiveAlertManager() {
+  const pathname = usePathname();
   const [session, setSession] = useState(null);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [allNotifications, setAllNotifications] = useState([]);
@@ -12,6 +14,21 @@ export default function PlayerLiveAlertManager() {
   const [copiedId, setCopiedId] = useState(null);
   const knownIdsRef = useRef(new Set());
   const initialFetchDoneRef = useRef(false);
+
+  // Strictly hide on all Admin & Staff panel views
+  const isAdminOrStaffRoute = Boolean(
+    pathname && (
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/boss') ||
+      pathname.startsWith('/finance') ||
+      pathname.startsWith('/operations') ||
+      pathname.startsWith('/support-staff') ||
+      pathname.startsWith('/coins-staff') ||
+      pathname.startsWith('/distributor') ||
+      pathname.startsWith('/affiliate') ||
+      pathname.startsWith('/blog-admin')
+    )
+  );
 
   // Sync session from localStorage
   useEffect(() => {
@@ -167,6 +184,10 @@ export default function PlayerLiveAlertManager() {
       return '';
     }
   };
+
+  if (isAdminOrStaffRoute) {
+    return null;
+  }
 
   return (
     <>

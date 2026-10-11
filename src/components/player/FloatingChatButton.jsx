@@ -1,12 +1,47 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import PlayerSupportModal from './PlayerSupportModal';
 
 export default function FloatingChatButton({ onOpenSupport, currentUser = null }) {
+  const pathname = usePathname();
   const [modalOpen, setModalOpen] = useState(false);
   const [sessionUser, setSessionUser] = useState(currentUser);
   const [unread, setUnread] = useState(false);
+
+  const [isClientAdmin, setIsClientAdmin] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname || '';
+      return p.includes('/admin') || p.includes('/boss') || p.includes('/finance') || p.includes('/operations') || p.includes('/support-staff') || p.includes('/coins-staff') || p.includes('/distributor') || p.includes('/affiliate') || p.includes('/blog-admin');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname || '';
+      if (p.includes('/admin') || p.includes('/boss') || p.includes('/finance') || p.includes('/operations') || p.includes('/support-staff') || p.includes('/coins-staff') || p.includes('/distributor') || p.includes('/affiliate') || p.includes('/blog-admin')) {
+        setIsClientAdmin(true);
+      }
+    }
+  }, [pathname]);
+
+  // Strictly hide floating player chat button on all Admin & Staff panel views
+  const isAdminOrStaffRoute = Boolean(
+    isClientAdmin ||
+    (pathname && (
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/boss') ||
+      pathname.startsWith('/finance') ||
+      pathname.startsWith('/operations') ||
+      pathname.startsWith('/support-staff') ||
+      pathname.startsWith('/coins-staff') ||
+      pathname.startsWith('/distributor') ||
+      pathname.startsWith('/affiliate') ||
+      pathname.startsWith('/blog-admin')
+    ))
+  );
 
   useEffect(() => {
     if (currentUser) {
@@ -30,6 +65,10 @@ export default function FloatingChatButton({ onOpenSupport, currentUser = null }
       setModalOpen(true);
     }
   };
+
+  if (isAdminOrStaffRoute) {
+    return null;
+  }
 
   return (
     <>
