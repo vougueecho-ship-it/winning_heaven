@@ -12,6 +12,7 @@ export default function DevicesTab({ adminUser }) {
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
   // Quick Unlink by Email State
   const [quickUnlinkEmail, setQuickUnlinkEmail] = useState('');
@@ -42,7 +43,7 @@ export default function DevicesTab({ adminUser }) {
     adminUser?.email === 'admin@winningheaven.com';
 
   const swrKey = isSuperAdmin
-    ? `/api/admin/devices?page=${page}&limit=25&search=${encodeURIComponent(debouncedSearch)}&role=${encodeURIComponent(roleFilter)}&status=${encodeURIComponent(statusFilter)}&adminRole=${encodeURIComponent(adminUser?.role || '')}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`
+    ? `/api/admin/devices?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&role=${encodeURIComponent(roleFilter)}&status=${encodeURIComponent(statusFilter)}&adminRole=${encodeURIComponent(adminUser?.role || '')}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`
     : null;
 
   const { data, error, mutate, isValidating } = usePollingSWR(swrKey, POLL.LISTS);
@@ -249,14 +250,14 @@ export default function DevicesTab({ adminUser }) {
       {/* Metrics Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem', marginBottom: '1.25rem' }}>
         <div style={{ background: '#0b0d16', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '0.85rem 1rem' }}>
-          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Logged-in Devices</div>
+          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>All Registered Devices</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
             {isInitialLoading ? <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '1.1rem', color: 'var(--gold-primary)' }}></i> : stats.totalDevices}
           </div>
         </div>
 
         <div style={{ background: '#0b0d16', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '10px', padding: '0.85rem 1rem' }}>
-          <div style={{ fontSize: '0.7rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Today</div>
+          <div style={{ fontSize: '0.7rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Devices (Top Priority)</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80', marginTop: '0.2rem' }}>
             {isInitialLoading ? <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '1.1rem', color: '#4ade80' }}></i> : stats.activeToday}
           </div>
@@ -422,9 +423,23 @@ export default function DevicesTab({ adminUser }) {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           style={{ background: '#07090f', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', outline: 'none', cursor: 'pointer' }}
         >
-          <option value="">All Statuses</option>
-          <option value="ACTIVE">🟢 Active Devices</option>
-          <option value="BLOCKED">🔴 Blocked Devices</option>
+          <option value="">All Statuses (Active First)</option>
+          <option value="ACTIVE">🟢 Active Devices Only</option>
+          <option value="INACTIVE">⚪ Inactive Devices Only</option>
+          <option value="BLOCKED">🔴 Blocked Devices Only</option>
+        </select>
+
+        {/* Per-Page Limit */}
+        <select
+          value={limit}
+          onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+          style={{ background: '#07090f', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', outline: 'none', cursor: 'pointer' }}
+          title="Items per page"
+        >
+          <option value={25}>25 / page</option>
+          <option value={50}>50 / page</option>
+          <option value={100}>100 / page</option>
+          <option value={250}>250 / page</option>
         </select>
 
         <button
@@ -489,9 +504,10 @@ export default function DevicesTab({ adminUser }) {
             ) : (
               devices.map((device, idx) => {
                 const isBlocked = device.isBlocked || device.status === 'PERMANENTLY_BLOCKED';
+                const isActive = Boolean(device.isActiveToday || device.status === 'ACTIVE');
                 return (
-                  <tr key={device.id || idx} style={{ opacity: isBlocked ? 0.75 : 1, background: isBlocked ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
-                    <td>{(page - 1) * 25 + idx + 1}</td>
+                  <tr key={device.id || idx} style={{ opacity: isBlocked ? 0.75 : 1, background: isBlocked ? 'rgba(239, 68, 68, 0.05)' : (isActive ? 'rgba(34, 197, 94, 0.02)' : 'transparent') }}>
+                    <td>{(page - 1) * limit + idx + 1}</td>
 
                     {/* User & Post */}
                     <td>
@@ -601,9 +617,13 @@ export default function DevicesTab({ adminUser }) {
                           <span style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#ef4444', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                             <i className="fa-solid fa-ban"></i> PERMANENTLY BLOCKED
                           </span>
-                        ) : (
+                        ) : isActive ? (
                           <span style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid #22c55e', color: '#4ade80', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                             <i className="fa-solid fa-circle" style={{ fontSize: '0.45rem' }}></i> ACTIVE
+                          </span>
+                        ) : (
+                          <span style={{ background: 'rgba(148, 163, 184, 0.1)', border: '1px solid rgba(148, 163, 184, 0.25)', color: '#94a3b8', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> INACTIVE
                           </span>
                         )}
                       </div>
@@ -690,44 +710,50 @@ export default function DevicesTab({ adminUser }) {
 
       {/* PAGINATION CONTROLS */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.25rem', padding: '0.75rem' }}>
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            style={{
-              background: page <= 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: page <= 1 ? '#64748b' : '#fff',
-              padding: '0.45rem 1rem',
-              borderRadius: '6px',
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: '0.775rem'
-            }}
-          >
-            Previous
-          </button>
-
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '1.25rem', padding: '0.75rem', background: '#0b0d16', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px' }}>
           <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>
-            Page <strong style={{ color: '#fff' }}>{page}</strong> of <strong style={{ color: '#fff' }}>{totalPages}</strong>
+            Showing <strong style={{ color: '#fff' }}>{(page - 1) * limit + 1}</strong> - <strong style={{ color: '#fff' }}>{Math.min(page * limit, data?.totalCount || 0)}</strong> of <strong style={{ color: '#fff' }}>{data?.totalCount || 0}</strong> devices
           </span>
 
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            style={{
-              background: page >= totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: page >= totalPages ? '#64748b' : '#fff',
-              padding: '0.45rem 1rem',
-              borderRadius: '6px',
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-              fontSize: '0.775rem'
-            }}
-          >
-            Next
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              style={{
+                background: page <= 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: page <= 1 ? '#64748b' : '#fff',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: '0.775rem'
+              }}
+            >
+              Previous
+            </button>
+
+            <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>
+              Page <strong style={{ color: '#fff' }}>{page}</strong> of <strong style={{ color: '#fff' }}>{totalPages}</strong>
+            </span>
+
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              style={{
+                background: page >= totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: page >= totalPages ? '#64748b' : '#fff',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                fontSize: '0.775rem'
+              }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

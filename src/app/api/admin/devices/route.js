@@ -17,7 +17,8 @@ function isSuperAdminUser(adminRole, adminEmail) {
   return allowed.includes(clean);
 }
 
-// GET list of active & blocked devices (Super Admin Only)
+// GET list of active & inactive & blocked devices (Super Admin Only)
+// Active devices are prioritized at the top!
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -53,16 +54,22 @@ export async function GET(req) {
       ip
     }).catch(() => {});
 
-    // 2. Fetch live users and distributors to keep session roles 100% in sync with real assigned roles
-    const [allUsers, allDists] = await Promise.all([
+    // 2. Fetch live users, distributors, agents, deviceSessions, and blocked list
+    const [allUsers, allDists, allAgents, allSessions, blockedList] = await Promise.all([
       db.collection('users').find(
         { email: { $exists: true, $ne: '' } },
-        { projection: { email: 1, name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, userAgent: 1, lastActive: 1, createdAt: 1 } }
+        { projection: { email: 1, name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, userAgent: 1, registrationUserAgent: 1, lastLoginIp: 1, registrationIp: 1, lastActive: 1, lastLoginAt: 1, createdAt: 1 } }
       ).toArray(),
       db.collection('distributors').find(
         { email: { $exists: true, $ne: '' } },
         { projection: { email: 1, name: 1, role: 1, lastActive: 1, createdAt: 1 } }
-      ).toArray()
+      ).toArray(),
+      db.collection('agents').find(
+        { email: { $exists: true, $ne: '' } },
+        { projection: { email: 1, name: 1, role: 1, lastActive: 1, createdAt: 1 } }
+      ).toArray(),
+      sessionsCollection.find({}).sort({ lastActive: -1 }).toArray(),
+      blockedCollection.find({}).toArray()
     ]);
 
     const roleMap = new Map();
@@ -84,137 +91,202 @@ export async function GET(req) {
       }
     });
 
+    allAgents.forEach((a) => {
+      if (a.email) {
+        const em = a.email.toLowerCase().trim();
+        roleMap.set(em, a.role || 'agent');
+        if (a.name) nameMap.set(em, a.name);
+      }
+    });
+
     if (envAdminEmail) {
       roleMap.set(envAdminEmail, 'admin');
       nameMap.set(envAdminEmail, 'Super Admin (Owner)');
     }
 
-    // 3. Sync registered users/distributors into deviceSessions if not present or role outdated
-    try {
-      const syncOps = [];
-      for (const u of allUsers) {
-        if (!u.email) continue;
-        const cleanEmail = u.email.toLowerCase().trim();
-        const postInfo = getRolePostTitle(u.role || 'player');
-        
-        const userFields = {
-          name: u.name || cleanEmail.split('@')[0],
-          role: u.role || 'player',
-          postTitle: postInfo.title,
-          postEmoji: postInfo.emoji,
-          postColor: postInfo.color
-        };
-        if (u.deviceId) userFields.deviceId = u.deviceId;
-        if (u.deviceFingerprint) userFields.deviceFingerprint = u.deviceFingerprint;
-
-        syncOps.push(
-          sessionsCollection.updateOne(
-            { email: cleanEmail },
-            {
-              $set: userFields,
-              $setOnInsert: {
-                deviceId: u.deviceId || `dev-${Buffer.from(cleanEmail).toString('hex').slice(0, 14)}`,
-                deviceFingerprint: u.deviceFingerprint || '',
-                os: u.userAgent ? parseUserAgent(u.userAgent).os : 'Android Smartphone',
-                browser: u.userAgent ? parseUserAgent(u.userAgent).browser : 'Chrome Browser',
-                ip: 'Active',
-                lastActive: u.lastActive ? new Date(u.lastActive) : (u.createdAt ? new Date(u.createdAt) : new Date()),
-                createdAt: u.createdAt ? new Date(u.createdAt) : new Date(),
-                status: 'ACTIVE'
-              }
-            },
-            { upsert: true }
-          )
-        );
-      }
-
-      for (const d of allDists) {
-        if (!d.email) continue;
-        const cleanEmail = d.email.toLowerCase().trim();
-        const postInfo = getRolePostTitle('distributor');
-
-        syncOps.push(
-          sessionsCollection.updateOne(
-            { email: cleanEmail },
-            {
-              $set: {
-                name: d.name || 'Distributor Office',
-                role: 'distributor',
-                postTitle: postInfo.title,
-                postEmoji: postInfo.emoji,
-                postColor: postInfo.color
-              },
-              $setOnInsert: {
-                deviceId: `dist-${Buffer.from(cleanEmail).toString('hex').slice(0, 14)}`,
-                deviceFingerprint: '',
-                os: 'Computer / PC',
-                browser: 'Chrome Browser',
-                ip: 'Active',
-                lastActive: d.lastActive ? new Date(d.lastActive) : (d.createdAt ? new Date(d.createdAt) : new Date()),
-                createdAt: d.createdAt ? new Date(d.createdAt) : new Date(),
-                status: 'ACTIVE'
-              }
-            },
-            { upsert: true }
-          )
-        );
-      }
-
-      if (syncOps.length > 0) {
-        Promise.all(syncOps).catch(() => {});
-      }
-    } catch (syncErr) {
-      console.error('Device sync error:', syncErr);
-    }
-
-    // 4. Get list of permanently blocked device IDs and fingerprints
-    const blockedList = await blockedCollection.find({}).toArray();
+    // 3. Blocked sets
     const blockedDeviceIds = new Set(blockedList.map((b) => b.deviceId).filter(Boolean));
     const blockedFingerprints = new Set(blockedList.map((b) => b.deviceFingerprint).filter(Boolean));
+    const blockedEmails = new Set(blockedList.map((b) => b.email?.toLowerCase().trim()).filter(Boolean));
 
-    // 5. Load all device sessions sorted by lastActive
-    const allSessions = await sessionsCollection.find({}).sort({ lastActive: -1 }).toArray();
+    // 4. Index existing device sessions by email
+    const sessionsByEmail = new Map();
+    allSessions.forEach((session) => {
+      if (!session.email) return;
+      const em = session.email.toLowerCase().trim();
+      if (!sessionsByEmail.has(em)) sessionsByEmail.set(em, []);
+      sessionsByEmail.get(em).push(session);
+    });
+
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // 6. Enrich devices with live role, badges, and device details
-    const rawDevices = allSessions.map((session) => {
-      const emailKey = session.email?.toLowerCase().trim();
-      const isBlocked = blockedDeviceIds.has(session.deviceId) || blockedFingerprints.has(session.deviceFingerprint);
-      const uaParsed = session.userAgent ? parseUserAgent(session.userAgent, session.isApp, session.appType, session.deviceModel) : null;
+    const rawDevices = [];
 
-      // Real live role from live database users / distributors
+    // 5. First include all recorded device sessions
+    allSessions.forEach((session) => {
+      const emailKey = session.email?.toLowerCase().trim() || '';
+      const isBlocked = blockedDeviceIds.has(session.deviceId) ||
+        blockedFingerprints.has(session.deviceFingerprint) ||
+        blockedEmails.has(emailKey);
+
+      const uaParsed = session.userAgent ? parseUserAgent(session.userAgent, session.isApp, session.appType, session.deviceModel) : null;
       const liveRole = (emailKey === envAdminEmail || emailKey === adminEmailClean)
         ? 'admin'
         : (roleMap.get(emailKey) || session.role || 'player');
 
       const postInfo = getRolePostTitle(liveRole);
+      const lastActiveDate = session.lastActive ? new Date(session.lastActive) : (session.createdAt ? new Date(session.createdAt) : null);
+      const isActiveToday = Boolean(!isBlocked && lastActiveDate && lastActiveDate >= oneDayAgo);
 
-      const deviceName = session.deviceName || uaParsed?.deviceName || (session.os?.includes('Windows') ? 'Windows PC' : (session.os?.includes('Mac') ? 'MacBook / Mac' : 'Android Smartphone'));
-      const os = uaParsed?.os || session.os || 'Android';
-      const isApp = session.isApp !== undefined ? Boolean(session.isApp) : (uaParsed?.isApp || false);
-      const browser = session.browser || uaParsed?.browser || (isApp ? 'Winning Heaven App (Installed)' : 'Chrome Browser');
-
-      return {
+      rawDevices.push({
         ...session,
-        id: session._id?.toString(),
+        id: session._id?.toString() || `${emailKey}_${session.deviceId}`,
         name: nameMap.get(emailKey) || session.name || emailKey.split('@')[0],
+        email: emailKey,
         role: liveRole,
         rolesList: postInfo.roles,
         postTitle: postInfo.title,
         postEmoji: postInfo.emoji,
         postColor: postInfo.color,
         badges: postInfo.badges,
-        deviceName,
-        os,
-        browser,
-        isApp,
+        deviceName: session.deviceName || uaParsed?.deviceName || 'Android Smartphone',
+        os: uaParsed?.os || session.os || 'Android',
+        browser: session.browser || uaParsed?.browser || 'Chrome Browser',
+        isApp: session.isApp !== undefined ? Boolean(session.isApp) : (uaParsed?.isApp || false),
+        ip: session.ip || '—',
+        lastActive: lastActiveDate,
+        createdAt: session.createdAt ? new Date(session.createdAt) : lastActiveDate,
         isBlocked,
-        status: isBlocked ? 'PERMANENTLY_BLOCKED' : (session.status || 'ACTIVE')
-      };
+        isActiveToday,
+        status: isBlocked ? 'PERMANENTLY_BLOCKED' : (isActiveToday ? 'ACTIVE' : 'INACTIVE')
+      });
     });
 
-    // 7. Deduplicate sessions per unique device per user
+    // 6. Guarantee EVERY user in allUsers has a device entry
+    allUsers.forEach((u) => {
+      if (!u.email) return;
+      const emailKey = u.email.toLowerCase().trim();
+      const existingUserSessions = sessionsByEmail.get(emailKey);
+
+      // If user already has active session records in deviceSessions, they are already in rawDevices
+      if (existingUserSessions && existingUserSessions.length > 0) return;
+
+      const isBlocked = (u.deviceId && blockedDeviceIds.has(u.deviceId)) ||
+        (u.deviceFingerprint && blockedFingerprints.has(u.deviceFingerprint)) ||
+        blockedEmails.has(emailKey);
+
+      const userUa = u.userAgent || u.registrationUserAgent || '';
+      const uaParsed = userUa ? parseUserAgent(userUa) : null;
+      const liveRole = (emailKey === envAdminEmail || emailKey === adminEmailClean)
+        ? 'admin'
+        : (roleMap.get(emailKey) || u.role || 'player');
+
+      const postInfo = getRolePostTitle(liveRole);
+      const lastActiveDate = u.lastActive ? new Date(u.lastActive) : (u.lastLoginAt ? new Date(u.lastLoginAt) : (u.createdAt ? new Date(u.createdAt) : null));
+      const isActiveToday = Boolean(!isBlocked && lastActiveDate && lastActiveDate >= oneDayAgo);
+
+      rawDevices.push({
+        id: u._id?.toString() || `usr_${Buffer.from(emailKey).toString('hex').slice(0, 12)}`,
+        name: u.name || emailKey.split('@')[0],
+        email: emailKey,
+        role: liveRole,
+        rolesList: postInfo.roles,
+        postTitle: postInfo.title,
+        postEmoji: postInfo.emoji,
+        postColor: postInfo.color,
+        badges: postInfo.badges,
+        deviceId: u.deviceId || (u.deviceFingerprint ? `fp-${u.deviceFingerprint.slice(0, 16)}` : `dev-${Buffer.from(emailKey).toString('hex').slice(0, 16)}`),
+        deviceFingerprint: u.deviceFingerprint || '',
+        hardwareFingerprint: u.hardwareFingerprint || '',
+        deviceName: uaParsed?.deviceName || 'Android Smartphone',
+        os: uaParsed?.os || 'Android',
+        browser: uaParsed?.browser || 'Chrome Browser',
+        isApp: uaParsed?.isApp || false,
+        ip: u.lastLoginIp || u.registrationIp || '—',
+        lastActive: lastActiveDate,
+        createdAt: u.createdAt ? new Date(u.createdAt) : (lastActiveDate || now),
+        isBlocked,
+        isActiveToday,
+        status: isBlocked ? 'PERMANENTLY_BLOCKED' : (isActiveToday ? 'ACTIVE' : 'INACTIVE')
+      });
+    });
+
+    // 7. Guarantee EVERY distributor is included
+    allDists.forEach((d) => {
+      if (!d.email) return;
+      const emailKey = d.email.toLowerCase().trim();
+      const existingDistSessions = sessionsByEmail.get(emailKey);
+      if (existingDistSessions && existingDistSessions.length > 0) return;
+
+      const postInfo = getRolePostTitle('distributor');
+      const lastActiveDate = d.lastActive ? new Date(d.lastActive) : (d.createdAt ? new Date(d.createdAt) : null);
+      const isActiveToday = Boolean(lastActiveDate && lastActiveDate >= oneDayAgo);
+
+      rawDevices.push({
+        id: d._id?.toString() || `dist_${Buffer.from(emailKey).toString('hex').slice(0, 12)}`,
+        name: d.name || 'Distributor Office',
+        email: emailKey,
+        role: 'distributor',
+        rolesList: ['distributor'],
+        postTitle: postInfo.title,
+        postEmoji: postInfo.emoji,
+        postColor: postInfo.color,
+        badges: postInfo.badges,
+        deviceId: `dist-${Buffer.from(emailKey).toString('hex').slice(0, 16)}`,
+        deviceFingerprint: '',
+        hardwareFingerprint: '',
+        deviceName: 'Computer / PC',
+        os: 'Windows / Mac',
+        browser: 'Chrome Browser',
+        isApp: false,
+        ip: '—',
+        lastActive: lastActiveDate,
+        createdAt: d.createdAt ? new Date(d.createdAt) : now,
+        isBlocked: false,
+        isActiveToday,
+        status: isActiveToday ? 'ACTIVE' : 'INACTIVE'
+      });
+    });
+
+    // 8. Guarantee EVERY agent (affiliate) is included
+    allAgents.forEach((a) => {
+      if (!a.email) return;
+      const emailKey = a.email.toLowerCase().trim();
+      const existingAgentSessions = sessionsByEmail.get(emailKey);
+      if (existingAgentSessions && existingAgentSessions.length > 0) return;
+
+      const postInfo = getRolePostTitle('agent');
+      const lastActiveDate = a.lastActive ? new Date(a.lastActive) : (a.createdAt ? new Date(a.createdAt) : null);
+      const isActiveToday = Boolean(lastActiveDate && lastActiveDate >= oneDayAgo);
+
+      rawDevices.push({
+        id: a._id?.toString() || `agent_${Buffer.from(emailKey).toString('hex').slice(0, 12)}`,
+        name: a.name || 'Affiliate Agent',
+        email: emailKey,
+        role: 'agent',
+        rolesList: ['agent'],
+        postTitle: postInfo.title,
+        postEmoji: postInfo.emoji,
+        postColor: postInfo.color,
+        badges: postInfo.badges,
+        deviceId: `agent-${Buffer.from(emailKey).toString('hex').slice(0, 16)}`,
+        deviceFingerprint: '',
+        hardwareFingerprint: '',
+        deviceName: 'Smartphone / PC',
+        os: 'Android / iOS',
+        browser: 'Chrome Browser',
+        isApp: false,
+        ip: '—',
+        lastActive: lastActiveDate,
+        createdAt: a.createdAt ? new Date(a.createdAt) : now,
+        isBlocked: false,
+        isActiveToday,
+        status: isActiveToday ? 'ACTIVE' : 'INACTIVE'
+      });
+    });
+
+    // 9. Deduplicate devices per user by email + deviceId/hardware
     const deduplicatedMap = new Map();
     for (const dev of rawDevices) {
       const emailKey = String(dev.email || '').toLowerCase().trim();
@@ -222,20 +294,15 @@ export async function GET(req) {
       const devName = String(dev.deviceName || dev.os || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const appKey = dev.isApp ? 'app' : 'browser';
 
-      // Deduplication key: email + normalized device hardware + app/browser mode
-      const key = `${emailKey}__${devName}__${appKey}`;
-
+      const key = `${emailKey}__${devId || devName}__${appKey}`;
       const existing = deduplicatedMap.get(key);
+
       if (!existing) {
         deduplicatedMap.set(key, dev);
       } else {
-        const isCurrentRealDid = devId.startsWith('did_') || devId.startsWith('fp_');
-        const isExistingRealDid = String(existing.deviceId || '').startsWith('did_') || String(existing.deviceId || '').startsWith('fp_');
-        
         const devDate = dev.lastActive ? new Date(dev.lastActive).getTime() : 0;
         const existingDate = existing.lastActive ? new Date(existing.lastActive).getTime() : 0;
-
-        if ((isCurrentRealDid && !isExistingRealDid) || (isCurrentRealDid === isExistingRealDid && devDate > existingDate)) {
+        if (devDate > existingDate || (dev.isActiveToday && !existing.isActiveToday)) {
           deduplicatedMap.set(key, dev);
         }
       }
@@ -243,15 +310,32 @@ export async function GET(req) {
 
     const devices = Array.from(deduplicatedMap.values());
 
-    // 8. Compute Global Stats
+    // 10. CRITICAL SORTING: Active devices show AT THE TOP!
+    // Active devices (active in last 24h) first, then sorted by most recent lastActive date!
+    devices.sort((a, b) => {
+      // 1. Active devices COME FIRST at the top!
+      if (a.isActiveToday && !b.isActiveToday) return -1;
+      if (!a.isActiveToday && b.isActiveToday) return 1;
+
+      // 2. Unblocked before blocked
+      if (!a.isBlocked && b.isBlocked) return -1;
+      if (a.isBlocked && !b.isBlocked) return 1;
+
+      // 3. Most recently active timestamp first (descending)
+      const aTime = a.lastActive ? new Date(a.lastActive).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const bTime = b.lastActive ? new Date(b.lastActive).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return bTime - aTime;
+    });
+
+    // 11. Compute Global Stats
     const stats = {
       totalDevices: devices.length,
-      activeToday: devices.filter((d) => !d.isBlocked && d.lastActive && new Date(d.lastActive) >= oneDayAgo).length,
+      activeToday: devices.filter((d) => d.isActiveToday).length,
       staffDevices: devices.filter((d) => d.rolesList && !d.rolesList.includes('player') && d.rolesList.length > 0).length,
-      blockedCount: blockedList.length
+      blockedCount: devices.filter((d) => d.isBlocked).length
     };
 
-    // 9. Apply Role Filter accurately
+    // 12. Apply Role Filter
     let filteredDevices = devices;
     if (roleFilter) {
       const rf = roleFilter.toLowerCase().trim();
@@ -293,7 +377,7 @@ export async function GET(req) {
       });
     }
 
-    // 10. Apply Search Filter
+    // 13. Apply Search Filter
     if (search.trim()) {
       const sLower = search.trim().toLowerCase();
       filteredDevices = filteredDevices.filter((d) => {
@@ -306,6 +390,7 @@ export async function GET(req) {
         const devName = String(d.deviceName || '').toLowerCase();
         const osName = String(d.os || '').toLowerCase();
         const brName = String(d.browser || '').toLowerCase();
+        const stName = String(d.status || '').toLowerCase();
 
         return (
           em.includes(sLower) ||
@@ -316,19 +401,22 @@ export async function GET(req) {
           ipAddr.includes(sLower) ||
           devName.includes(sLower) ||
           osName.includes(sLower) ||
-          brName.includes(sLower)
+          brName.includes(sLower) ||
+          stName.includes(sLower)
         );
       });
     }
 
-    // 11. Apply Status Filter
+    // 14. Apply Status Filter
     if (statusFilter === 'BLOCKED') {
       filteredDevices = filteredDevices.filter((d) => d.isBlocked);
     } else if (statusFilter === 'ACTIVE') {
-      filteredDevices = filteredDevices.filter((d) => !d.isBlocked);
+      filteredDevices = filteredDevices.filter((d) => d.isActiveToday && !d.isBlocked);
+    } else if (statusFilter === 'INACTIVE') {
+      filteredDevices = filteredDevices.filter((d) => !d.isActiveToday && !d.isBlocked);
     }
 
-    // 12. Pagination
+    // 15. Pagination
     const totalCount = filteredDevices.length;
     const skip = (page - 1) * limit;
     const paginatedDevices = filteredDevices.slice(skip, skip + limit);
