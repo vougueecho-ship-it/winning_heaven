@@ -131,6 +131,7 @@ export default function DevicesTab({ adminUser }) {
           email: selectedDeviceToUnlink.email,
           deviceId: selectedDeviceToUnlink.deviceId,
           deviceFingerprint: selectedDeviceToUnlink.deviceFingerprint,
+          hardwareFingerprint: selectedDeviceToUnlink.hardwareFingerprint,
           adminRole: adminUser?.role || 'admin',
           adminEmail: adminUser?.email || ''
         })
@@ -164,8 +165,10 @@ export default function DevicesTab({ adminUser }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'unblock',
+          email: selectedDeviceToUnblock.email,
           deviceId: selectedDeviceToUnblock.deviceId,
           deviceFingerprint: selectedDeviceToUnblock.deviceFingerprint,
+          hardwareFingerprint: selectedDeviceToUnblock.hardwareFingerprint,
           adminRole: adminUser?.role || 'admin',
           adminEmail: adminUser?.email || ''
         })
@@ -173,7 +176,7 @@ export default function DevicesTab({ adminUser }) {
 
       const resData = await res.json();
       if (resData?.success) {
-        alert('Device successfully unblocked! Regular logins have been restored for this device.');
+        alert('Device successfully unblocked! Regular logins and requests have been restored.');
         setSelectedDeviceToUnblock(null);
         mutate();
       } else {
@@ -199,8 +202,10 @@ export default function DevicesTab({ adminUser }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'block',
+          email: selectedDeviceToBlock.email,
           deviceId: selectedDeviceToBlock.deviceId,
           deviceFingerprint: selectedDeviceToBlock.deviceFingerprint,
+          hardwareFingerprint: selectedDeviceToBlock.hardwareFingerprint,
           reason: blockReason.trim() || 'Permanently blocked by Super Admin',
           adminRole: adminUser?.role || 'admin',
           adminEmail: adminUser?.email || ''
@@ -209,7 +214,7 @@ export default function DevicesTab({ adminUser }) {
 
       const resData = await res.json();
       if (resData?.success) {
-        alert('Device blocked! Active sessions on this device have been revoked.');
+        alert('Device and account blocked! Active sessions on this device have been revoked immediately.');
         setSelectedDeviceToBlock(null);
         setBlockReason('');
         mutate();

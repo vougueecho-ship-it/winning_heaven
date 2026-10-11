@@ -60,8 +60,8 @@ export async function POST(req) {
     const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
     const db = await getDb();
 
-    // Check if device is banned
-    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+    // Check if device or email is banned
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint, cleanEmail)) {
       return NextResponse.json(
         { success: false, message: 'This device has been permanently blocked by Super Admin.' },
         { status: 403 }

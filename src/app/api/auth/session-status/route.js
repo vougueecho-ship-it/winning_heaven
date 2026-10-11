@@ -22,7 +22,7 @@ export async function GET(req) {
     const db = await getDb();
 
     // Check permanent device ban
-    if (await isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint)) {
+    if (await isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint, email)) {
       return NextResponse.json({
         success: true,
         valid: false,
@@ -54,10 +54,19 @@ export async function GET(req) {
 
     const user = await db.collection('users').findOne(
       { email },
-      { projection: { email: 1, role: 1, status: 1 } }
+      { projection: { email: 1, role: 1, status: 1, isDeviceBlocked: 1 } }
     );
 
     if (user) {
+      if (user.isDeviceBlocked) {
+        return NextResponse.json({
+          success: true,
+          valid: false,
+          reason: 'device_blocked',
+          message: 'This device has been permanently blocked by Super Admin.'
+        });
+      }
+
       if (String(user.status || '').toUpperCase() === 'SUSPENDED') {
         return NextResponse.json({ success: true, valid: false, reason: 'suspended' });
       }

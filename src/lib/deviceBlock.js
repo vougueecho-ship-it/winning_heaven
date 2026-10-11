@@ -1,4 +1,5 @@
 import { getDb } from './mongodb';
+import { revokeSession, clearSessionRevoke } from './sessionRevoke';
 
 /**
  * Extracts specific hardware model, smartphone brand or desktop device type.
@@ -194,72 +195,198 @@ export function getRolePostTitle(role = '') {
 }
 
 /**
- * Check if a device ID or fingerprint is permanently blocked in blockedDevices collection.
+ * Check if a device ID, fingerprint, or user email is permanently blocked in blockedDevices collection or users collection.
  */
-export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint = '') {
-  if (!deviceId && !deviceFingerprint && !hardwareFingerprint) return false;
-
+export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint = '', email = '') {
   const cleanId = typeof deviceId === 'string' ? deviceId.trim() : '';
   const cleanFp = typeof deviceFingerprint === 'string' ? deviceFingerprint.trim() : '';
   const cleanHfp = typeof hardwareFingerprint === 'string' ? hardwareFingerprint.trim() : '';
+  const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
+
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) return false;
 
   const conditions = [];
   if (cleanId) conditions.push({ deviceId: cleanId });
   if (cleanFp) conditions.push({ deviceFingerprint: cleanFp });
   if (cleanHfp) conditions.push({ hardwareFingerprint: cleanHfp });
+  if (cleanEmail) conditions.push({ email: cleanEmail });
 
-  if (conditions.length === 0) return false;
+  // 1. Direct match in blockedDevices collection
+  if (conditions.length > 0) {
+    const blocked = await db.collection('blockedDevices').findOne({
+      $or: conditions
+    });
+    if (blocked) return true;
+  }
 
-  const blocked = await db.collection('blockedDevices').findOne({
-    $or: conditions
-  });
+  // 2. Check users collection if email is provided
+  if (cleanEmail) {
+    const user = await db.collection('users').findOne(
+      { email: cleanEmail },
+      { projection: { isDeviceBlocked: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1 } }
+    );
+    if (user) {
+      if (user.isDeviceBlocked) return true;
 
-  return Boolean(blocked);
+      // If user has a registered device in MongoDB that is blocked
+      const userDevConditions = [];
+      if (user.deviceId) userDevConditions.push({ deviceId: String(user.deviceId).trim() });
+      if (user.deviceFingerprint) userDevConditions.push({ deviceFingerprint: String(user.deviceFingerprint).trim() });
+      if (user.hardwareFingerprint) userDevConditions.push({ hardwareFingerprint: String(user.hardwareFingerprint).trim() });
+
+      if (userDevConditions.length > 0) {
+        const devBlocked = await db.collection('blockedDevices').findOne({ $or: userDevConditions });
+        if (devBlocked) return true;
+      }
+    }
+  }
+
+  // 3. If hardware/device identifiers are provided, check if any user marked with isDeviceBlocked shares them
+  if (cleanId || cleanFp || cleanHfp) {
+    const devMatch = [];
+    if (cleanId) devMatch.push({ deviceId: cleanId });
+    if (cleanFp) devMatch.push({ deviceFingerprint: cleanFp });
+    if (cleanHfp) devMatch.push({ hardwareFingerprint: cleanHfp });
+
+    const matchedBlockedUser = await db.collection('users').findOne(
+      { isDeviceBlocked: true, $or: devMatch },
+      { projection: { _id: 1 } }
+    );
+    if (matchedBlockedUser) return true;
+  }
+
+  return false;
 }
 
 /**
- * Permanently block a device ID and fingerprint. Irreversible operation.
+ * Permanently block a device ID, fingerprint, and associated user account.
+ * Irreversible operation that also revokes live sessions so requests are killed immediately.
  */
-export async function blockDevicePermanently(db, { deviceId, deviceFingerprint, hardwareFingerprint, blockedBy, reason }) {
+export async function blockDevicePermanently(db, { email, deviceId, deviceFingerprint, hardwareFingerprint, blockedBy, reason }) {
+  const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
   const cleanId = typeof deviceId === 'string' ? deviceId.trim() : '';
   const cleanFp = typeof deviceFingerprint === 'string' ? deviceFingerprint.trim() : '';
   const cleanHfp = typeof hardwareFingerprint === 'string' ? hardwareFingerprint.trim() : '';
 
-  if (!cleanId && !cleanFp && !cleanHfp) {
-    throw new Error('Device ID or Fingerprint is required to block a device.');
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) {
+    throw new Error('Email, Device ID, or Fingerprint is required to block a device.');
+  }
+
+  const allDeviceIds = new Set();
+  const allFingerprints = new Set();
+  const allHardwareFps = new Set();
+
+  if (cleanId) allDeviceIds.add(cleanId);
+  if (cleanFp) allFingerprints.add(cleanFp);
+  if (cleanHfp) allHardwareFps.add(cleanHfp);
+
+  // If email is provided, gather all associated device identifiers from users and deviceSessions
+  if (cleanEmail) {
+    const userDoc = await db.collection('users').findOne({ email: cleanEmail });
+    if (userDoc) {
+      if (userDoc.deviceId) allDeviceIds.add(String(userDoc.deviceId).trim());
+      if (userDoc.deviceFingerprint) allFingerprints.add(String(userDoc.deviceFingerprint).trim());
+      if (userDoc.hardwareFingerprint) allHardwareFps.add(String(userDoc.hardwareFingerprint).trim());
+    }
+
+    const sessions = await db.collection('deviceSessions').find({ email: cleanEmail }).toArray();
+    for (const s of sessions) {
+      if (s.deviceId) allDeviceIds.add(String(s.deviceId).trim());
+      if (s.deviceFingerprint) allFingerprints.add(String(s.deviceFingerprint).trim());
+      if (s.hardwareFingerprint) allHardwareFps.add(String(s.hardwareFingerprint).trim());
+    }
+
+    // Set permanent block flag on user document
+    await db.collection('users').updateOne(
+      { email: cleanEmail },
+      {
+        $set: {
+          isDeviceBlocked: true,
+          deviceBlockedAt: new Date(),
+          deviceBlockReason: reason || 'Permanently blocked by Super Admin'
+        }
+      }
+    );
+
+    // Immediately revoke live session in memory so useSessionGuard kicks them out
+    revokeSession(cleanEmail);
   }
 
   const record = {
-    deviceId: cleanId,
-    deviceFingerprint: cleanFp,
-    hardwareFingerprint: cleanHfp,
+    email: cleanEmail,
+    deviceId: cleanId || Array.from(allDeviceIds)[0] || '',
+    deviceFingerprint: cleanFp || Array.from(allFingerprints)[0] || '',
+    hardwareFingerprint: cleanHfp || Array.from(allHardwareFps)[0] || '',
+    allDeviceIds: Array.from(allDeviceIds),
+    allFingerprints: Array.from(allFingerprints),
+    allHardwareFps: Array.from(allHardwareFps),
     blockedBy: blockedBy || 'super_admin',
     reason: reason || 'Permanently blocked by Super Admin',
     isPermanent: true,
     blockedAt: new Date()
   };
 
-  const matchFilter = [];
-  if (cleanId) matchFilter.push({ deviceId: cleanId });
-  if (cleanFp) matchFilter.push({ deviceFingerprint: cleanFp });
-  if (cleanHfp) matchFilter.push({ hardwareFingerprint: cleanHfp });
+  // Upsert into blockedDevices for fast exact queries
+  const bulkBlockOps = [];
+  if (cleanEmail) {
+    bulkBlockOps.push({
+      updateOne: {
+        filter: { email: cleanEmail },
+        update: { $set: { email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
+        upsert: true
+      }
+    });
+  }
+  allDeviceIds.forEach((id) => {
+    if (id) {
+      bulkBlockOps.push({
+        updateOne: {
+          filter: { deviceId: id },
+          update: { $set: { deviceId: id, email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
+          upsert: true
+        }
+      });
+    }
+  });
+  allFingerprints.forEach((fp) => {
+    if (fp) {
+      bulkBlockOps.push({
+        updateOne: {
+          filter: { deviceFingerprint: fp },
+          update: { $set: { deviceFingerprint: fp, email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
+          upsert: true
+        }
+      });
+    }
+  });
+  allHardwareFps.forEach((hfp) => {
+    if (hfp) {
+      bulkBlockOps.push({
+        updateOne: {
+          filter: { hardwareFingerprint: hfp },
+          update: { $set: { hardwareFingerprint: hfp, email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
+          upsert: true
+        }
+      });
+    }
+  });
 
-  await db.collection('blockedDevices').updateOne(
-    { $or: matchFilter },
-    { $set: record },
-    { upsert: true }
-  );
+  if (bulkBlockOps.length > 0) {
+    await db.collection('blockedDevices').bulkWrite(bulkBlockOps).catch(() => {});
+  }
 
   // Update status in deviceSessions collection
-  const updateFilter = [];
-  if (cleanId) updateFilter.push({ deviceId: cleanId });
-  if (cleanFp) updateFilter.push({ deviceFingerprint: cleanFp });
-  if (cleanHfp) updateFilter.push({ hardwareFingerprint: cleanHfp });
+  const sessionFilter = [];
+  if (cleanEmail) sessionFilter.push({ email: cleanEmail });
+  allDeviceIds.forEach((id) => { if (id) sessionFilter.push({ deviceId: id }); });
+  allFingerprints.forEach((fp) => { if (fp) sessionFilter.push({ deviceFingerprint: fp }); });
 
-  await db.collection('deviceSessions').updateMany(
-    { $or: updateFilter },
-    { $set: { status: 'PERMANENTLY_BLOCKED', blockedAt: new Date() } }
-  );
+  if (sessionFilter.length > 0) {
+    await db.collection('deviceSessions').updateMany(
+      { $or: sessionFilter },
+      { $set: { status: 'PERMANENTLY_BLOCKED', blockedAt: new Date() } }
+    );
+  }
 
   return record;
 }
@@ -395,6 +522,15 @@ export async function unlinkDeviceRecord(db, { email, deviceId, deviceFingerprin
     });
   }
 
+  // 4. Also remove isDeviceBlocked flag from users
+  if (cleanEmail) {
+    await db.collection('users').updateOne(
+      { email: cleanEmail },
+      { $unset: { isDeviceBlocked: '', deviceBlockedAt: '', deviceBlockReason: '' } }
+    );
+    clearSessionRevoke(cleanEmail);
+  }
+
   return {
     success: true,
     matchedUsers: usersResult.matchedCount,
@@ -409,17 +545,38 @@ export async function unlinkDeviceRecord(db, { email, deviceId, deviceFingerprin
 /**
  * Unblocks a permanently blocked device.
  */
-export async function unblockDevice(db, { deviceId, deviceFingerprint }) {
+export async function unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint }) {
+  const cleanEmail = email ? String(email).toLowerCase().trim() : '';
   const cleanId = deviceId ? String(deviceId).trim() : '';
   const cleanFp = deviceFingerprint ? String(deviceFingerprint).trim() : '';
+  const cleanHfp = hardwareFingerprint ? String(hardwareFingerprint).trim() : '';
 
-  if (!cleanId && !cleanFp) {
-    throw new Error('Device ID or Fingerprint is required to unblock a device.');
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) {
+    throw new Error('Email, Device ID, or Fingerprint is required to unblock a device.');
   }
 
   const conditions = [];
+  if (cleanEmail) conditions.push({ email: cleanEmail });
   if (cleanId) conditions.push({ deviceId: cleanId });
   if (cleanFp) conditions.push({ deviceFingerprint: cleanFp });
+  if (cleanHfp) conditions.push({ hardwareFingerprint: cleanHfp });
+
+  // If email is provided, gather any user device identifiers
+  if (cleanEmail) {
+    const userDoc = await db.collection('users').findOne({ email: cleanEmail });
+    if (userDoc) {
+      if (userDoc.deviceId) conditions.push({ deviceId: String(userDoc.deviceId).trim() });
+      if (userDoc.deviceFingerprint) conditions.push({ deviceFingerprint: String(userDoc.deviceFingerprint).trim() });
+      if (userDoc.hardwareFingerprint) conditions.push({ hardwareFingerprint: String(userDoc.hardwareFingerprint).trim() });
+    }
+
+    await db.collection('users').updateOne(
+      { email: cleanEmail },
+      { $unset: { isDeviceBlocked: '', deviceBlockedAt: '', deviceBlockReason: '' } }
+    );
+
+    clearSessionRevoke(cleanEmail);
+  }
 
   const deleteResult = await db.collection('blockedDevices').deleteMany({
     $or: conditions

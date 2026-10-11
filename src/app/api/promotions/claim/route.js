@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
+import { isDeviceBlocked } from '../../../../lib/deviceBlock';
 
 // POST — a player claims a promotion offer.
 //   - 'deposit_bonus' promos arm a pending bonus on the user so their NEXT
@@ -20,6 +21,12 @@ export async function POST(req) {
     const cleanEmail = email.toLowerCase().trim();
     const db = await getDb();
 
+    // Check device / user permanent block
+    const isBlocked = await isDeviceBlocked(db, null, null, null, cleanEmail);
+    if (isBlocked) {
+      return NextResponse.json({ success: false, message: 'This device has been permanently blocked by Super Admin.' }, { status: 403 });
+    }
+
     const promo = await db.collection('promotions').findOne({ id: promoId });
     if (!promo) {
       return NextResponse.json({ success: false, message: 'Promotion not found.' }, { status: 404 });
@@ -32,6 +39,10 @@ export async function POST(req) {
     const user = await db.collection('users').findOne({ email: cleanEmail });
     if (!user) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
+    }
+
+    if (user.isDeviceBlocked) {
+      return NextResponse.json({ success: false, message: 'This device has been permanently blocked by Super Admin.' }, { status: 403 });
     }
 
     const percent = Math.max(0, parseFloat(promo.bonusPercent) || 0);

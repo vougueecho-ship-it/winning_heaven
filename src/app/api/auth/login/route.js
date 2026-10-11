@@ -50,7 +50,7 @@ export async function POST(req) {
     const db = await getDb();
 
     // Device block check
-    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint, inputEmail)) {
       return NextResponse.json(
         { success: false, message: 'This device has been permanently blocked by Super Admin.' },
         { status: 403 }
@@ -68,6 +68,13 @@ export async function POST(req) {
       return NextResponse.json(
         { success: false, message: 'Incorrect email or password.' },
         { status: 401 }
+      );
+    }
+
+    if (matchedUser.isDeviceBlocked) {
+      return NextResponse.json(
+        { success: false, message: 'This device has been permanently blocked by Super Admin.' },
+        { status: 403 }
       );
     }
 

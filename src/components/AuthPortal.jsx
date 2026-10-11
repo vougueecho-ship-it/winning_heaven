@@ -140,6 +140,13 @@ export default function AuthPortal({
         if (cached) setRegRefCode(cached);
       }
 
+      const reason = params.get('reason');
+      if (reason === 'device_blocked') {
+        setAuthError('This device has been permanently blocked by Super Admin. Access is restricted.');
+      } else if (reason === 'suspended') {
+        setAuthError('This account has been suspended. Please contact customer support.');
+      }
+
       // Check if arriving from Google OAuth callback deep-link
       const googleTicket = params.get('google_ticket');
       if (googleTicket) {

@@ -11,6 +11,7 @@ import { accountLookupKey, buildGameUsernameMap } from '../../../lib/resolveGame
 import { compressDataUrlIfNeeded } from '../../../lib/serverImageCompress';
 import { applyStaffGameFilter } from '../../../lib/staffGameAccess';
 import { getDepositBasedMinWithdraw, getDepositWithdrawRule } from '../../../lib/withdrawRules';
+import { isDeviceBlocked } from '../../../lib/deviceBlock';
 
 // GET transactions (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -284,6 +285,16 @@ export async function POST(req) {
     const transactionsCollection = db.collection('transactions');
 
     const userEmail = newTx.userEmail.toLowerCase().trim();
+
+    // Check device / user permanent block
+    const isBlocked = await isDeviceBlocked(db, newTx.deviceId, newTx.deviceFingerprint, newTx.hardwareFingerprint, userEmail);
+    const playerUserDoc = await db.collection('users').findOne({ email: userEmail }, { projection: { isDeviceBlocked: 1 } });
+    if (isBlocked || playerUserDoc?.isDeviceBlocked) {
+      return NextResponse.json({
+        success: false,
+        message: 'This device has been permanently blocked by Super Admin. Transactions are disabled.'
+      }, { status: 403 });
+    }
 
     // Deposit rules validation
     if (newTx.type === 'DEPOSIT') {

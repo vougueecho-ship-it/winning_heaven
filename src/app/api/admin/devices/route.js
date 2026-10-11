@@ -58,7 +58,7 @@ export async function GET(req) {
     const [allUsers, allDists, allAgents, allSessions, blockedList] = await Promise.all([
       db.collection('users').find(
         { email: { $exists: true, $ne: '' } },
-        { projection: { email: 1, name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, userAgent: 1, registrationUserAgent: 1, lastLoginIp: 1, registrationIp: 1, lastActive: 1, lastLoginAt: 1, createdAt: 1 } }
+        { projection: { email: 1, name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, isDeviceBlocked: 1, userAgent: 1, registrationUserAgent: 1, lastLoginIp: 1, registrationIp: 1, lastActive: 1, lastLoginAt: 1, createdAt: 1 } }
       ).toArray(),
       db.collection('distributors').find(
         { email: { $exists: true, $ne: '' } },
@@ -108,6 +108,11 @@ export async function GET(req) {
     const blockedDeviceIds = new Set(blockedList.map((b) => b.deviceId).filter(Boolean));
     const blockedFingerprints = new Set(blockedList.map((b) => b.deviceFingerprint).filter(Boolean));
     const blockedEmails = new Set(blockedList.map((b) => b.email?.toLowerCase().trim()).filter(Boolean));
+    allUsers.forEach((u) => {
+      if (u.isDeviceBlocked && u.email) {
+        blockedEmails.add(u.email.toLowerCase().trim());
+      }
+    });
 
     // 4. Index existing device sessions by email
     const sessionsByEmail = new Map();
@@ -437,7 +442,7 @@ export async function GET(req) {
 // POST perform device operations: block, unblock, or unlink (Super Admin Only)
 export async function POST(req) {
   try {
-    const { action, adminRole, adminEmail, email, deviceId, deviceFingerprint, reason } = await req.json();
+    const { action, adminRole, adminEmail, email, deviceId, deviceFingerprint, hardwareFingerprint, reason } = await req.json();
 
     if (!isSuperAdminUser(adminRole, adminEmail)) {
       return NextResponse.json({ success: false, message: 'Access denied. Super Admin access required.' }, { status: 403 });
@@ -447,11 +452,11 @@ export async function POST(req) {
 
     // 1. Unlink / Release Device Lock
     if (action === 'unlink' || action === 'release_lock') {
-      if (!email && !deviceId && !deviceFingerprint) {
+      if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint) {
         return NextResponse.json({ success: false, message: 'Email, Device ID, or Fingerprint is required to release device lock.' }, { status: 400 });
       }
 
-      const result = await unlinkDeviceRecord(db, { email, deviceId, deviceFingerprint });
+      const result = await unlinkDeviceRecord(db, { email, deviceId, deviceFingerprint, hardwareFingerprint });
       return NextResponse.json({
         success: true,
         message: `Device lock successfully released! ${email ? `(Email: ${email})` : ''} The user can now register or log in on this device.`,
@@ -461,33 +466,35 @@ export async function POST(req) {
 
     // 2. Unblock Device
     if (action === 'unblock') {
-      if (!deviceId && !deviceFingerprint) {
-        return NextResponse.json({ success: false, message: 'Device ID or Device Fingerprint is required to unblock a device.' }, { status: 400 });
+      if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint) {
+        return NextResponse.json({ success: false, message: 'Email, Device ID, or Device Fingerprint is required to unblock a device.' }, { status: 400 });
       }
 
-      const result = await unblockDevice(db, { deviceId, deviceFingerprint });
+      const result = await unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint });
       return NextResponse.json({
         success: true,
-        message: 'Device has been successfully unblocked! Normal logins are restored for this device.',
+        message: 'Device has been successfully unblocked! Normal logins and requests have been restored.',
         result
       });
     }
 
     // 3. Default: Permanent Block
-    if (!deviceId && !deviceFingerprint) {
-      return NextResponse.json({ success: false, message: 'Device ID or Device Fingerprint is required to block a device.' }, { status: 400 });
+    if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint) {
+      return NextResponse.json({ success: false, message: 'Email, Device ID, or Device Fingerprint is required to block a device.' }, { status: 400 });
     }
 
     const record = await blockDevicePermanently(db, {
+      email,
       deviceId,
       deviceFingerprint,
+      hardwareFingerprint,
       blockedBy: adminEmail || 'super_admin',
       reason: reason || 'Permanently blocked by Super Admin'
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Device has been permanently blocked from logging in across all accounts.',
+      message: 'Device and account have been permanently blocked and all active sessions revoked.',
       blockedRecord: record
     });
   } catch (err) {

@@ -7,6 +7,7 @@ import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { getTypeBDistributorIds, typeBExclusionFilter } from '../../../lib/typeBDistributors';
 import { healOrphanedDistributorPlayer } from '../../../lib/orphanDistributorPlayer';
+import { isDeviceBlocked } from '../../../lib/deviceBlock';
 
 // GET requests (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -558,11 +559,29 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: 'Game title and email are required.' }, { status: 400 });
     }
 
+    const cleanEmail = userEmail.toLowerCase().trim();
     const db = await getDb();
+
+    // Check device / user permanent block
+    const isBlocked = await isDeviceBlocked(db, null, null, null, cleanEmail);
+    if (isBlocked) {
+      return NextResponse.json({
+        success: false,
+        message: 'This device has been permanently blocked by Super Admin. You cannot create game account requests.'
+      }, { status: 403 });
+    }
+
     const requestsCollection = db.collection('accountRequests');
 
     // Retrieve player's profile to extract distributor information
-    let userDoc = await db.collection('users').findOne({ email: userEmail.toLowerCase().trim() });
+    let userDoc = await db.collection('users').findOne({ email: cleanEmail });
+    if (userDoc?.isDeviceBlocked) {
+      return NextResponse.json({
+        success: false,
+        message: 'This device has been permanently blocked by Super Admin. You cannot create game account requests.'
+      }, { status: 403 });
+    }
+
     // Deleted distributor → wipe old game accounts so this request can succeed
     if (userDoc) {
       userDoc = await healOrphanedDistributorPlayer(db, userDoc);
@@ -600,7 +619,6 @@ export async function POST(req) {
       );
     }
 
-    const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTitle = String(gameTitle).trim();
     const titleRegex = new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 

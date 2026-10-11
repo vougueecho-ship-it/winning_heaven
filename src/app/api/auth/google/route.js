@@ -24,7 +24,7 @@ export async function POST(req) {
     const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
 
     // Check device ban
-    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint, cleanEmail)) {
       return NextResponse.json(
         { success: false, message: 'This device has been permanently blocked by Super Admin.' },
         { status: 403 }
@@ -34,6 +34,13 @@ export async function POST(req) {
     const usersCollection = db.collection('users');
     let matchedUser = await usersCollection.findOne({ email: cleanEmail });
     let isNewUser = false;
+
+    if (matchedUser && matchedUser.isDeviceBlocked) {
+      return NextResponse.json(
+        { success: false, message: 'This device has been permanently blocked by Super Admin.' },
+        { status: 403 }
+      );
+    }
 
     if (matchedUser && matchedUser.status === 'SUSPENDED') {
       return NextResponse.json(
