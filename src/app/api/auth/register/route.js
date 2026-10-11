@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
+import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
 import crypto from 'crypto';
 
 // Generate a short unique alphanumeric referral code
@@ -46,7 +47,7 @@ export async function GET(req) {
 // POST registers a new user
 export async function POST(req) {
   try {
-    const { email, password, name, otp, role, referredBy, distributorId, agentCode, campaign, allowedGameIds, deviceId } = await req.json();
+    const { email, password, name, otp, role, referredBy, distributorId, agentCode, campaign, allowedGameIds, deviceId, deviceFingerprint, hardwareFingerprint, isApp, appType, deviceModel } = await req.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -58,6 +59,15 @@ export async function POST(req) {
     const cleanEmail = email.toLowerCase().trim();
     const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
     const db = await getDb();
+
+    // Check if device is banned
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+      return NextResponse.json(
+        { success: false, message: 'This device has been permanently blocked by Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     const usersCollection = db.collection('users');
 
     // Check if user already exists
@@ -183,6 +193,21 @@ export async function POST(req) {
 
     const result = await usersCollection.insertOne(newUser);
     newUser._id = result.insertedId;
+
+    // Immediately track the new device session
+    trackDeviceSession(db, {
+      email: cleanEmail,
+      name: newUser.name,
+      role: newUser.role,
+      deviceId: cleanDeviceId,
+      deviceFingerprint,
+      hardwareFingerprint,
+      userAgent: req.headers.get('user-agent') || '',
+      ip: registrationIp || '',
+      isApp,
+      appType,
+      deviceModel
+    }).catch((e) => console.warn('trackDeviceSession on register:', e?.message || e));
 
     return NextResponse.json({
       success: true,

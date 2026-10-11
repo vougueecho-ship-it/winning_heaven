@@ -1,85 +1,61 @@
-/**
- * Device Fingerprinting & Identification Helper
- * Provides a persistent and hardware-correlated device ID across Web browsers and Native Capacitor mobile apps.
- */
+// Client-Side Device Identification and Fingerprinting Utility
+// Protects against multi-accounting and bonus fraud by persistently identifying unique devices.
 
-let cachedDeviceId = null;
+const DEVICE_ID_KEY = 'winning_heaven_device_id';
+const COOKIE_KEY = 'winning_heaven_did';
+const FINGERPRINT_KEY = 'winning_heaven_device_fp';
 
-// Simple fast SHA-256 / DJB2 fallback hash
-async function hashString(str) {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-    try {
-      const msgBuffer = new TextEncoder().encode(str);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-    } catch {
-      // Fallback below
-    }
-  }
-
-  // Fallback hash
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-  for (let i = 0, ch; i < str.length; i++) {
-    ch = str.charCodeAt(i);
+/** Simple string hash (djb2 / murmur3 variant) for quick client hashing */
+function hashString(str) {
+  let h1 = 0xdeadbeef ^ 0;
+  let h2 = 0x41c6ce57 ^ 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
     h1 = Math.imul(h1 ^ ch, 2654435761);
     h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
 }
 
+/** Read a cookie by name */
 function getCookie(name) {
   if (typeof document === 'undefined') return '';
   const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
   return match ? decodeURIComponent(match[3]) : '';
 }
 
-function setCookie(name, value, days = 3650) {
+/** Set a persistent cookie with 5-year expiry */
+function setCookie(name, value, days = 1825) {
   if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  const maxAge = days * 24 * 60 * 60;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
 }
 
-function getOrSetPersistentUuid() {
-  if (typeof window === 'undefined') return '';
-  
-  let uuid = '';
-  try {
-    uuid = localStorage.getItem('wh_device_uuid') || '';
-  } catch {}
-
-  if (!uuid) {
-    uuid = getCookie('wh_device_uuid') || '';
+/** Generate a cryptographically strong UUID */
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return 'did_' + crypto.randomUUID().replace(/-/g, '');
   }
-
-  if (!uuid) {
-    // Generate secure random UUID
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      uuid = crypto.randomUUID();
-    } else {
-      uuid = 'wh-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now().toString(36);
-    }
-  }
-
-  // Ensure stored in both places
-  try {
-    localStorage.setItem('wh_device_uuid', uuid);
-  } catch {}
-  setCookie('wh_device_uuid', uuid, 3650);
-
-  return uuid;
+  return 'did_' + 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
+/** Generate Canvas 2D text fingerprint */
 function getCanvasFingerprint() {
-  if (typeof document === 'undefined') return '';
   try {
+    if (typeof document === 'undefined') return 'no-dom';
     const canvas = document.createElement('canvas');
     canvas.width = 240;
     canvas.height = 60;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
+    if (!ctx) return 'no-ctx';
 
     ctx.textBaseline = 'top';
     ctx.font = "14px 'Arial', 'Helvetica', sans-serif";
@@ -87,151 +63,278 @@ function getCanvasFingerprint() {
     ctx.fillStyle = '#f60';
     ctx.fillRect(125, 1, 62, 20);
     ctx.fillStyle = '#069';
-    ctx.fillText('WinningHeaven,🎰💎⚡', 2, 15);
+    ctx.fillText('WinningHeaven-DeviceLock:1.0', 2, 15);
     ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-    ctx.fillText('WinningHeaven,🎰💎⚡', 4, 17);
+    ctx.fillText('WinningHeaven-DeviceLock:1.0', 4, 17);
 
     return canvas.toDataURL();
-  } catch {
-    return '';
+  } catch (e) {
+    return 'canvas-error';
   }
 }
 
+/** Extract WebGL Renderer and Vendor info */
 function getWebGLFingerprint() {
-  if (typeof document === 'undefined') return '';
   try {
+    if (typeof document === 'undefined') return 'no-dom';
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) return '';
-
+    if (!gl) return 'no-webgl';
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-    if (debugInfo) {
-      const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || '';
-      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
-      return `${vendor}~${renderer}`;
-    }
-    return gl.getParameter(gl.RENDERER) || '';
-  } catch {
-    return '';
+    if (!debugInfo) return 'no-debug-info';
+    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || '';
+    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+    return hashString(`${vendor}~${renderer}`);
+  } catch (e) {
+    return 'webgl-error';
   }
 }
 
-function getAudioFingerprint() {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') return resolve('');
-    try {
-      const AudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      if (!AudioContext) return resolve('');
+let _cachedDeviceId = '';
+const DB_NAME = 'winning_heaven_device_store';
+const STORE_NAME = 'device_meta';
 
-      const context = new AudioContext(1, 44100, 44100);
-      const oscillator = context.createOscillator();
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(10000, context.currentTime);
-
-      const compressor = context.createDynamicsCompressor();
-      compressor.threshold.setValueAtTime(-50, context.currentTime);
-      compressor.knee.setValueAtTime(40, context.currentTime);
-      compressor.ratio.setValueAtTime(12, context.currentTime);
-      compressor.attack.setValueAtTime(0, context.currentTime);
-      compressor.release.setValueAtTime(0.25, context.currentTime);
-
-      oscillator.connect(compressor);
-      compressor.connect(context.destination);
-      oscillator.start(0);
-
-      context.oncomplete = (event) => {
-        try {
-          const samples = event.renderedBuffer.getChannelData(0);
-          let sum = 0;
-          for (let i = 0; i < samples.length; i += 100) {
-            sum += Math.abs(samples[i]);
+// Asynchronously sync device ID with IndexedDB (survives basic cookie / site data clears)
+function syncIndexedDB(currentId) {
+  if (typeof window === 'undefined' || !window.indexedDB) return;
+  try {
+    const req = window.indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) return;
+      
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get('deviceId');
+      getReq.onsuccess = () => {
+        const idbId = getReq.result;
+        if (idbId && typeof idbId === 'string' && idbId.trim()) {
+          _cachedDeviceId = idbId.trim();
+          try {
+            if (!localStorage.getItem(DEVICE_ID_KEY)) {
+              localStorage.setItem(DEVICE_ID_KEY, idbId.trim());
+            }
+          } catch (err) {}
+          try {
+            if (!sessionStorage.getItem(DEVICE_ID_KEY)) {
+              sessionStorage.setItem(DEVICE_ID_KEY, idbId.trim());
+            }
+          } catch (err) {}
+          if (!getCookie(COOKIE_KEY)) {
+            setCookie(COOKIE_KEY, idbId.trim());
           }
-          resolve(sum.toFixed(6));
-        } catch {
-          resolve('');
+        } else if (currentId && typeof currentId === 'string') {
+          try {
+            store.put(currentId.trim(), 'deviceId');
+          } catch (wErr) {}
         }
       };
+    };
+  } catch (e) {}
+}
 
-      context.startRendering();
-      // Timeout fallback in case AudioContext hangs
-      setTimeout(() => resolve(''), 300);
-    } catch {
-      resolve('');
-    }
-  });
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    try {
+      const initialId = getOrCreateDeviceId();
+      syncIndexedDB(initialId);
+    } catch (e) {}
+  }, 30);
 }
 
 /**
- * Main function to retrieve or compute the device fingerprint ID
+ * Get or create persistent Device ID
+ * Stored across localStorage, sessionStorage, persistent cookies and IndexedDB
+ * for bulletproof survival against single-storage clears.
  */
-export async function getDeviceFingerprint() {
-  if (cachedDeviceId) {
-    return cachedDeviceId;
+export function getOrCreateDeviceId() {
+  if (typeof window === 'undefined') return '';
+
+  if (_cachedDeviceId) return _cachedDeviceId;
+
+  let id = '';
+  try {
+    id = localStorage.getItem(DEVICE_ID_KEY) || localStorage.getItem('wh_device_uuid') || '';
+  } catch (e) {}
+
+  if (!id) {
+    try {
+      id = sessionStorage.getItem(DEVICE_ID_KEY) || '';
+    } catch (e) {}
   }
 
-  if (typeof window === 'undefined') {
-    return 'server_environment';
+  if (!id) {
+    id = getCookie(COOKIE_KEY) || getCookie('wh_device_uuid');
   }
+
+  if (!id) {
+    id = generateUUID();
+  }
+
+  _cachedDeviceId = id;
+
+  // Persist across all available client storage tiers
+  try {
+    localStorage.setItem(DEVICE_ID_KEY, id);
+    localStorage.setItem('wh_device_uuid', id);
+  } catch (e) {}
+  try {
+    sessionStorage.setItem(DEVICE_ID_KEY, id);
+  } catch (e) {}
+  setCookie(COOKIE_KEY, id);
+  setCookie('wh_device_uuid', id);
+  syncIndexedDB(id);
+
+  return id;
+}
+
+/**
+ * Normalized Hardware Fingerprint
+ * Independent of browser, incognito mode, language or orientation!
+ * Extracts true physical hardware specifications (GPU, screen, cores, touch, memory, audio DSP).
+ */
+export function getHardwareFingerprint() {
+  if (typeof window === 'undefined') return '';
 
   try {
-    let nativeDeviceId = '';
+    const screenW = typeof window.screen !== 'undefined' ? window.screen.width : 0;
+    const screenH = typeof window.screen !== 'undefined' ? window.screen.height : 0;
+    const minDim = Math.min(screenW, screenH);
+    const maxDim = Math.max(screenW, screenH);
+    const colorDepth = window.screen?.colorDepth || 24;
+    const pixelRatio = Math.round((window.devicePixelRatio || 1) * 100) / 100;
+    const cores = navigator.hardwareConcurrency || 0;
+    const touch = navigator.maxTouchPoints || 0;
+    const memory = navigator.deviceMemory || 0;
+    const tz = typeof Intl !== 'undefined' && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : '';
+    const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
 
-    // 1. Try Native Capacitor Device plugin if running on Android/iOS APK
+    // Extract unmasked physical GPU model
+    let glVendor = '';
+    let glRenderer = '';
     try {
-      const { Capacitor } = await import('@capacitor/core');
-      if (Capacitor.isNativePlatform()) {
-        const { Device } = await import('@capacitor/device');
-        const info = await Device.getId();
-        if (info && info.identifier) {
-          nativeDeviceId = info.identifier;
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          glVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || '';
+          glRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
         }
       }
-    } catch {
-      // Not on native or plugin not active
-    }
+    } catch (e) {}
 
-    // 2. Browser entropy collection
-    const persistentUuid = getOrSetPersistentUuid();
-    const canvasFp = getCanvasFingerprint();
-    const webglFp = getWebGLFingerprint();
-    const audioFp = await getAudioFingerprint();
+    // AudioContext DSP hardware sample rate
+    let audioSignature = '';
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx();
+        audioSignature = `${audioCtx.sampleRate || 0}`;
+        audioCtx.close().catch(() => {});
+      }
+    } catch (e) {}
 
-    const screenInfo = typeof window !== 'undefined' && window.screen
-      ? `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}_${window.devicePixelRatio || 1}`
-      : '';
+    const rawHardware = [
+      `${minDim}x${maxDim}`,
+      colorDepth,
+      pixelRatio,
+      cores,
+      touch,
+      memory,
+      tz,
+      platform,
+      glVendor,
+      glRenderer,
+      audioSignature
+    ].join('::');
 
-    const navInfo = typeof navigator !== 'undefined'
-      ? `${navigator.platform || ''}_${navigator.language || ''}_${navigator.hardwareConcurrency || ''}_${navigator.maxTouchPoints || 0}`
-      : '';
-
-    const tz = typeof Intl !== 'undefined' && Intl.DateTimeFormat
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone
-      : new Date().getTimezoneOffset().toString();
-
-    // 3. Construct raw signature
-    const rawFingerprint = [
-      nativeDeviceId ? `NATIVE:${nativeDeviceId}` : '',
-      `UUID:${persistentUuid}`,
-      `SCREEN:${screenInfo}`,
-      `NAV:${navInfo}`,
-      `TZ:${tz}`,
-      `GL:${webglFp}`,
-      `AUDIO:${audioFp}`,
-      `CANVAS:${canvasFp.substring(0, 150)}`
-    ].join('||');
-
-    // 4. Hash to compact identifier
-    const hash = await hashString(rawFingerprint);
-    cachedDeviceId = `dev_${hash.substring(0, 32)}`;
-    return cachedDeviceId;
-  } catch (err) {
-    console.warn('Device fingerprint computation fallback:', err);
-    const fallbackUuid = getOrSetPersistentUuid();
-    cachedDeviceId = `dev_${fallbackUuid.replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)}`;
-    return cachedDeviceId;
+    return 'hfp_' + hashString(rawHardware);
+  } catch (e) {
+    return '';
   }
 }
 
+/**
+ * Get stable hardware/browser fingerprint hash
+ */
+export function getDeviceFingerprint() {
+  if (typeof window === 'undefined') return '';
+
+  try {
+    const cached = sessionStorage.getItem(FINGERPRINT_KEY);
+    if (cached) return cached;
+  } catch (e) {}
+
+  const screenW = typeof window.screen !== 'undefined' ? window.screen.width : 0;
+  const screenH = typeof window.screen !== 'undefined' ? window.screen.height : 0;
+  const minDim = Math.min(screenW, screenH);
+  const maxDim = Math.max(screenW, screenH);
+  const screenInfo = `${minDim}x${maxDim}x${window.screen?.colorDepth || 24}x${Math.round((window.devicePixelRatio || 1) * 100) / 100}`;
+
+  const tz = typeof Intl !== 'undefined' && Intl.DateTimeFormat
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    : '';
+
+  const tzOffset = typeof Date !== 'undefined' ? new Date().getTimezoneOffset() : 0;
+  const nav = typeof navigator !== 'undefined' ? navigator : {};
+
+  const hardwareSignals = [
+    screenInfo,
+    tz,
+    tzOffset,
+    nav.language || '',
+    nav.hardwareConcurrency || '0',
+    nav.maxTouchPoints || '0',
+    nav.platform || '',
+    getCanvasFingerprint(),
+    getWebGLFingerprint()
+  ].join('||');
+
+  const fp = 'fp_' + hashString(hardwareSignals);
+
+  try {
+    sessionStorage.setItem(FINGERPRINT_KEY, fp);
+  } catch (e) {}
+
+  return fp;
+}
+
+/**
+ * Get complete device payload for registration & auth calls
+ */
+export function getDevicePayload() {
+  if (typeof window === 'undefined') {
+    return { deviceId: '', deviceFingerprint: '', hardwareFingerprint: '', isApp: false, appType: 'BROWSER', clientPlatform: '' };
+  }
+
+  const isStandalone = Boolean(
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator?.standalone === true ||
+    document.referrer?.includes('android-app://') ||
+    (typeof window.location !== 'undefined' && (
+      window.location.search?.includes('source=app') ||
+      window.location.search?.includes('pwa=1')
+    ))
+  );
+
+  return {
+    deviceId: getOrCreateDeviceId(),
+    deviceFingerprint: getDeviceFingerprint(),
+    hardwareFingerprint: getHardwareFingerprint(),
+    isApp: isStandalone,
+    appType: isStandalone ? 'PWA_APP' : 'BROWSER',
+    clientPlatform: typeof navigator !== 'undefined' ? (navigator.userAgentData?.platform || navigator.platform || '') : ''
+  };
+}
+
+/** Backward compatibility helpers */
 export function getBoundDeviceEmail() {
   if (typeof window === 'undefined') return '';
   try {

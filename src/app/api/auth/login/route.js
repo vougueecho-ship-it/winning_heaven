@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { healOrphanedDistributorPlayer } from '../../../../lib/orphanDistributorPlayer';
+import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
 
 export async function POST(req) {
   try {
-    const { email, password, deviceId } = await req.json();
+    const { email, password, deviceId, deviceFingerprint, hardwareFingerprint, isApp, appType, deviceModel } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -47,6 +48,15 @@ export async function POST(req) {
     }
 
     const db = await getDb();
+
+    // Device block check
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+      return NextResponse.json(
+        { success: false, message: 'This device has been permanently blocked by Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     const usersCollection = db.collection('users');
 
     const matchedUser = await usersCollection.findOne({
@@ -98,6 +108,24 @@ export async function POST(req) {
 
     // Deleted distributor → player stays, but game accounts reset so they can re-request.
     const user = await healOrphanedDistributorPlayer(db, matchedUser);
+
+    const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+    const userAgent = req.headers.get('user-agent') || '';
+
+    // Track active device session
+    trackDeviceSession(db, {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      deviceId: cleanDeviceId,
+      deviceFingerprint,
+      hardwareFingerprint,
+      userAgent,
+      ip: clientIp,
+      isApp,
+      appType,
+      deviceModel
+    }).catch((e) => console.warn('trackDeviceSession on login:', e?.message || e));
 
     return NextResponse.json({
       success: true,

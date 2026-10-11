@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { healOrphanedDistributorPlayer } from '../../../../lib/orphanDistributorPlayer';
+import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
 import crypto from 'crypto';
 
 function generateReferralCode() {
@@ -9,7 +10,7 @@ function generateReferralCode() {
 
 export async function POST(req) {
   try {
-    const { email, name, referredBy, distributorId, agentCode, campaign, deviceId } = await req.json();
+    const { email, name, referredBy, distributorId, agentCode, campaign, deviceId, deviceFingerprint, hardwareFingerprint, isApp, appType, deviceModel } = await req.json();
 
     if (!email || !name) {
       return NextResponse.json(
@@ -19,10 +20,18 @@ export async function POST(req) {
     }
 
     const db = await getDb();
-    const usersCollection = db.collection('users');
-
     const cleanEmail = email.toLowerCase().trim();
     const cleanDeviceId = deviceId ? String(deviceId).trim() : '';
+
+    // Check device ban
+    if (await isDeviceBlocked(db, cleanDeviceId, deviceFingerprint, hardwareFingerprint)) {
+      return NextResponse.json(
+        { success: false, message: 'This device has been permanently blocked by Super Admin.' },
+        { status: 403 }
+      );
+    }
+
+    const usersCollection = db.collection('users');
     let matchedUser = await usersCollection.findOne({ email: cleanEmail });
     let isNewUser = false;
 
@@ -121,6 +130,24 @@ export async function POST(req) {
     if (!isNewUser) {
       matchedUser = await healOrphanedDistributorPlayer(db, matchedUser);
     }
+
+    const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
+    const userAgent = req.headers.get('user-agent') || '';
+
+    // Track active device session
+    trackDeviceSession(db, {
+      email: matchedUser.email,
+      name: matchedUser.name,
+      role: matchedUser.role,
+      deviceId: cleanDeviceId,
+      deviceFingerprint,
+      hardwareFingerprint,
+      userAgent,
+      ip: clientIp,
+      isApp,
+      appType,
+      deviceModel
+    }).catch((e) => console.warn('trackDeviceSession on google auth:', e?.message || e));
 
     return NextResponse.json({
       success: true,

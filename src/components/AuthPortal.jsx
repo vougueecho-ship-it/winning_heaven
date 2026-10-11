@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { shouldShowInfoOnAuth } from '../lib/infoPage';
 import { trackCompleteRegistration } from '../lib/metaPixel';
 import { safeFetchJson, cleanErrorMessage, isNativePlatform } from '../lib/safeFetch';
-import { getDeviceFingerprint, getBoundDeviceEmail, setBoundDeviceEmail } from '../lib/deviceId';
+import { getDeviceFingerprint, getDevicePayload, getBoundDeviceEmail, setBoundDeviceEmail } from '../lib/deviceId';
 import PlayerFooter from './player/PlayerFooter';
 
 const DEFAULT_LOGIN_BG = '/casino_vip_hero.jpg';
@@ -25,7 +25,7 @@ async function loginWithGoogleProfile(accessToken) {
     throw new Error('Failed to fetch email profile from Google.');
   }
 
-  const deviceId = await getDeviceFingerprint().catch(() => '');
+  const devicePayload = getDevicePayload();
 
   const googleRes = await safeFetchJson('/api/auth/google', {
     method: 'POST',
@@ -36,7 +36,7 @@ async function loginWithGoogleProfile(accessToken) {
       distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : '',
       agentCode: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_agent_code') || '' : '',
       campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : '',
-      deviceId
+      ...devicePayload
     })
   });
 
@@ -310,13 +310,13 @@ export default function AuthPortal({
 
     setLoading(true);
     try {
-      const deviceId = await getDeviceFingerprint().catch(() => '');
+      const devicePayload = getDevicePayload();
       const res = await safeFetchJson('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({
           email: loginIdentifier.toLowerCase().trim(),
           password: loginPassword,
-          deviceId
+          ...devicePayload
         })
       });
 
@@ -445,7 +445,7 @@ export default function AuthPortal({
 
     setLoading(true);
     try {
-      const deviceId = await getDeviceFingerprint().catch(() => '');
+      const devicePayload = getDevicePayload();
       const res = await safeFetchJson('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({
@@ -457,7 +457,7 @@ export default function AuthPortal({
           distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : '',
           agentCode: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_agent_code') || '' : '',
           campaign: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_campaign') || '' : '',
-          deviceId
+          ...devicePayload
         })
       });
 

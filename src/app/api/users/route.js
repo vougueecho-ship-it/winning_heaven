@@ -164,8 +164,19 @@ export async function PUT(req) {
     if (status !== undefined) {
       updateFields.status = status;
     }
+    const unsetFields = {};
     if (deviceId !== undefined) {
-      updateFields.deviceId = deviceId ? String(deviceId).trim() : '';
+      if (deviceId) {
+        updateFields.deviceId = String(deviceId).trim();
+      } else {
+        unsetFields.deviceId = '';
+        unsetFields.deviceFingerprint = '';
+        unsetFields.hardwareFingerprint = '';
+        unsetFields.registrationIp = '';
+        unsetFields.registrationUserAgent = '';
+        // Also delete sessions for this email
+        await db.collection('deviceSessions').deleteMany({ email: cleanEmail }).catch(() => {});
+      }
     }
     if (allowedGameIds !== undefined) {
       const roleToCheck = role !== undefined ? role : currentUser.role;
@@ -181,10 +192,21 @@ export async function PUT(req) {
       }
     }
 
-    const result = await usersCollection.updateOne(
-      { email: cleanEmail },
-      { $set: updateFields }
-    );
+    const updateDoc = {};
+    if (Object.keys(updateFields).length > 0) {
+      updateDoc.$set = updateFields;
+    }
+    if (Object.keys(unsetFields).length > 0) {
+      updateDoc.$unset = unsetFields;
+    }
+
+    let result = null;
+    if (Object.keys(updateDoc).length > 0) {
+      result = await usersCollection.updateOne(
+        { email: cleanEmail },
+        updateDoc
+      );
+    }
 
     if (balanceChanged) {
       const diff = newBalance - oldBalance;
