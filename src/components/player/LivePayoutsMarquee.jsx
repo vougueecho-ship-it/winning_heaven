@@ -54,9 +54,8 @@ export default function LivePayoutsMarquee({ liveTransactions = [] }) {
   const marqueeItems = [...displayPayouts, ...displayPayouts];
 
   return (
-    <div style={{
+    <div className="live-payouts-marquee-container" style={{
       width: '100%',
-      margin: '0.25rem 0 1.6rem 0',
       display: 'flex',
       flexDirection: 'column',
       gap: '0.65rem'
@@ -231,6 +230,15 @@ export default function LivePayoutsMarquee({ liveTransactions = [] }) {
         }
         .live-payouts-track:hover {
           animation-play-state: paused;
+        }
+        .live-payouts-marquee-container {
+          margin: 0.25rem 0 0.85rem 0;
+        }
+        @media (max-width: 768px) {
+          .live-payouts-marquee-container {
+            margin: 0.1rem 0 0.4rem 0;
+            gap: 0.4rem !important;
+          }
         }
       `}</style>
     </div>

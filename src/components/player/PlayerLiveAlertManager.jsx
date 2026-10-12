@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { playNotificationSound, initAudioUnlock } from '../../lib/notificationSound';
+import { subscribeToPromoPush } from '../../lib/pushClient';
 
 export default function PlayerLiveAlertManager() {
   const pathname = usePathname();
@@ -12,6 +13,8 @@ export default function PlayerLiveAlertManager() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [subscribingPush, setSubscribingPush] = useState(false);
   const knownIdsRef = useRef(new Set());
   const initialFetchDoneRef = useRef(false);
 
@@ -58,6 +61,67 @@ export default function PlayerLiveAlertManager() {
       window.removeEventListener('winning_heaven_session_change', readSession);
     };
   }, []);
+
+  // Manage Bottom Notification Permission Modal visibility
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!session?.email || isAdminOrStaffRoute) {
+      setShowNotificationPrompt(false);
+      return;
+    }
+
+    try {
+      const alreadyAllowed =
+        localStorage.getItem('wh_push_allowed') === 'true' ||
+        (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+
+      // If already allowed, never show again
+      if (alreadyAllowed) {
+        setShowNotificationPrompt(false);
+      } else {
+        // Show after 1 second delay on page mount / refresh / login
+        const timer = setTimeout(() => {
+          setShowNotificationPrompt(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      setShowNotificationPrompt(false);
+    }
+  }, [session, isAdminOrStaffRoute]);
+
+  const handleAllowNotifications = async () => {
+    if (subscribingPush) return;
+    setSubscribingPush(true);
+    try {
+      if (typeof Notification !== 'undefined') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted' && session?.email) {
+          try {
+            await subscribeToPromoPush(session.email);
+          } catch (e) {
+            console.warn('Push registration error:', e);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Notification permission error:', err);
+    } finally {
+      // Mark permanently allowed so it NEVER shows again
+      try {
+        localStorage.setItem('wh_push_allowed', 'true');
+        localStorage.setItem('wh_push_subscribed', 'true');
+      } catch {}
+      setSubscribingPush(false);
+      setShowNotificationPrompt(false);
+    }
+  };
+
+  const handleCancelNotifications = () => {
+    // Only dismisses for the current session/page view
+    // Does NOT write to localStorage, so next refresh or login will prompt again!
+    setShowNotificationPrompt(false);
+  };
 
   // Poll for player alerts when logged in
   useEffect(() => {
@@ -398,69 +462,112 @@ export default function PlayerLiveAlertManager() {
         </div>
       )}
 
-      {/* 2. Floating VIP Bell Button (Bottom-Left) */}
-      {session && (
+      {/* 2. Small Bottom Notification Permission Modal (Replaces old floating bell icon) */}
+      {showNotificationPrompt && session && !isAdminOrStaffRoute && (
         <div
+          className="notification-permission-toast"
           style={{
             position: 'fixed',
-            bottom: '24px',
-            left: '24px',
-            zIndex: 99990
+            bottom: '20px',
+            left: '20px',
+            zIndex: 99990,
+            maxWidth: '380px',
+            width: 'calc(100vw - 40px)',
+            background: 'linear-gradient(135deg, rgba(14, 18, 38, 0.98) 0%, rgba(8, 10, 24, 0.98) 100%)',
+            border: '1.5px solid rgba(255, 200, 0, 0.45)',
+            borderRadius: '16px',
+            padding: '14px 16px',
+            boxShadow: '0 16px 45px rgba(0, 0, 0, 0.9), 0 0 25px rgba(255, 200, 0, 0.2)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
           }}
         >
-          <button
-            onClick={() => setDrawerOpen((prev) => !prev)}
-            aria-label="View VIP Notifications"
-            style={{
-              position: 'relative',
-              width: '50px',
-              height: '50px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #182042 0%, #080b1a 100%)',
-              border: '2px solid rgba(251, 191, 36, 0.5)',
-              color: '#fbbf24',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 8px 25px rgba(0,0,0,0.6), 0 0 15px rgba(251, 191, 36, 0.3)',
-              transition: 'all 0.25s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.08)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)';
-            }}
-          >
-            <i className="fa-solid fa-bell" style={{ fontSize: '1.25rem' }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'rgba(255, 200, 0, 0.15)',
+                border: '1px solid rgba(255, 200, 0, 0.4)',
+                color: 'var(--gold-primary, #ffd700)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.1rem',
+                flexShrink: 0
+              }}
+            >
+              <i className="fa-solid fa-bell" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.88rem', lineHeight: 1.2 }}>
+                Enable Notifications
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '0.74rem', marginTop: '3px', lineHeight: 1.35 }}>
+                Get instant bonus drops, reload matches &amp; fast cashout alerts.
+              </div>
+            </div>
+          </div>
 
-            {unreadCount > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontSize: '0.72rem',
-                  fontWeight: 900,
-                  minWidth: '20px',
-                  height: '20px',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 5px',
-                  boxShadow: '0 0 8px #ef4444'
-                }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', marginTop: '2px' }}>
+            <button
+              type="button"
+              onClick={handleCancelNotifications}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#cbd5e1',
+                padding: '0.45rem 0.95rem',
+                borderRadius: '9px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={subscribingPush}
+              onClick={handleAllowNotifications}
+              style={{
+                background: 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
+                border: 'none',
+                color: '#000000',
+                padding: '0.45rem 1.15rem',
+                borderRadius: '9px',
+                fontSize: '0.78rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                boxShadow: '0 0 12px rgba(255, 200, 0, 0.3)',
+                transition: 'transform 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              {subscribingPush ? (
+                <>
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  <span>Enabling...</span>
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-check" />
+                  <span>Allow</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 

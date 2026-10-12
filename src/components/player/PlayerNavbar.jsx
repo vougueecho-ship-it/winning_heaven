@@ -15,7 +15,9 @@ export default function PlayerNavbar({
   onSelectTab,
   activeTab = 'main',
   canClaimRemainder = false,
-  onClaimRemainder
+  onClaimRemainder,
+  onToggleSidebar,
+  onOpenAuth
 }) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
@@ -43,56 +45,93 @@ export default function PlayerNavbar({
       boxSizing: 'border-box'
     }}>
       <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
+        width: '100%',
+        margin: '0',
+        padding: '0 0.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '0.5rem'
       }}>
-        {/* Brand Logo */}
-        <div 
-          onClick={() => onSelectTab('main')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            cursor: 'pointer',
-            flexShrink: 0
-          }}
-        >
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            border: '2px solid var(--gold-primary)',
-            background: '#000',
-            overflow: 'hidden',
-            boxShadow: '0 0 15px rgba(255, 200, 0, 0.4)',
-            flexShrink: 0
-          }}>
-            <img 
-              src="/winning_heaven_logo.png" 
-              alt="Winning Heaven" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 900,
-              fontSize: 'clamp(1rem, 3.5vw, 1.25rem)',
-              letterSpacing: '0.03em',
-              lineHeight: 1.1,
-              color: '#fff',
-              whiteSpace: 'nowrap'
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          {/* Hamburger Sidebar Trigger Button (Mobile only) */}
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="navbar-hamburger-btn"
+              title="Toggle Menu & Accounts"
+              aria-label="Toggle navigation menu"
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 200, 0, 0.35)',
+                color: 'var(--gold-primary)',
+                borderRadius: '10px',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+            >
+              <i className="fa-solid fa-bars" />
+            </button>
+          )}
+
+          {/* Mobile-Only Brand Logo (On desktop, logo is in the 100vh static sidebar) */}
+          <div 
+            onClick={() => onSelectTab('main')}
+            className="navbar-mobile-logo"
+            style={{
+              alignItems: 'center',
+              gap: '0.6rem',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              border: '2px solid var(--gold-primary)',
+              background: '#000',
+              overflow: 'hidden',
+              boxShadow: '0 0 15px rgba(255, 200, 0, 0.4)',
+              flexShrink: 0
             }}>
-              WINNING<span className="gold-gradient-text">HEAVEN</span>
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              <span className="pulse-live" />
-              <span>CASINO</span>
+              <img 
+                src="/winning_heaven_logo.png" 
+                alt="Winning Heaven" 
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="navbar-brand-name" style={{
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 900,
+                fontSize: 'clamp(0.95rem, 3.5vw, 1.25rem)',
+                letterSpacing: '0.03em',
+                lineHeight: 1.1,
+                color: '#fff',
+                whiteSpace: 'nowrap'
+              }}>
+                WINNING<span className="gold-gradient-text">HEAVEN</span>
+              </span>
+              <div className="navbar-brand-sub" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                <span className="pulse-live" />
+                <span>CASINO</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Left: Sweepstakes Games / VIP Lobby Pill */}
+          <div className="navbar-desktop-pill">
+            <span className="pill-pulse-dot" />
+            <i className="fa-solid fa-gamepad" style={{ color: 'var(--gold-primary)', fontSize: '0.85rem' }} />
+            <span>SWEEPSTAKES LOBBY</span>
           </div>
         </div>
 
@@ -118,6 +157,44 @@ export default function PlayerNavbar({
           </button>
 
           <button
+            onClick={() => onSelectTab('deposit')}
+            style={{
+              background: activeTab === 'deposit' ? 'rgba(255,200,0,0.15)' : 'transparent',
+              border: activeTab === 'deposit' ? '1px solid var(--gold-primary)' : '1px solid transparent',
+              color: activeTab === 'deposit' ? 'var(--gold-primary)' : 'var(--text-muted)',
+              borderRadius: '10px',
+              padding: '0.45rem 0.85rem',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}
+          >
+            <i className="fa-solid fa-plus-circle" /> DEPOSIT
+          </button>
+
+          <button
+            onClick={() => onSelectTab('withdraw')}
+            style={{
+              background: activeTab === 'withdraw' ? 'rgba(0,240,255,0.15)' : 'transparent',
+              border: activeTab === 'withdraw' ? '1px solid var(--cyan-primary)' : '1px solid transparent',
+              color: activeTab === 'withdraw' ? 'var(--cyan-primary)' : 'var(--text-muted)',
+              borderRadius: '10px',
+              padding: '0.45rem 0.85rem',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}
+          >
+            <i className="fa-solid fa-wallet" /> CASHOUT
+          </button>
+
+          <button
             onClick={() => onSelectTab('history')}
             style={{
               background: activeTab === 'history' ? 'rgba(255,200,0,0.15)' : 'transparent',
@@ -135,29 +212,10 @@ export default function PlayerNavbar({
           >
             <i className="fa-solid fa-clock-rotate-left" /> LEDGER
           </button>
-
-          <button
-            onClick={() => onSelectTab('referrals')}
-            style={{
-              background: activeTab === 'referrals' ? 'rgba(255,200,0,0.15)' : 'transparent',
-              border: activeTab === 'referrals' ? '1px solid var(--gold-primary)' : '1px solid transparent',
-              color: activeTab === 'referrals' ? 'var(--gold-primary)' : 'var(--text-muted)',
-              borderRadius: '10px',
-              padding: '0.45rem 0.85rem',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem'
-            }}
-          >
-            <i className="fa-solid fa-users" /> REFERRALS
-          </button>
         </nav>
 
         {/* Right Quick Action Control Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
           {/* APK Download Button (Desktop only to prevent mobile header crowding) */}
           <a
             href="/downloads/winning-heaven.apk"
@@ -183,64 +241,98 @@ export default function PlayerNavbar({
             <span>APP</span>
           </a>
 
-          {/* Deposit Button */}
-          <button
-            onClick={onOpenDeposit}
-            className="btn-gold-glow navbar-action-btn"
-            style={{
-              padding: '0.42rem 0.65rem',
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              borderRadius: '10px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <i className="fa-solid fa-plus-circle" /> <span className="nav-btn-text">DEPOSIT</span>
-          </button>
+          {!currentUser ? (
+            /* Guest Actions: Log In & Sign Up */
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                type="button"
+                onClick={() => onOpenAuth && onOpenAuth('login')}
+                className="btn-glass-secondary"
+                style={{
+                  padding: '0.42rem 0.75rem',
+                  fontSize: '0.74rem',
+                  borderRadius: '10px',
+                  fontWeight: 800
+                }}
+              >
+                LOG IN
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenAuth && onOpenAuth('register')}
+                className="btn-gold-glow"
+                style={{
+                  padding: '0.42rem 0.85rem',
+                  fontSize: '0.74rem',
+                  borderRadius: '10px',
+                  fontWeight: 900,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                SIGN UP
+              </button>
+            </div>
+          ) : (
+            /* Logged-in Actions: Deposit, Cashout & Avatar */
+            <>
+              {/* Deposit Button */}
+              <button
+                onClick={onOpenDeposit}
+                className="btn-gold-glow navbar-action-btn"
+                style={{
+                  padding: '0.42rem 0.65rem',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  borderRadius: '10px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fa-solid fa-plus-circle" /> <span className="nav-btn-text">DEPOSIT</span>
+              </button>
 
-          {/* Cashout Button */}
-          <button
-            onClick={onOpenWithdraw}
-            className="btn-cyan-glow navbar-action-btn"
-            style={{
-              padding: '0.42rem 0.65rem',
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              borderRadius: '10px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <i className="fa-solid fa-wallet" /> <span className="nav-btn-text">CASHOUT</span>
-          </button>
+              {/* Cashout Button */}
+              <button
+                onClick={onOpenWithdraw}
+                className="btn-cyan-glow navbar-action-btn"
+                style={{
+                  padding: '0.42rem 0.65rem',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  borderRadius: '10px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fa-solid fa-wallet" /> <span className="nav-btn-text">CASHOUT</span>
+              </button>
 
-          {/* User Profile Avatar */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,200,0,0.2) 0%, rgba(0,240,255,0.2) 100%)',
-                border: '1.5px solid var(--gold-primary)',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 800,
-                cursor: 'pointer',
-                fontFamily: 'var(--font-heading)',
-                fontSize: '0.82rem',
-                boxShadow: '0 0 12px rgba(255,200,0,0.25)',
-                flexShrink: 0
-              }}
-            >
-              {displayName.slice(0, 1).toUpperCase()}
-            </button>
+              {/* User Profile Avatar */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,200,0,0.2) 0%, rgba(0,240,255,0.2) 100%)',
+                    border: '1.5px solid var(--gold-primary)',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: '0.82rem',
+                    boxShadow: '0 0 12px rgba(255,200,0,0.25)',
+                    flexShrink: 0
+                  }}
+                >
+                  {displayName.slice(0, 1).toUpperCase()}
+                </button>
 
             {/* User Dropdown Menu */}
             <AnimatePresence>
@@ -386,24 +478,69 @@ export default function PlayerNavbar({
               )}
             </AnimatePresence>
           </div>
+            </>
+          )}
         </div>
       </div>
 
       <style jsx>{`
-        @media (max-width: 640px) {
-          .navbar-desktop-app-btn {
-            display: none !important;
-          }
-          .desktop-only-nav {
-            display: none !important;
-          }
+        .navbar-mobile-logo {
+          display: flex !important;
         }
-        @media (min-width: 641px) {
+        .navbar-hamburger-btn {
+          display: flex !important;
+        }
+        .navbar-desktop-pill {
+          display: none !important;
+        }
+        .desktop-only-nav {
+          display: none !important;
+        }
+        @media (min-width: 1025px) {
+          .navbar-mobile-logo {
+            display: none !important;
+          }
+          .navbar-hamburger-btn {
+            display: none !important;
+          }
+          .navbar-desktop-pill {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 200, 0, 0.25);
+            padding: 0.42rem 0.85rem;
+            border-radius: 9999px;
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+          }
+          .pill-pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00e676;
+            box-shadow: 0 0 8px #00e676;
+          }
           .desktop-only-nav {
             display: flex !important;
           }
         }
-        @media (max-width: 380px) {
+        @media (max-width: 1024px) {
+          .navbar-desktop-app-btn {
+            display: none !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .navbar-brand-name {
+            font-size: 0.95rem !important;
+          }
+          .navbar-brand-sub {
+            display: none !important;
+          }
+        }
+        @media (max-width: 480px) {
           .nav-btn-text {
             display: none !important;
           }

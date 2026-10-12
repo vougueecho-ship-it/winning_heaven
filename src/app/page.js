@@ -7,6 +7,7 @@ import { POLL } from '../lib/pollingConfig';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import ParticlesBackground from '../components/ParticlesBackground';
 import AuthPortal from '../components/AuthPortal';
+import AuthModal from '../components/player/AuthModal';
 import UserLobby from '../components/UserLobby';
 import LoadingOverlay from '../components/LoadingOverlay';
 import PlayerSupportModal from '../components/player/PlayerSupportModal';
@@ -110,14 +111,36 @@ function markSupportMessagesSeen(email, messages) {
   }
 }
 
-export default function Home({ initialAuthTab = 'login' }) {
-  const [mounted, setMounted] = useState(false);
-  const [session, setSession] = useState(null);
-  const [view, setView] = useState('loading');
+const subscribeNoop = () => () => {};
+
+export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) {
+  const mounted = React.useSyncExternalStore(subscribeNoop, () => true, () => false);
+  const [session, setSession] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const rawSess = localStorage.getItem('winning_heaven_session');
+      return JSON.parse(rawSess || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [view, setView] = useState('lobby');
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const p = window.location.pathname;
+    return p.startsWith('/login') || p.startsWith('/register') || p.startsWith('/forgot');
+  });
+  const [authModalTab, setAuthModalTab] = useState(() => {
+    if (typeof window === 'undefined') return initialAuthTab || 'login';
+    const p = window.location.pathname;
+    if (p.startsWith('/register')) return 'register';
+    if (p.startsWith('/forgot')) return 'forgot';
+    return initialAuthTab || 'login';
+  });
 
   // Player / any deleted account: force logout while lobby is open.
-  useSessionGuard(view === 'lobby' ? session?.email : null, {
+  useSessionGuard(session?.email ? session.email : null, {
     redirectTo: '/login',
     intervalMs: 3000
   });
@@ -125,6 +148,23 @@ export default function Home({ initialAuthTab = 'login' }) {
   // Overlay states
   const [loadingActive, setLoadingActive] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
+
+  // Toast notifier — clear prior timer so a late API toast cannot wipe an early one
+  const toastTimerRef = useRef(null);
+  const showToast = (message, type = 'info', duration = 5000) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    const cleanMsg = cleanErrorMessage(message, 'Action failed.');
+    setToast({ message: cleanMsg, type });
+    if (duration > 0) {
+      toastTimerRef.current = setTimeout(() => {
+        setToast(null);
+        toastTimerRef.current = null;
+      }, duration);
+    }
+  };
 
   // Modals Open states
   const [supportOpen, setSupportOpen] = useState(false);
@@ -174,7 +214,7 @@ export default function Home({ initialAuthTab = 'login' }) {
 
   const games = (gamesData?.games || []).filter((g) => g.active !== false);
   const gateways = gatewaysData?.gateways || [];
-  const frontendSettings = frontendSettingsData?.settings || {};
+  const frontendSettings = React.useMemo(() => frontendSettingsData?.settings || {}, [frontendSettingsData?.settings]);
 
   // Persist the latest settings so the next page load can render them immediately.
   useEffect(() => {
@@ -294,7 +334,6 @@ export default function Home({ initialAuthTab = 'login' }) {
 
   // Initialize session
   useEffect(() => {
-    setMounted(true);
     initAudioUnlock();
     initPushAudioListener('/api/settings/audio');
 
@@ -324,26 +363,13 @@ export default function Home({ initialAuthTab = 'login' }) {
       }
     }
 
-    const rawSess = localStorage.getItem('winning_heaven_session');
-    const savedSession = JSON.parse(rawSess || 'null');
     const path = typeof window !== 'undefined' ? window.location.pathname : '/';
-
-    if (savedSession) {
-      if (savedSession.role === 'admin') {
-        window.location.href = '/admin';
-        return;
-      } else {
-        setSession(savedSession);
-        setView('lobby');
-        if (path === '/' || path === '/login' || path === '/register' || path === '/forgot') {
-          window.history.replaceState({}, '', '/lobby');
-        }
-      }
-    } else {
-      setView('auth');
-      if (path.startsWith('/lobby') || path === '/') {
-        window.history.replaceState({}, '', '/login');
-      }
+    if (session?.role === 'admin') {
+      window.location.href = '/admin';
+      return;
+    }
+    if (session && (path === '/' || path === '/login' || path === '/register' || path === '/forgot')) {
+      window.history.replaceState({}, '', '/lobby');
     }
     
     // Register PWA Service Worker
@@ -357,27 +383,20 @@ export default function Home({ initialAuthTab = 'login' }) {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
     };
-  }, []);
+  }, [session]);
 
   // Multi-tab Session Synchronization Listener
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'winning_heaven_session') {
         const currentSess = localStorage.getItem('winning_heaven_session');
-        const path = typeof window !== 'undefined' ? window.location.pathname : '/';
         if (currentSess === 'null' || !currentSess) {
           setSession(null);
-          setView('auth');
-          if (path.startsWith('/lobby')) {
-            window.history.replaceState({}, '', '/login');
-          }
         } else {
-          const parsed = JSON.parse(currentSess);
-          setSession(parsed);
-          setView('lobby');
-          if (path === '/' || path === '/login' || path === '/register' || path === '/forgot') {
-            window.history.replaceState({}, '', '/lobby');
-          }
+          try {
+            const parsed = JSON.parse(currentSess);
+            setSession(parsed);
+          } catch {}
         }
       }
     };
@@ -394,30 +413,9 @@ export default function Home({ initialAuthTab = 'login' }) {
     }, durationMs);
   };
 
-  // Toast notifier — clear prior timer so a late API toast cannot wipe an early one
-  const toastTimerRef = useRef(null);
-  const showToast = (message, type = 'info', duration = 5000) => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-    const cleanMsg = cleanErrorMessage(message, 'Action failed.');
-    setToast({ message: cleanMsg, type });
-    if (duration > 0) {
-      toastTimerRef.current = setTimeout(() => {
-        setToast(null);
-        toastTimerRef.current = null;
-      }, duration);
-    }
-  };
-
   // Player support: badge + toast when admin replies (does not change chat/API logic).
   useEffect(() => {
-    if (!mounted) return undefined;
-    if (supportOpen) {
-      setSupportUnread(false);
-      return undefined;
-    }
+    if (!mounted || supportOpen) return undefined;
 
     let cancelled = false;
     const check = async () => {
@@ -484,6 +482,10 @@ export default function Home({ initialAuthTab = 'login' }) {
     setSession(user);
     localStorage.setItem('winning_heaven_session', JSON.stringify(user));
     setView('lobby');
+    setAuthModalOpen(false);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/lobby');
+    }
   };
 
   const handleRegisterSuccess = (newUser) => {
@@ -491,11 +493,15 @@ export default function Home({ initialAuthTab = 'login' }) {
     setSession(newUser);
     localStorage.setItem('winning_heaven_session', JSON.stringify(newUser));
     setView('lobby');
+    setAuthModalOpen(false);
     showToast('Welcome to Winning Heaven! Registration verified successfully.', 'success');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/lobby');
+    }
   };
 
   const handleLogout = () => {
-    triggerLoading(1000, () => {
+    triggerLoading(800, () => {
       setSession(null);
       localStorage.setItem('winning_heaven_session', 'null');
       try {
@@ -503,7 +509,7 @@ export default function Home({ initialAuthTab = 'login' }) {
       } catch {
         /* ignore */
       }
-      setView('auth');
+      setView('lobby');
       showToast('Logged out successfully.', 'info');
     });
   };
@@ -769,68 +775,71 @@ export default function Home({ initialAuthTab = 'login' }) {
         </div>
       )}
 
-      {/* Screen Views Wrapper */}
-      {view === 'lobby' ? (
-        <UserLobby
-          games={games}
-          accountRequests={accountRequests}
-          gameAccounts={gameAccounts}
-          transactions={transactions}
-          gateways={gateways}
-          coinsNotifications={coinsNotifications}
-          onUpdateCoinsNotification={handleUpdateCoinsNotification}
-          onInstallApp={handleInstallApp}
-          currentUser={session}
-          currentUserEmail={session?.email}
-          onLogout={handleLogout}
-          showToast={showToast}
-          onOpenSupport={openSupport}
-          supportUnread={supportUnread}
-          onRequestAccount={handleRequestAccount}
-          onSubmitTransaction={handleSubmitTransaction}
-          frontendSettings={frontendSettings}
-          onUpdateUser={(updated) => {
-            setSession(updated);
-            localStorage.setItem('winning_heaven_session', JSON.stringify(updated));
-          }}
-          onRefresh={async () => {
-            const email = session?.email ? encodeURIComponent(session.email) : null;
-            await Promise.all([
-              mutate((key) => typeof key === 'string' && key.includes('/api/games')),
-              mutate((key) => typeof key === 'string' && key.includes('/api/gateways')),
-              mutate((key) => typeof key === 'string' && key.includes('/api/settings')),
-              email
-                ? mutate(`/api/account-requests?email=${email}`)
-                : Promise.resolve(),
-              email
-                ? mutate(`/api/game-accounts?email=${email}`)
-                : Promise.resolve(),
-              email
-                ? mutate(`/api/transactions?email=${email}&limit=40`)
-                : Promise.resolve(),
-              email
-                ? mutate(`/api/coins-notifications?email=${email}`)
-                : Promise.resolve(),
-              mutate((key) => typeof key === 'string' && key.includes('/api/promotions'))
-            ]);
-          }}
-        />
-      ) : (
-        <>
-          <AuthPortal
-            initialTab={initialAuthTab}
-            onLoginSuccess={handleLoginSuccess}
-            onRegisterSuccess={handleRegisterSuccess}
-            onGoogleWarning={() => setGoogleWarnOpen(true)}
-            triggerLoading={triggerLoading}
-            showToast={showToast}
-            onOpenSupport={openSupport}
-            supportUnread={supportUnread}
-            frontendSettings={frontendSettings}
-          />
-          {view === 'loading' && <LoadingOverlay active={true} />}
-        </>
-      )}
+      {/* User Lobby View */}
+      <UserLobby
+        games={games}
+        accountRequests={accountRequests}
+        gameAccounts={gameAccounts}
+        transactions={transactions}
+        gateways={gateways}
+        coinsNotifications={coinsNotifications}
+        onUpdateCoinsNotification={handleUpdateCoinsNotification}
+        onInstallApp={handleInstallApp}
+        currentUser={session}
+        currentUserEmail={session?.email}
+        onLogout={handleLogout}
+        showToast={showToast}
+        onOpenSupport={openSupport}
+        supportUnread={supportUnread}
+        onRequestAccount={handleRequestAccount}
+        onSubmitTransaction={handleSubmitTransaction}
+        frontendSettings={frontendSettings}
+        onOpenAuthModal={(tab = 'login') => {
+          setAuthModalTab(tab);
+          setAuthModalOpen(true);
+        }}
+        initialTab={initialTab}
+        onUpdateUser={(updated) => {
+          setSession(updated);
+          localStorage.setItem('winning_heaven_session', JSON.stringify(updated));
+        }}
+        onRefresh={async () => {
+          const email = session?.email ? encodeURIComponent(session.email) : null;
+          await Promise.all([
+            mutate((key) => typeof key === 'string' && key.includes('/api/games')),
+            mutate((key) => typeof key === 'string' && key.includes('/api/gateways')),
+            mutate((key) => typeof key === 'string' && key.includes('/api/settings')),
+            email
+              ? mutate(`/api/account-requests?email=${email}`)
+              : Promise.resolve(),
+            email
+              ? mutate(`/api/game-accounts?email=${email}`)
+              : Promise.resolve(),
+            email
+              ? mutate(`/api/transactions?email=${email}&limit=40`)
+              : Promise.resolve(),
+            email
+              ? mutate(`/api/coins-notifications?email=${email}`)
+              : Promise.resolve(),
+            mutate((key) => typeof key === 'string' && key.includes('/api/promotions'))
+          ]);
+        }}
+      />
+
+      {/* Auth Modal for Login / Sign Up */}
+      <AuthModal
+        isOpen={authModalOpen}
+        initialTab={authModalTab}
+        onClose={() => setAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        onRegisterSuccess={handleRegisterSuccess}
+        onGoogleWarning={() => setGoogleWarnOpen(true)}
+        triggerLoading={triggerLoading}
+        showToast={showToast}
+        onOpenSupport={openSupport}
+        supportUnread={supportUnread}
+        frontendSettings={frontendSettings}
+      />
 
       {/* Modals */}
       <PlayerSupportModal

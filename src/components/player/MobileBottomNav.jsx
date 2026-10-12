@@ -5,6 +5,9 @@ import React from 'react';
 export default function MobileBottomNav({
   activeTab = 'main',
   onSelectTab,
+  onOpenDeposit,
+  onOpenWithdraw,
+  onInstallApp,
   onOpenSupport,
   supportUnread = false
 }) {
@@ -13,52 +16,61 @@ export default function MobileBottomNav({
       <nav className="mobile-bottom-dock-bar">
         {/* Lobby Tab */}
         <button
-          onClick={() => onSelectTab('main')}
+          type="button"
+          onClick={() => onSelectTab && onSelectTab('main')}
           className={`dock-btn ${activeTab === 'main' ? 'active' : ''}`}
         >
           <i className="fa-solid fa-gamepad" />
           <span>Lobby</span>
         </button>
 
-        {/* Ledger Tab */}
+        {/* Deposit Tab */}
         <button
-          onClick={() => onSelectTab('history')}
-          className={`dock-btn ${activeTab === 'history' ? 'active' : ''}`}
+          type="button"
+          onClick={() => (onOpenDeposit ? onOpenDeposit() : onSelectTab && onSelectTab('deposit'))}
+          className={`dock-btn ${activeTab === 'deposit' ? 'active' : ''}`}
         >
-          <i className="fa-solid fa-clock-rotate-left" />
-          <span>Ledger</span>
+          <i className="fa-solid fa-plus-circle" style={{ color: 'var(--gold-primary)' }} />
+          <span>Deposit</span>
         </button>
 
-        {/* Referrals Tab */}
+        {/* Cashout / Withdraw Tab */}
         <button
-          onClick={() => onSelectTab('referrals')}
-          className={`dock-btn ${activeTab === 'referrals' ? 'active' : ''}`}
+          type="button"
+          onClick={() => (onOpenWithdraw ? onOpenWithdraw() : onSelectTab && onSelectTab('withdraw'))}
+          className={`dock-btn ${activeTab === 'withdraw' ? 'active' : ''}`}
         >
-          <i className="fa-solid fa-users-line" />
-          <span>Referrals</span>
+          <i className="fa-solid fa-wallet" style={{ color: 'var(--cyan-primary)' }} />
+          <span>Cashout</span>
         </button>
+
+        {/* App Download / Install */}
+        {/* App Download / Install Modal Trigger */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onInstallApp) onInstallApp();
+          }}
+          className="dock-btn dock-app-btn"
+          title="Install App (Android & iOS)"
+        >
+          <i className="fa-solid fa-mobile-screen-button" style={{ color: '#22c55e' }} />
+          <span>App</span>
+        </button>
+
+
 
         {/* Support Chat Trigger */}
         <button
+          type="button"
           onClick={onOpenSupport}
           className="dock-btn dock-support-btn"
         >
           <div style={{ position: 'relative' }}>
             <i className="fa-solid fa-headset" />
-            {supportUnread && (
-              <span className="dock-unread-dot" />
-            )}
+            {supportUnread && <span className="dock-unread-dot" />}
           </div>
           <span>Support</span>
-        </button>
-
-        {/* Profile Tab */}
-        <button
-          onClick={() => onSelectTab('profile')}
-          className={`dock-btn ${activeTab === 'profile' ? 'active' : ''}`}
-        >
-          <i className="fa-solid fa-circle-user" />
-          <span>Profile</span>
         </button>
       </nav>
 
@@ -73,7 +85,7 @@ export default function MobileBottomNav({
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           border-top: 1px solid rgba(255, 200, 0, 0.2);
-          padding: 0.45rem max(0.5rem, env(safe-area-inset-right, 0px)) calc(0.45rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px))) max(0.5rem, env(safe-area-inset-left, 0px));
+          padding: 0.45rem max(0.4rem, env(safe-area-inset-right, 0px)) calc(0.45rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px))) max(0.4rem, env(safe-area-inset-left, 0px));
           display: flex;
           align-items: center;
           justify-content: space-around;
@@ -92,12 +104,13 @@ export default function MobileBottomNav({
           flex-direction: column;
           align-items: center;
           gap: 0.2rem;
-          font-size: 0.7rem;
+          font-size: 0.68rem;
           font-weight: 700;
           cursor: pointer;
-          padding: 0.25rem 0.5rem;
+          padding: 0.2rem 0.35rem;
           transition: all 0.2s ease;
           border-radius: 8px;
+          text-decoration: none;
         }
         .dock-btn i {
           font-size: 1.15rem;
@@ -108,6 +121,9 @@ export default function MobileBottomNav({
         }
         .dock-support-btn {
           color: var(--cyan-primary);
+        }
+        .dock-app-btn {
+          color: #22c55e;
         }
         .dock-unread-dot {
           position: absolute;

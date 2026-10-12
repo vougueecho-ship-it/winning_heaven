@@ -64,7 +64,9 @@ export default function AuthPortal({
   showToast,
   onOpenSupport,
   supportUnread = false,
-  frontendSettings: initialSettings = {}
+  frontendSettings: initialSettings = {},
+  isModal = false,
+  onClose
 }) {
   // Dynamically fetch live CMS frontend settings from admin panel
   const { data: settingsData } = useSWR('/api/settings/frontend', (url) => fetch(url).then(r => r.json()), {
@@ -93,6 +95,11 @@ export default function AuthPortal({
     }
     return initialTab || 'login';
   }); // 'login' | 'register' | 'forgot'
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -518,22 +525,40 @@ export default function AuthPortal({
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100%',
-      position: 'relative',
-      overflowX: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '2.5rem 1.25rem 0',
-      backgroundImage: `linear-gradient(135deg, rgba(4, 6, 14, 0.45) 0%, rgba(4, 6, 14, 0.75) 100%), radial-gradient(circle at center, rgba(255, 200, 0, 0.1) 0%, rgba(4, 6, 14, 0.6) 80%), url("${loginBg}")`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center center',
-      backgroundAttachment: 'fixed',
-      backgroundRepeat: 'no-repeat'
-    }}>
+    <div
+      onClick={isModal ? onClose : undefined}
+      style={isModal ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(2, 4, 10, 0.88)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        zIndex: 10050,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.25rem 1rem',
+        overflowY: 'auto'
+      } : {
+        minHeight: '100vh',
+        width: '100%',
+        position: 'relative',
+        overflowX: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '2.5rem 1.25rem 0',
+        backgroundImage: `linear-gradient(135deg, rgba(4, 6, 14, 0.45) 0%, rgba(4, 6, 14, 0.75) 100%), radial-gradient(circle at center, rgba(255, 200, 0, 0.1) 0%, rgba(4, 6, 14, 0.6) 80%), url("${loginBg}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       <style>{`
         .auth-portal-grid {
           width: 100%;
@@ -609,6 +634,51 @@ export default function AuthPortal({
             gap: 1rem;
             margin-top: 0.5rem;
           }
+        }
+        .auth-modal-close-corner {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 200, 0, 0.4);
+            color: #fff;
+            font-size: 1.35rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s ease;
+          }
+          .auth-modal-close-corner:hover {
+            background: rgba(255, 200, 0, 0.2);
+            color: var(--gold-primary);
+            transform: scale(1.05);
+          }
+          ${isModal ? `
+            .auth-portal-desktop-left,
+            .auth-portal-mobile-top,
+            .auth-portal-mobile-bottom,
+            .auth-portal-footer-wrap {
+              display: none !important;
+            }
+            .auth-portal-grid {
+              max-width: 460px !important;
+              min-height: auto !important;
+              justify-content: center !important;
+              margin: auto !important;
+              padding: 0 !important;
+            }
+            .auth-portal-card {
+              max-width: 100% !important;
+              width: 100% !important;
+              margin: 0 !important;
+            }
+          ` : ''}
         }
       `}</style>
 
@@ -918,7 +988,17 @@ export default function AuthPortal({
         </div>
 
         {/* AUTH CONSOLE CARD (Immediately in view below top perks on mobile, Right column on desktop) */}
-        <div className="auth-portal-card">
+        <div className="auth-portal-card" onClick={isModal ? (e) => e.stopPropagation() : undefined}>
+          {isModal && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="auth-modal-close-corner"
+              aria-label="Close dialog"
+            >
+              &times;
+            </button>
+          )}
           {/* Brand Header Logo */}
           <div style={{
             display: 'flex',
@@ -1544,9 +1624,11 @@ export default function AuthPortal({
       </div>
 
       {/* Player Footer Links at Bottom */}
-      <div style={{ marginTop: '3rem', width: '100%' }}>
-        <PlayerFooter />
-      </div>
+      {!isModal && (
+        <div className="auth-portal-footer-wrap" style={{ marginTop: '3rem', width: '100%' }}>
+          <PlayerFooter />
+        </div>
+      )}
     </div>
   );
 }

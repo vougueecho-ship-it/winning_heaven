@@ -6,10 +6,30 @@ import usePollingSWR from '../../hooks/usePollingSWR';
 import { POLL } from '../../lib/pollingConfig';
 import { formatDeviceDateTime } from '../../lib/formatDateTime';
 
+let memoryRequestsCache = {};
+
+function getInitialRequestsData(status) {
+  const key = status || 'ALL';
+  if (memoryRequestsCache[key]) return memoryRequestsCache[key];
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`admin_requests_cache_${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        memoryRequestsCache[key] = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+  }
+  return undefined;
+}
+
 export default function RequestsTab({ adminUser, onApproveRequest, completedActionIds = {}, processingIds, wrapAction }) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('PENDING,READY,REJECTED');
+  const [initialFallback] = useState(() => getInitialRequestsData('PENDING,READY,REJECTED'));
   const limit = 15;
 
   // Add Manual Account States
@@ -197,12 +217,22 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
     }
   }, [playerSearchQuery, addAccountModalOpen]);
 
-  // SWR: pending requests first, then created (READY) accounts — not PENDING-only
+  // SWR: pending requests first, then created (READY) accounts, or filtered status
   const { data, error, mutate } = usePollingSWR(
-    `/api/account-requests?status=PENDING,READY&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`,
+    `/api/account-requests?status=${statusFilter}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`,
     POLL.QUEUES,
-    { keepPreviousData: false }
+    { keepPreviousData: true, fallbackData: initialFallback }
   );
+
+  useEffect(() => {
+    if (data && page === 1 && !debouncedSearch) {
+      const key = statusFilter || 'ALL';
+      memoryRequestsCache[key] = data;
+      try {
+        localStorage.setItem(`admin_requests_cache_${key}`, JSON.stringify(data));
+      } catch (e) {}
+    }
+  }, [data, page, debouncedSearch, statusFilter]);
 
   const requests = (data?.accountRequests || []).filter((r) => !completedActionIds[r.id]);
   const totalRequests = data?.totalRequests || 0;
@@ -319,14 +349,43 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
           </div>
         </div>
         
-        <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', width: '100%' }}>
-          <i className="fa-solid fa-magnifying-glass input-icon"></i>
-          <input
-            type="text"
-            placeholder="Search requests by email or game portal..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div style={{ display: 'flex', gap: '0.75rem', width: '100%', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', flex: '1 1 240px', width: 'auto' }}>
+            <i className="fa-solid fa-magnifying-glass input-icon"></i>
+            <input
+              type="text"
+              placeholder="Search requests by email or game portal..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <label htmlFor="requests-status-filter" style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              <i className="fa-solid fa-filter" style={{ color: 'var(--gold-primary)', marginRight: '4px' }}></i> Status:
+            </label>
+            <select
+              id="requests-status-filter"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              style={{
+                background: '#0b0d16',
+                color: 'var(--gold-primary)',
+                border: '1px solid rgba(255,215,0,0.3)',
+                padding: '0.55rem 0.85rem',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="PENDING,READY,REJECTED" style={{ background: '#0a0e1a', color: '#38bdf8' }}>ALL (Pending on top)</option>
+              <option value="PENDING" style={{ background: '#0a0e1a', color: '#fff' }}>PENDING (Requires Action)</option>
+              <option value="READY" style={{ background: '#0a0e1a', color: '#22c55e' }}>READY / APPROVED</option>
+              <option value="REJECTED" style={{ background: '#0a0e1a', color: '#ef4444' }}>REJECTED</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -536,6 +595,13 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                             </button>
                           ))}
                         </div>
+                      )}
+
+                      {req.status === 'REJECTED' && (
+                        <span style={{ fontSize: '0.72rem', color: '#ef4444', fontStyle: 'italic', maxWidth: '180px', display: 'inline-block' }}>
+                          <i className="fa-solid fa-ban" style={{ marginRight: '4px' }}></i>
+                          {req.rejectionReason || 'Rejected'}
+                        </span>
                       )}
                     </div>
                   </td>

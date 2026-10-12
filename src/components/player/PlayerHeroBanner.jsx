@@ -44,14 +44,7 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
   const current = announcements[currentIndex] || announcements[0];
 
   return (
-    <div style={{
-      position: 'relative',
-      borderRadius: '22px',
-      overflow: 'hidden',
-      border: '1px solid var(--card-border)',
-      boxShadow: 'var(--card-glow-shadow)',
-      margin: '0.85rem 0 1.25rem 0'
-    }}>
+    <div className="hero-banner-outer">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
@@ -59,16 +52,8 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.4 }}
-          style={{
-            background: current.bg,
-            padding: 'clamp(1.25rem, 4vw, 2.25rem) clamp(1rem, 3.5vw, 2rem)',
-            position: 'relative',
-            minHeight: '160px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            backdropFilter: 'var(--glass-blur)'
-          }}
+          className="hero-banner-content"
+          style={{ background: current.bg }}
         >
           {/* Ambient Glow Orbs */}
           <div style={{
@@ -80,58 +65,36 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
             background: 'radial-gradient(circle, rgba(255,200,0,0.18) 0%, transparent 70%)',
             pointerEvents: 'none'
           }} />
-          <div style={{
-            position: 'absolute',
-            bottom: '-40px',
-            left: '20%',
-            width: '200px',
-            height: '200px',
-            background: 'radial-gradient(circle, rgba(0,240,255,0.12) 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
 
           {/* Badge */}
-          <div style={{ marginBottom: '0.6rem' }}>
-            <span className="badge-gold" style={{ fontSize: '0.72rem', padding: '0.25rem 0.65rem' }}>
+          <div className="hero-banner-badge">
+            <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem' }}>
               <i className="fa-solid fa-bolt" style={{ marginRight: '0.3rem' }} />
               {current.badge || 'SPECIAL OFFER'}
             </span>
           </div>
 
           {/* Headline & Text */}
-          <h1 style={{
-            fontSize: 'clamp(1.25rem, 4vw, 2.2rem)',
-            fontWeight: 900,
-            fontFamily: 'var(--font-heading)',
-            color: '#fff',
-            margin: '0 0 0.4rem 0',
-            lineHeight: 1.15
-          }}>
+          <h1 className="hero-banner-title">
             {current.title}
           </h1>
 
-          <p style={{
-            fontSize: 'clamp(0.78rem, 2.2vw, 0.9rem)',
-            color: 'var(--text-muted)',
-            lineHeight: 1.45,
-            maxWidth: '650px',
-            margin: '0 0 1rem 0'
-          }}>
+          <p className="hero-banner-desc">
             {current.subtitle}
           </p>
 
           {/* Action Trigger */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {current.action === 'referrals' ? (
-              <button onClick={onOpenReferrals} className="btn-cyan-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>
+              <button onClick={onOpenReferrals} className="btn-cyan-glow hero-banner-btn">
                 <i className="fa-solid fa-users-viewfinder" /> {current.cta || 'REFER FRIENDS'}
               </button>
             ) : current.action === 'freeplay' ? (
-              <button onClick={onOpenFreeplay} className="btn-gold-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #00e676 0%, #00a152 100%)', color: '#000' }}>
+              <button onClick={onOpenFreeplay} className="btn-gold-glow hero-banner-btn" style={{ background: 'linear-gradient(135deg, #00e676 0%, #00a152 100%)', color: '#000' }}>
                 <i className="fa-solid fa-gift" /> {current.cta || 'CLAIM $3 FREEPLAY'}
               </button>
             ) : (
-              <button onClick={onOpenDeposit} className="btn-gold-glow" style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}>
+              <button onClick={onOpenDeposit} className="btn-gold-glow hero-banner-btn">
                 <i className="fa-solid fa-coins" /> {current.cta || 'CLAIM BONUS NOW'}
               </button>
             )}
@@ -143,10 +106,10 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
       {announcements.length > 1 && (
         <div style={{
           position: 'absolute',
-          bottom: '10px',
-          right: '16px',
+          bottom: '8px',
+          right: '12px',
           display: 'flex',
-          gap: '5px',
+          gap: '4px',
           zIndex: 10
         }}>
           {announcements.map((_, idx) => (
@@ -154,8 +117,8 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               style={{
-                width: idx === currentIndex ? '20px' : '7px',
-                height: '7px',
+                width: idx === currentIndex ? '16px' : '6px',
+                height: '6px',
                 borderRadius: '999px',
                 background: idx === currentIndex ? 'var(--gold-primary)' : 'rgba(255,255,255,0.25)',
                 border: 'none',
@@ -166,6 +129,78 @@ export default function PlayerHeroBanner({ frontendSettings = {}, onOpenDeposit,
           ))}
         </div>
       )}
+
+      <style jsx>{`
+        .hero-banner-outer {
+          position: relative;
+          border-radius: 20px;
+          overflow: hidden;
+          border: 1px solid var(--card-border);
+          box-shadow: var(--card-glow-shadow);
+          margin: 0.75rem 0 1.15rem 0;
+        }
+        .hero-banner-content {
+          padding: clamp(1.15rem, 3.5vw, 2rem) clamp(1rem, 3vw, 1.85rem);
+          position: relative;
+          min-height: 150px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          backdrop-filter: var(--glass-blur);
+        }
+        .hero-banner-badge {
+          margin-bottom: 0.5rem;
+        }
+        .hero-banner-title {
+          font-size: clamp(1.15rem, 3.5vw, 2rem);
+          font-weight: 900;
+          font-family: var(--font-heading);
+          color: #fff;
+          margin: 0 0 0.35rem 0;
+          line-height: 1.15;
+        }
+        .hero-banner-desc {
+          font-size: clamp(0.75rem, 2vw, 0.88rem);
+          color: var(--text-muted);
+          line-height: 1.4;
+          max-width: 650px;
+          margin: 0 0 0.85rem 0;
+        }
+        .hero-banner-btn {
+          padding: 0.6rem 1.15rem;
+          font-size: 0.8rem;
+        }
+        @media (max-width: 768px) {
+          .hero-banner-outer {
+            border-radius: 14px;
+            margin: 0.35rem 0 0.6rem 0;
+          }
+          .hero-banner-content {
+            padding: 0.65rem 0.85rem;
+            min-height: auto;
+          }
+          .hero-banner-badge {
+            margin-bottom: 0.2rem;
+          }
+          .hero-banner-title {
+            font-size: 1.05rem;
+            margin: 0 0 0.2rem 0;
+          }
+          .hero-banner-desc {
+            font-size: 0.72rem;
+            line-height: 1.25;
+            margin: 0 0 0.45rem 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          .hero-banner-btn {
+            padding: 0.38rem 0.85rem;
+            font-size: 0.72rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -27,15 +27,9 @@ const SupportTab = lazyWithRetry(() => import('./admin/SupportTab'));
 const StaffTab = lazyWithRetry(() => import('./admin/StaffTab'));
 const SettingsTab = lazyWithRetry(() => import('./admin/SettingsTab'));
 const FrontendSettingsTab = lazyWithRetry(() => import('./admin/FrontendSettingsTab'));
-const ShiftReportsTab = lazyWithRetry(() => import('./admin/ShiftReportsTab'));
-const ShiftDashboardTab = lazyWithRetry(() => import('./admin/ShiftDashboardTab'));
 const PromotionsTab = lazyWithRetry(() => import('./admin/PromotionsTab'));
 const TxSearchTab = lazyWithRetry(() => import('./admin/TxSearchTab'));
-const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
-const AffiliatesTab = lazyWithRetry(() => import('./admin/AffiliatesTab'));
 const DeletedPlayersTab = lazyWithRetry(() => import('./admin/DeletedPlayersTab'));
-const AffiliateCommissionTab = lazyWithRetry(() => import('./admin/AffiliateCommissionTab'));
-const WebsitePaymentsTab = lazyWithRetry(() => import('./admin/WebsitePaymentsTab'));
 const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequestsTab'));
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
 
@@ -359,22 +353,20 @@ export default function AdminDashboard({
     return roles.some((role) => {
       if (role === 'admin') return true; // Super Admin has full access
       
-      if (tabName === 'shift_dashboard') return role === 'operation_admin' || role === 'coins_admin';
       if (tabName === 'promotions') return role === 'operation_admin';
       // Frontend Settings tab is strictly reserved for main boss (Super Admin)
       if (tabName === 'frontend_settings') return false;
-      if (tabName === 'shift_reports') return role === 'operation_admin';
 
       if (role === 'operation_admin') return !['staff', 'settings'].includes(tabName); // Operational Manager has access to all EXCEPT staff and settings
       if (role === 'financial_admin') return ['dashboard', 'ledger', 'gateways', 'tx_search'].includes(tabName);
       if (role === 'support_admin') return ['dashboard', 'support'].includes(tabName);
-      if (role === 'coins_admin') return ['dashboard', 'requests', 'coins', 'tx_search', 'shift_dashboard'].includes(tabName);
+      if (role === 'coins_admin') return ['dashboard', 'requests', 'coins', 'tx_search'].includes(tabName);
       return false;
     });
   };
 
   const isSuperAdminOnlyTab = (tabName) => (
-    ['affiliate_commissions', 'website_payments', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)
+    ['deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)
   );
 
   const canRenderActiveTab = () => {
@@ -518,36 +510,7 @@ export default function AdminDashboard({
             </button>
           )}
 
-          {hasAccess('shift_dashboard') && (
-            <button
-              onClick={() => { setActiveTab('shift_dashboard'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'shift_dashboard' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'shift_dashboard' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                position: 'relative',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fa-solid fa-business-time" style={{ width: '18px' }}></i>
-              <span>Shift Dashboard</span>
-              {(pendingRequestsCount + pendingCoinsCount) > 0 && (
-                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '10px', fontWeight: 'bold' }}>
-                  {pendingRequestsCount + pendingCoinsCount}
-                </span>
-              )}
-            </button>
-          )}
+
 
           {hasAccess('promotions') && (
             <button
@@ -767,30 +730,7 @@ export default function AdminDashboard({
             </button>
           )}
 
-          {hasAccess('shift_reports') && (
-            <button
-              onClick={() => { setActiveTab('shift_reports'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'shift_reports' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'shift_reports' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fa-solid fa-clock-rotate-left" style={{ width: '18px' }}></i>
-              <span>Shift Reports</span>
-            </button>
-          )}
+
 
           {hasAccess('support') && (
             <button
@@ -848,117 +788,9 @@ export default function AdminDashboard({
             </button>
           )}
 
-          {hasAccess('distributors') && (
-            <button
-              onClick={() => { setActiveTab('distributors'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'distributors' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'distributors' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fa-solid fa-users-gear" style={{ width: '18px' }}></i>
-              <span>Distributors</span>
-            </button>
-          )}
 
-          {hasAccess('distributors') && (
-            <button
-              onClick={() => { setActiveTab('affiliates'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'affiliates' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'affiliates' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-                marginTop: '0.25rem'
-              }}
-            >
-              <i className="fa-solid fa-users" style={{ width: '18px' }}></i>
-              <span>Affiliates (Agents)</span>
-            </button>
-          )}
 
-          {isSuperAdmin() && !adminUser?.distributorId && (
-            <button
-              onClick={() => { setActiveTab('affiliate_commissions'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'affiliate_commissions' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'affiliate_commissions' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-                marginTop: '0.25rem'
-              }}
-            >
-              <i className="fa-solid fa-hand-holding-dollar" style={{ width: '18px' }}></i>
-              <span>Affiliate Commissions</span>
-              {statsData?.stats?.pendingAffiliateCommissionsCount > 0 && (
-                <span className="notification-badge" style={{ marginLeft: 'auto', background: '#a855f7', color: '#fff', fontSize: '0.65rem', padding: '0.15rem 0.35rem', borderRadius: '10px', fontWeight: 'bold' }}>
-                  {statsData.stats.pendingAffiliateCommissionsCount}
-                </span>
-              )}
-            </button>
-          )}
 
-          {!adminUser?.distributorId && isSuperAdmin() && (
-            <button
-              onClick={() => { setActiveTab('website_payments'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'website_payments' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'website_payments' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fa-solid fa-file-invoice-dollar" style={{ width: '18px' }}></i>
-              <span>Website Payments</span>
-              {statsData?.stats?.pendingWebsitePaymentsCount > 0 && (
-                <span className="notification-badge" style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.65rem', padding: '0.15rem 0.35rem', borderRadius: '10px', fontWeight: 'bold' }}>
-                  {statsData.stats.pendingWebsitePaymentsCount}
-                </span>
-              )}
-            </button>
-          )}
 
           {!adminUser?.distributorId && isSuperAdmin() && (
             <button
@@ -1241,28 +1073,8 @@ export default function AdminDashboard({
               {activeTab === 'staff' && hasAccess('staff') && (
                 <StaffTab adminUser={adminUser} onCreateAdmin={onCreateAdmin} onDeleteUser={onDeleteUser} />
               )}
-              {activeTab === 'distributors' && hasAccess('distributors') && (
-                <DistributorsTab />
-              )}
-              {activeTab === 'affiliates' && hasAccess('distributors') && (
-                <AffiliatesTab />
-              )}
               {activeTab === 'deleted_accounts' && !adminUser?.distributorId && isSuperAdmin() && (
                 <DeletedPlayersTab />
-              )}
-              {activeTab === 'affiliate_commissions' && isSuperAdmin() && !adminUser?.distributorId && (
-                <AffiliateCommissionTab
-                  onInspectProof={onInspectProof}
-                  completedActionIds={completedActionIds}
-                  adminUser={adminUser}
-                />
-              )}
-              {activeTab === 'website_payments' && !adminUser?.distributorId && isSuperAdmin() && (
-                <WebsitePaymentsTab
-                  onInspectProof={onInspectProof}
-                  completedActionIds={completedActionIds}
-                  adminUser={adminUser}
-                />
               )}
               {activeTab === 'campaign_requests' && !adminUser?.distributorId && isSuperAdmin() && (
                 <CampaignRequestsTab
@@ -1278,12 +1090,6 @@ export default function AdminDashboard({
               )}
               {activeTab === 'frontend_settings' && hasAccess('frontend_settings') && (
                 <FrontendSettingsTab adminUser={adminUser} />
-              )}
-              {activeTab === 'shift_reports' && hasAccess('shift_reports') && (
-                <ShiftReportsTab />
-              )}
-              {activeTab === 'shift_dashboard' && hasAccess('shift_dashboard') && (
-                <ShiftDashboardTab adminUser={adminUser} onInspectProof={onInspectProof} />
               )}
               {activeTab === 'promotions' && hasAccess('promotions') && (
                 <PromotionsTab adminUser={adminUser} />

@@ -587,40 +587,31 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
       isValid = false;
     }
 
-    if (isLinkPayTheme) {
-      if (!redirectUrl.trim()) {
-        setRedirectError('Pay redirect URL is required for Cash App / Stripe.');
-        isValid = false;
-      }
-    } else {
-      if (tag.trim() === '') {
-        setTagError('Payment Tag/Address is required');
-        isValid = false;
-      }
-      if (qrImage.trim() === '') {
-        setQrError('Please upload the QR Code Image Graphic.');
-        isValid = false;
-      }
+    if (tag.trim() === '' && redirectUrl.trim() === '') {
+      setTagError('Please enter a Payment Tag (e.g. $Cashtag) or Pay URL.');
+      isValid = false;
     }
 
     if (isValid) {
       setIsSubmitting(true);
       try {
         const safeName = name.trim();
-        const safeTag = isLinkPayTheme
-          ? (tag.trim() || `${theme}-pay`)
-          : tag.trim();
+        const safeTag = tag.trim() || (isLinkPayTheme ? `${theme}-pay` : '');
+        let safeRedirect = redirectUrl.trim();
+        if (theme === 'cashapp' && !safeRedirect && safeTag && safeTag !== 'cashapp-pay') {
+          const cleanTag = safeTag.replace(/[^a-zA-Z0-9_-]/g, '');
+          if (cleanTag) safeRedirect = `https://cash.app/$${cleanTag}`;
+        }
+
         await onSave({
           id: editGateway ? editGateway.id : null,
           name: safeName,
           subtitle: subtitle.trim(),
           tag: safeTag,
-          phone: isLinkPayTheme ? '' : phone.trim(),
+          phone: phone.trim(),
           theme,
-          qrImage: isLinkPayTheme
-            ? ''
-            : (qrImage || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(safeName + '-' + safeTag)}`),
-          redirectUrl: isLinkPayTheme ? redirectUrl.trim() : redirectUrl.trim(),
+          qrImage: qrImage.trim(),
+          redirectUrl: safeRedirect,
           isWithdrawActive,
           requireNameOnTag: isWithdrawActive ? requireNameOnTag : false,
           requireTag: isWithdrawActive ? requireTag : false,
@@ -703,58 +694,52 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
               </div>
             </div>
 
-            {isLinkPayTheme ? (
-              <div className="input-group">
-                <label htmlFor="gt-redirect">Pay Redirect URL (Required)</label>
-                <div className="input-wrapper">
-                  <i className="fa-solid fa-link input-icon"></i>
-                  <input
-                    type="url"
-                    id="gt-redirect"
-                    placeholder="e.g. https://cash.app/$YourTag or Stripe payment link"
-                    value={redirectUrl}
-                    onChange={(e) => { setRedirectUrl(e.target.value); setRedirectError(''); }}
-                    required
-                  />
-                </div>
-                <span className="error-msg">{redirectError}</span>
-                <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                  Cash App / Stripe only need this link. No payment tag, phone, or QR. Optional: {'{amount}'} {'{code}'}
-                </span>
+            <div className="input-group">
+              <label htmlFor="gt-tag">Payment Tag / ID Address (e.g. $Cashtag, Chime username)</label>
+              <div className="input-wrapper">
+                <i className="fa-solid fa-at input-icon"></i>
+                <input
+                  type="text"
+                  id="gt-tag"
+                  placeholder="e.g. $MyTag, name@email.com"
+                  value={tag}
+                  onChange={(e) => { setTag(e.target.value); setTagError(''); }}
+                />
               </div>
-            ) : (
-              <>
-                <div className="input-group">
-                  <label htmlFor="gt-tag">Payment Tag / ID Address</label>
-                  <div className="input-wrapper">
-                    <i className="fa-solid fa-at input-icon"></i>
-                    <input
-                      type="text"
-                      id="gt-tag"
-                      placeholder="e.g. $MyTag, name@email.com"
-                      value={tag}
-                      onChange={(e) => { setTag(e.target.value); setTagError(''); }}
-                      required
-                    />
-                  </div>
-                  <span className="error-msg">{tagError}</span>
-                </div>
+              <span className="error-msg">{tagError}</span>
+            </div>
 
-                <div className="input-group">
-                  <label htmlFor="gt-phone">Linked Phone / Info Details</label>
-                  <div className="input-wrapper">
-                    <i className="fa-solid fa-phone input-icon"></i>
-                    <input
-                      type="text"
-                      id="gt-phone"
-                      placeholder="e.g. 555-123-4567, USDT TRC20"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="input-group">
+              <label htmlFor="gt-redirect">Pay Redirect URL (Optional)</label>
+              <div className="input-wrapper">
+                <i className="fa-solid fa-link input-icon"></i>
+                <input
+                  type="url"
+                  id="gt-redirect"
+                  placeholder="e.g. https://cash.app/$YourTag or Stripe payment link"
+                  value={redirectUrl}
+                  onChange={(e) => { setRedirectUrl(e.target.value); setRedirectError(''); }}
+                />
+              </div>
+              <span className="error-msg">{redirectError}</span>
+              <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                Optional for Cash App / Stripe. If empty, Cash App link auto-generates from the $tag.
+              </span>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="gt-phone">Phone / Account Info Details (Optional)</label>
+              <div className="input-wrapper">
+                <i className="fa-solid fa-phone input-icon"></i>
+                <input
+                  type="text"
+                  id="gt-phone"
+                  placeholder="e.g. 555-123-4567, USDT TRC20"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </div>
 
             {/* Withdrawal CMS Configuration Settings */}
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -820,32 +805,30 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
               )}
             </div>
 
-            {/* QR Graphic File Uploader — not needed for Cash App / Stripe link pay */}
-            {!isLinkPayTheme && (
-              <div className="input-group">
-                <label htmlFor="gt-qr-uploader">Upload QR Code Image</label>
-                <div className="input-wrapper">
-                  <i className="fa-solid fa-qrcode input-icon"></i>
-                  <input
-                    type="file"
-                    id="gt-qr-uploader"
-                    accept="image/*"
-                    onChange={handleQrUpload}
-                    style={{ border: 'none', background: 'none', color: '#fff', fontSize: '0.75rem', cursor: 'pointer', padding: '0.4rem 0', width: '100%' }}
-                    required={!editGateway}
-                  />
-                </div>
-                <span className="error-msg">{qrError}</span>
-                {qrImage && (
-                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ width: '40px', height: '40px', overflow: 'hidden', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <img src={qrImage} alt="QR Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <span style={{ fontSize: '0.7rem', color: '#4ade80', fontWeight: 'bold' }}>QR Code selected.</span>
-                  </div>
-                )}
+            {/* QR Graphic File Uploader — Available for all gateways including Cash App */}
+            <div className="input-group">
+              <label htmlFor="gt-qr-uploader">Upload QR Code Image Graphic (Optional for Cash App, Chime, etc.)</label>
+              <div className="input-wrapper">
+                <i className="fa-solid fa-qrcode input-icon"></i>
+                <input
+                  type="file"
+                  id="gt-qr-uploader"
+                  accept="image/*"
+                  onChange={handleQrUpload}
+                  style={{ border: 'none', background: 'none', color: '#fff', fontSize: '0.75rem', cursor: 'pointer', padding: '0.4rem 0', width: '100%' }}
+                />
               </div>
-            )}
+              <span className="error-msg">{qrError}</span>
+              {qrImage && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '40px', height: '40px', overflow: 'hidden', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: '#fff' }}>
+                    <img src={qrImage} alt="QR Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: '#4ade80', fontWeight: 'bold' }}>QR Code graphic selected.</span>
+                  <button type="button" onClick={() => setQrImage('')} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer', marginLeft: 'auto' }}>Remove</button>
+                </div>
+              )}
+            </div>
 
             <button type="submit" className="submit-btn" disabled={isSubmitting}>
               <span>{isSubmitting ? 'SAVING...' : (editGateway ? 'UPDATE GATEWAY' : 'SAVE GATEWAY')}</span>

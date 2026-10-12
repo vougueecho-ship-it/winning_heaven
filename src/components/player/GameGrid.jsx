@@ -70,7 +70,7 @@ export default function GameGrid({
   }, [accountRequests]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', margin: '1rem 0' }}>
+    <div className="game-catalog-section">
       
       {/* Category Pills & Search Bar Container */}
       <div style={{
@@ -214,6 +214,22 @@ export default function GameGrid({
           })}
         </div>
       )}
+
+      <style jsx>{`
+        .game-catalog-section {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+          width: 100%;
+          margin: 0.75rem 0;
+        }
+        @media (max-width: 768px) {
+          .game-catalog-section {
+            gap: 0.5rem !important;
+            margin: 0.25rem 0 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

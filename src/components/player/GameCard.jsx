@@ -227,8 +227,8 @@ export default function GameCard({
                 whiteSpace: 'nowrap'
               }}
             >
-              <i className="fa-solid fa-user-plus" />
-              <span>GET ACCOUNT</span>
+              <i className="fa-solid fa-play" />
+              <span>PLAY</span>
             </button>
           )}
         </div>

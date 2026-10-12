@@ -7,6 +7,24 @@ import GatewayRevenueBreakdown from './GatewayRevenueBreakdown';
 import { compressImageFile } from '../../lib/imageCompress';
 import { formatDeviceDateTime } from '../../lib/formatDateTime';
 
+let memoryLedgerCache = {};
+
+function getInitialLedgerData(status) {
+  const key = status || 'ALL';
+  if (memoryLedgerCache[key]) return memoryLedgerCache[key];
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`admin_ledger_cache_${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        memoryLedgerCache[key] = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+  }
+  return undefined;
+}
+
 export default function LedgerTab({
   onInspectProof,
   onApproveTransaction,
@@ -20,6 +38,7 @@ export default function LedgerTab({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState('PENDING'); // 'PENDING' (default), 'FAILED', 'SUCCESS', '' (All)
+  const [initialLedgerFallback] = useState(() => getInitialLedgerData('PENDING'));
   const limit = 20;
 
   useEffect(() => {
@@ -40,8 +59,21 @@ export default function LedgerTab({
   // Finance ledger swr key supports PENDING (default), FAILED, SUCCESS, or ALL
   const swrKey = `/api/transactions?status=${ledgerStatusFilter}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
 
-  // SWR automatically polls every 4s for ledger transactions
-  const { data, error, mutate } = usePollingSWR(swrKey, POLL.QUEUES, { keepPreviousData: false });
+  // SWR automatically polls every 4s for ledger transactions with instant cached fallback
+  const { data, error, mutate } = usePollingSWR(swrKey, POLL.QUEUES, {
+    keepPreviousData: true,
+    fallbackData: initialLedgerFallback
+  });
+
+  useEffect(() => {
+    if (data && page === 1 && !debouncedSearch) {
+      const key = ledgerStatusFilter || 'ALL';
+      memoryLedgerCache[key] = data;
+      try {
+        localStorage.setItem(`admin_ledger_cache_${key}`, JSON.stringify(data));
+      } catch (e) {}
+    }
+  }, [data, page, debouncedSearch, ledgerStatusFilter]);
 
   const roles = parseRoles(adminUser?.role);
   const showGatewayBreakdown = roles.includes('admin') || roles.includes('operation_admin');
