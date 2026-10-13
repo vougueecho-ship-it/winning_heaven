@@ -321,71 +321,74 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
 
   return (
     <section className="admin-section-card" style={{ animation: 'fade-in 0.2s ease-out' }}>
-      <div className="section-card-header" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3><i className="fa-solid fa-user-plus gold-text"></i> Game Account Requests &amp; Created Accounts</h3>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            {canUpdateCredentials && (
-              <button
-                onClick={() => setAddAccountModalOpen(true)}
-                className="submit-btn"
-                style={{
-                  margin: 0,
-                  width: 'auto',
-                  padding: '0.5rem 1.25rem',
-                  background: 'var(--gold-primary)',
-                  color: '#000',
-                  fontWeight: 'bold',
-                  fontSize: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem'
-                }}
-              >
-                <i className="fa-solid fa-key"></i> Add Account
-              </button>
-            )}
-            <span className="game-tap-tip">Pending requests stay on top · created accounts below</span>
+      <div className="section-card-header" style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h3 style={{ margin: 0 }}><i className="fa-solid fa-user-plus gold-text"></i> Game Account Requests &amp; Created Accounts</h3>
+            <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.25rem' }}>Pending requests stay on top · created accounts below</span>
           </div>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '0.75rem', width: '100%', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', flex: '1 1 240px', width: 'auto' }}>
-            <i className="fa-solid fa-magnifying-glass input-icon"></i>
-            <input
-              type="text"
-              placeholder="Search requests by email or game portal..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-            <label htmlFor="requests-status-filter" style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              <i className="fa-solid fa-filter" style={{ color: 'var(--gold-primary)', marginRight: '4px' }}></i> Status:
-            </label>
-            <select
-              id="requests-status-filter"
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          {canUpdateCredentials && (
+            <button
+              onClick={() => setAddAccountModalOpen(true)}
+              className="submit-btn"
               style={{
-                background: '#0b0d16',
-                color: 'var(--gold-primary)',
-                border: '1px solid rgba(255,215,0,0.3)',
-                padding: '0.55rem 0.85rem',
-                borderRadius: '8px',
-                fontSize: '0.78rem',
+                margin: 0,
+                width: 'auto',
+                padding: '0.55rem 1.25rem',
+                background: 'var(--gold-primary)',
+                color: '#000',
                 fontWeight: 'bold',
-                cursor: 'pointer',
-                outline: 'none'
+                fontSize: '0.8rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                borderRadius: '8px'
               }}
             >
-              <option value="PENDING,READY,REJECTED" style={{ background: '#0a0e1a', color: '#38bdf8' }}>ALL (Pending on top)</option>
-              <option value="PENDING" style={{ background: '#0a0e1a', color: '#fff' }}>PENDING (Requires Action)</option>
-              <option value="READY" style={{ background: '#0a0e1a', color: '#22c55e' }}>READY / APPROVED</option>
-              <option value="REJECTED" style={{ background: '#0a0e1a', color: '#ef4444' }}>REJECTED</option>
-            </select>
-          </div>
+              <i className="fa-solid fa-key"></i> Add Account
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Search & Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '0.75rem', width: '100%', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div className="input-wrapper search-wrapper" style={{ background: '#0b0d16', flex: 1, minWidth: '260px', height: '42px', margin: 0 }}>
+          <i className="fa-solid fa-magnifying-glass input-icon"></i>
+          <input
+            type="text"
+            placeholder="Search requests by email or game portal..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <label htmlFor="requests-status-filter" style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <i className="fa-solid fa-filter" style={{ color: 'var(--gold-primary)', marginRight: '4px' }}></i> Status:
+          </label>
+          <select
+            id="requests-status-filter"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            style={{
+              background: '#0b0d16',
+              color: 'var(--gold-primary)',
+              border: '1px solid rgba(255,215,0,0.3)',
+              padding: '0 0.85rem',
+              height: '42px',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="PENDING,READY,REJECTED" style={{ background: '#0a0e1a', color: '#38bdf8' }}>ALL (Pending on top)</option>
+            <option value="PENDING" style={{ background: '#0a0e1a', color: '#fff' }}>PENDING (Requires Action)</option>
+            <option value="READY" style={{ background: '#0a0e1a', color: '#22c55e' }}>READY / APPROVED</option>
+            <option value="REJECTED" style={{ background: '#0a0e1a', color: '#ef4444' }}>REJECTED</option>
+          </select>
         </div>
       </div>
 

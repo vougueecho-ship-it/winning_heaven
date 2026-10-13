@@ -441,13 +441,26 @@
 .input-wrapper,
 .admin-input-wrapper {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
   background: rgba(6, 8, 18, 0.85);
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 10px;
   padding: 0.6rem 0.9rem;
   transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.input-wrapper.search-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  padding: 0 0.9rem !important;
+  box-sizing: border-box !important;
 }
 
 .input-wrapper:focus-within,
@@ -461,6 +474,7 @@
   color: var(--gold-primary, #ffc800);
   font-size: 0.9rem;
   margin-right: 0.75rem;
+  flex-shrink: 0;
 }
 
 .input-wrapper input,
@@ -474,6 +488,11 @@
   color: #fff;
   font-size: 0.85rem;
   font-family: var(--font-body, 'Inter', sans-serif);
+}
+
+.input-wrapper.search-wrapper input {
+  height: 100% !important;
+  line-height: normal !important;
 }
 
 .admin-input,
@@ -805,13 +824,6 @@
   flex-direction: column !important;
   gap: 0.5rem !important;
   margin-bottom: 1.25rem !important;
-  align-items: flex-start !important;
-  text-align: left !important;
-}
-
-.section-card-header > div {
-  display: flex !important;
-  flex-direction: column !important;
   align-items: flex-start !important;
   text-align: left !important;
 }
