@@ -184,7 +184,9 @@ export async function sendPromotionPush(db, promotion, targetEmails) {
         const code = result.error?.code;
         if (
           code === 'messaging/registration-token-not-registered' ||
-          code === 'messaging/invalid-registration-token'
+          code === 'messaging/invalid-registration-token' ||
+          code === 'messaging/mismatched-credential' ||
+          code === 'messaging/invalid-argument'
         ) {
           expiredEndpoints.push(batch[resultIndex].endpoint);
         }
@@ -410,7 +412,9 @@ export async function sendStaffPush(
           const code = result.error?.code;
           if (
             code === 'messaging/registration-token-not-registered' ||
-            code === 'messaging/invalid-registration-token'
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/mismatched-credential' ||
+            code === 'messaging/invalid-argument'
           ) {
             expiredEndpoints.push(batch[resultIndex].endpoint);
           }
@@ -667,7 +671,9 @@ export async function sendDistributorPush(
           const code = result.error?.code;
           if (
             code === 'messaging/registration-token-not-registered' ||
-            code === 'messaging/invalid-registration-token'
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/mismatched-credential' ||
+            code === 'messaging/invalid-argument'
           ) {
             expiredEndpoints.push(batch[resultIndex].endpoint);
           }
@@ -841,7 +847,9 @@ export async function sendUserPush(
           const code = result.error?.code;
           if (
             code === 'messaging/registration-token-not-registered' ||
-            code === 'messaging/invalid-registration-token'
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/mismatched-credential' ||
+            code === 'messaging/invalid-argument'
           ) {
             expiredEndpoints.push(batch[resultIndex].endpoint);
           }

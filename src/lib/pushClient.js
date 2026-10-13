@@ -345,6 +345,7 @@ async function subscribeToWebPush(userEmail, { audience = 'player', distributorI
 }
 
 export async function subscribeToPromoPush(userEmail) {
+  let nativeResult = null;
   if (isNativePlatform()) {
     try {
       const audience = isDistributorNative()
@@ -352,16 +353,24 @@ export async function subscribeToPromoPush(userEmail) {
         : isPortalNative()
           ? 'staff'
           : 'player';
-      return await subscribeToNativePush(userEmail, { audience });
+      nativeResult = await subscribeToNativePush(userEmail, { audience });
     } catch (error) {
-      const message = String(error?.message || '');
-      // Permission denied should not silently fall back.
-      if (/permission was not allowed/i.test(message)) throw error;
-      // Until Firebase is on the APK, use Web Push inside the WebView.
+      console.warn('Native push registration error:', error?.message || error);
     }
   }
 
-  return subscribeToWebPush(userEmail, { audience: 'player' });
+  // Dual-subscribe: also ensure Web Push (VAPID) is subscribed if supported
+  try {
+    if (supportsWebPush()) {
+      await subscribeToWebPush(userEmail, { audience: 'player' });
+    }
+  } catch (webErr) {
+    if (!nativeResult) {
+      console.warn('Web push registration error:', webErr?.message || webErr);
+    }
+  }
+
+  return nativeResult;
 }
 
 /** Winning Heaven Portal (admin/staff) — lock-screen alerts for new requests. */

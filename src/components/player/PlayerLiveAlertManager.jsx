@@ -71,11 +71,17 @@ export default function PlayerLiveAlertManager() {
     }
 
     try {
+      const isNative = typeof window !== 'undefined' && (
+        window.Capacitor?.isNativePlatform?.() === true ||
+        /WinningHeavenNative/i.test(navigator.userAgent || '')
+      );
+      const isWebGranted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
       const alreadyAllowed =
         localStorage.getItem('wh_push_allowed') === 'true' ||
-        (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+        isWebGranted ||
+        isNative;
 
-      // If already allowed, never show again
+      // If already allowed or in native APK, never show prompt modal
       if (alreadyAllowed) {
         setShowNotificationPrompt(false);
       } else {
@@ -84,6 +90,13 @@ export default function PlayerLiveAlertManager() {
           setShowNotificationPrompt(true);
         }, 1000);
         return () => clearTimeout(timer);
+      }
+
+      // CRITICAL FIX: Ensure push subscription is ALWAYS actively synced for the logged-in player
+      if ((alreadyAllowed || isWebGranted || isNative) && session?.email) {
+        subscribeToPromoPush(session.email).catch((e) => {
+          console.warn('[PlayerLiveAlertManager] Push sync error:', e?.message || e);
+        });
       }
     } catch {
       setShowNotificationPrompt(false);
@@ -94,18 +107,18 @@ export default function PlayerLiveAlertManager() {
     if (subscribingPush) return;
     setSubscribingPush(true);
     try {
-      if (typeof Notification !== 'undefined') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted' && session?.email) {
+      if (session?.email) {
+        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
           try {
-            await subscribeToPromoPush(session.email);
-          } catch (e) {
-            console.warn('Push registration error:', e);
+            await Notification.requestPermission();
+          } catch (pErr) {
+            console.warn('Web notification request error:', pErr);
           }
         }
+        await subscribeToPromoPush(session.email);
       }
     } catch (err) {
-      console.warn('Notification permission error:', err);
+      console.warn('Notification subscription error:', err);
     } finally {
       // Mark permanently allowed so it NEVER shows again
       try {

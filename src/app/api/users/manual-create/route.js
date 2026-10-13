@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
+import { notifyUserAsync } from '../../../../lib/userAlertService';
 
 export async function POST(req) {
   try {
@@ -63,6 +64,21 @@ export async function POST(req) {
     };
 
     await usersCollection.insertOne(newUser);
+
+    notifyUserAsync(db, {
+      userEmail: cleanEmail,
+      title: 'Welcome to Winning Heaven! 🎰',
+      message: `Your account has been created by administration! Temporary password: ${tempPassword}. Log in now to play.`,
+      type: 'account_created',
+      url: '/lobby',
+      details: [
+        { label: 'Full Name', value: name.trim() },
+        { label: 'Account Email', value: cleanEmail },
+        { label: 'Temporary Password', value: tempPassword },
+        { label: 'Status', value: 'Active Player' }
+      ],
+      actionButton: { text: 'LOG IN & PLAY', url: '/lobby' }
+    });
 
     return NextResponse.json({
       success: true,
