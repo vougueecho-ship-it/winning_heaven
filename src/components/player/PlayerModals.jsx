@@ -1102,21 +1102,32 @@ export function PlayerWithdrawModal({
       return;
     }
 
+    const requireTagQr = activeSettings?.withdrawRequireTagQrScreenshot === true;
+    if (requireTagQr && !tagQrScreenshot) {
+      if (showToast) showToast('Receiving payment QR code screenshot is required.', 'error');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await onSubmitTransaction({
+      const res = await onSubmitTransaction({
         amount: numAmt,
         type: 'WITHDRAW',
         gameTitle: targetGameTitle,
         gateway: payoutMethod,
         payoutMethod,
-        recipientTag,
+        code: recipientTag.trim(),
+        recipientTag: recipientTag.trim(),
         nameOnTag,
         phoneOnTag,
         screenshot: gameScreenshot,
         tagQrScreenshot,
+        payoutQr: tagQrScreenshot,
         isFreeplayWithdraw: isFreeplaySession
       });
+      if (res && res.success === false) {
+        return;
+      }
       onClose();
     } catch (err) {
       if (showToast) showToast(cleanErrorMessage(err, 'Cashout submission failed.'), 'error');

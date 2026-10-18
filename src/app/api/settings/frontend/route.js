@@ -54,7 +54,7 @@ const DEFAULT_SETTINGS = {
   ],
   // Withdrawal form proof requirements (Super Admin toggles)
   withdrawRequireGameScreenshot: false,
-  withdrawRequireTagQrScreenshot: true,
+  withdrawRequireTagQrScreenshot: false,
 
   // Landing Page Texts
   landingWelcome: 'WELCOME TO WINNING HEAVEN',

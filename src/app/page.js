@@ -591,11 +591,9 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
       newTx.type === 'BONUS' &&
       (newTx.code === 'SIGNUP-FREE3' || newTx.code === 'FREEPLAY' || /promo freeplay/i.test(String(newTx.note || '')));
 
-    // Paint toast before API for fast deposit/withdraw — freeplay awaits validation response
+    // Paint toast before API for fast deposit (freeplay & withdraw await server response)
     if (isDeposit) {
       showToast(`Deposit request of $${parseFloat(newTx.amount).toFixed(2)} submitted with payment proof.`, 'success');
-    } else if (isWithdraw) {
-      showToast(`Withdrawal request of $${parseFloat(newTx.amount).toFixed(2)} submitted.`, 'success');
     }
     await new Promise((r) => setTimeout(r, 0));
 
@@ -619,7 +617,9 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
             `Freeplay request of $${parseFloat(newTx.amount || 3).toFixed(2)} submitted${gameBit}! Staff is verifying your screenshot.`,
             'success'
           );
-        } else if (!isDeposit && !isWithdraw) {
+        } else if (isWithdraw) {
+          showToast(`Cashout request of $${parseFloat(newTx.amount).toFixed(2)} submitted successfully! Processing in 5-15 mins.`, 'success');
+        } else if (!isDeposit) {
           showToast(data.message || 'Request submitted.', 'success');
         }
 

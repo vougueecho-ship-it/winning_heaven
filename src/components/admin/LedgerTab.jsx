@@ -56,8 +56,9 @@ export default function LedgerTab({
   const [overrideReason, setOverrideReason] = useState('');
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
-  // Finance ledger swr key supports PENDING (default), FAILED, SUCCESS, or ALL
-  const swrKey = `/api/transactions?status=${ledgerStatusFilter}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
+  // Finance ledger swr key supports PENDING (default including PENDING_COINS/COINS_LOADING), FAILED, SUCCESS, or ALL
+  const apiStatusParam = ledgerStatusFilter === 'PENDING' ? 'PENDING,PENDING_COINS,COINS_LOADING' : ledgerStatusFilter;
+  const swrKey = `/api/transactions?status=${apiStatusParam}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
 
   // SWR automatically polls every 4s for ledger transactions with instant cached fallback
   const { data, error, mutate } = usePollingSWR(swrKey, POLL.QUEUES, {
@@ -762,7 +763,27 @@ export default function LedgerTab({
                             <span>Mark Failed</span>
                           </button>
                         ) : tx.status === 'PENDING_COINS' ? (
-                          <span style={{ fontSize: '0.7rem', color: '#ffb703', fontWeight: 'bold' }}>Waiting on Coins Manager</span>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#ffb703', fontWeight: 'bold' }}>Waiting on Coins Manager</span>
+                            <button
+                              disabled={processingIds[tx.id]}
+                              onClick={() => handleOpenPayoutModal(tx)}
+                              className="action-row-btn btn-edit"
+                              style={{ background: '#22c55e', color: '#fff', opacity: processingIds[tx.id] ? 0.5 : 1 }}
+                              title="Approve & Send Payout"
+                            >
+                              {processingIds[tx.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                            </button>
+                            <button
+                              disabled={processingIds[tx.id]}
+                              onClick={() => handleOpenRevokeModal(tx)}
+                              className="action-row-btn btn-delete"
+                              style={{ background: '#ef4444', color: '#fff', opacity: processingIds[tx.id] ? 0.5 : 1 }}
+                              title="Fail/Reject Withdrawal"
+                            >
+                              {processingIds[tx.id] ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-xmark"></i>}
+                            </button>
+                          </div>
                         ) : (
                           <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Processed</span>
                         )}

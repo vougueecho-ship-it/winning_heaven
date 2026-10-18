@@ -61,8 +61,13 @@ export async function GET(req) {
       Object.assign(query, await typeBExclusionFilter(db));
     }
     if (status) {
-      const statuses = status.split(',').map(s => s.toUpperCase().trim());
-      if (statuses.length > 1) {
+      let statuses = status.split(',').map(s => s.toUpperCase().trim()).filter(Boolean);
+      if (statuses.length === 1 && statuses[0] === 'PENDING') {
+        query.status = { $in: ['PENDING', 'PENDING_COINS', 'COINS_LOADING'] };
+      } else if (statuses.length > 1) {
+        if (statuses.includes('PENDING')) {
+          statuses = Array.from(new Set([...statuses, 'PENDING_COINS', 'COINS_LOADING']));
+        }
         query.status = { $in: statuses };
       } else {
         query.status = statuses[0];
@@ -313,8 +318,14 @@ export async function POST(req) {
     if (!proofPending && typeof newTx.screenshot === 'string' && newTx.screenshot.startsWith('data:image')) {
       newTx.screenshot = await compressDataUrlIfNeeded(newTx.screenshot);
     }
-    if (typeof newTx.tagQrScreenshot === 'string' && newTx.tagQrScreenshot.startsWith('data:image')) {
-      newTx.tagQrScreenshot = await compressDataUrlIfNeeded(newTx.tagQrScreenshot);
+    const tagQrImg = newTx.tagQrScreenshot || newTx.payoutQr;
+    if (typeof tagQrImg === 'string' && tagQrImg.startsWith('data:image')) {
+      const compressedQr = await compressDataUrlIfNeeded(tagQrImg);
+      newTx.tagQrScreenshot = compressedQr;
+      newTx.payoutQr = compressedQr;
+    } else if (tagQrImg) {
+      newTx.tagQrScreenshot = tagQrImg;
+      newTx.payoutQr = tagQrImg;
     }
     // Never store a multi-MB proof on the fast deposit create path
     if (proofPending) {
@@ -807,12 +818,20 @@ export async function POST(req) {
     };
 
     if (txObject.type === 'WITHDRAW') {
+      // Normalize tagQrScreenshot and payoutQr
+      if (!txObject.tagQrScreenshot && txObject.payoutQr) {
+        txObject.tagQrScreenshot = txObject.payoutQr;
+      }
+      if (!txObject.payoutQr && txObject.tagQrScreenshot) {
+        txObject.payoutQr = txObject.tagQrScreenshot;
+      }
+
       let frontendSettings = cache.get('frontend_settings_all');
       if (!frontendSettings) {
         frontendSettings = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
       }
       const requireGameShot = frontendSettings.withdrawRequireGameScreenshot === true;
-      const requireTagQr = frontendSettings.withdrawRequireTagQrScreenshot !== false;
+      const requireTagQr = frontendSettings.withdrawRequireTagQrScreenshot === true;
 
       if (requireGameShot && (!txObject.screenshot || String(txObject.screenshot).trim() === '')) {
         return NextResponse.json({ success: false, message: 'Game screenshot is required for withdrawals.' }, { status: 400 });

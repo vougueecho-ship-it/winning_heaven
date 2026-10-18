@@ -115,7 +115,7 @@ export async function GET(req) {
       db.collection('accountRequests').countDocuments(requestsQuery),
       db.collection('transactions').countDocuments({
         ...baseQuery,
-        status: 'PENDING',
+        status: { $in: ['PENDING', 'PENDING_COINS', 'COINS_LOADING'] },
         type: { $nin: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW', 'AFFILIATE_COMMISSION_WITHDRAW'] }
       }),
       db.collection('coinsNotifications').countDocuments(coinsQuery),

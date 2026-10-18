@@ -74,6 +74,7 @@ export default function PlayerWithdrawPage({
   }, [frontendSettings, feData]);
 
   const freeplayMin = Number(activeSettings?.freeplayMinWithdraw ?? 30);
+  const requireTagQr = activeSettings?.withdrawRequireTagQrScreenshot === true;
 
   const sortedTx = React.useMemo(() => {
     return [...(transactions || [])].sort((a, b) => {
@@ -193,23 +194,32 @@ export default function PlayerWithdrawPage({
       if (showToast) showToast('Game balance screenshot is required to verify your winnings.', 'error');
       return;
     }
+    if (requireTagQr && !tagQrScreenshot) {
+      if (showToast) showToast(`Receiving QR code screenshot is required for cashouts.`, 'error');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await onSubmitTransaction({
+      const res = await onSubmitTransaction({
         amount: numAmt,
         type: 'WITHDRAW',
         gameTitle: targetGameTitle,
         gateway: payoutMethod,
+        payoutMethod,
         code: recipientTag.trim(),
+        recipientTag: recipientTag.trim(),
         nameOnTag: nameOnTag.trim() || undefined,
         phoneOnTag: phoneOnTag.trim() || undefined,
         emailOnTag: emailOnTag.trim() || undefined,
         isFreeplayWithdraw: isFreeplaySession,
         screenshot: gameScreenshot,
+        tagQrScreenshot: tagQrScreenshot || undefined,
         payoutQr: tagQrScreenshot || undefined
       });
-      if (showToast) showToast('Cashout request submitted successfully! Processing in 5-15 mins.', 'success');
+      if (res && res.success === false) {
+        return;
+      }
       if (onBack) onBack();
     } catch (err) {
       if (showToast) showToast(cleanErrorMessage(err, 'Failed to submit withdrawal request.'), 'error');
@@ -482,9 +492,9 @@ export default function PlayerWithdrawPage({
               )}
             </div>
 
-            {/* Optional QR Screenshot */}
+            {/* Optional / Required QR Screenshot */}
             <div style={{ marginTop: '0.85rem' }}>
-              <label className="input-label">6. ATTACH CASHTAG / WALLET QR CODE (OPTIONAL)</label>
+              <label className="input-label">6. ATTACH CASHTAG / WALLET QR CODE {requireTagQr ? '*' : '(OPTIONAL)'}</label>
               <input
                 type="file"
                 ref={tagQrInputRef}
@@ -518,7 +528,7 @@ export default function PlayerWithdrawPage({
                   {uploadingTagQr ? (
                     <span><i className="fa-solid fa-spinner fa-spin" /> Uploading...</span>
                   ) : (
-                    <span><i className="fa-solid fa-qrcode" /> + Attach Receiving QR Code (Optional)</span>
+                    <span><i className="fa-solid fa-qrcode" /> + Attach Receiving QR Code {requireTagQr ? '(Required)' : '(Optional)'}</span>
                   )}
                 </button>
               )}
