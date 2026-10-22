@@ -481,6 +481,8 @@ export async function PUT(req) {
             parentTx._id ? { _id: parentTx._id } : { id: parentTx.id },
             { $set: txUpdate }
           );
+          cache.del('admin_stats');
+          publishAdminEvent('transactions', { distributorId: parentTx.distributorId || '', txType: parentTx.type });
 
           // If deposit from cashout: automatically deduct from source withdrawal's payoutHold
           if (originalNoti.isDepositFromCashout || parentTx.isDepositFromCashout) {

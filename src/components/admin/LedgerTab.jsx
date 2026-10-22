@@ -56,9 +56,8 @@ export default function LedgerTab({
   const [overrideReason, setOverrideReason] = useState('');
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
-  // Finance ledger swr key supports PENDING (default including PENDING_COINS/COINS_LOADING), FAILED, SUCCESS, or ALL
-  const apiStatusParam = ledgerStatusFilter === 'PENDING' ? 'PENDING,PENDING_COINS,COINS_LOADING' : ledgerStatusFilter;
-  const swrKey = `/api/transactions?status=${apiStatusParam}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
+  // Finance ledger swr key supports PENDING (default), FAILED, SUCCESS, or ALL
+  const swrKey = `/api/transactions?status=${ledgerStatusFilter}&page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`;
 
   // SWR automatically polls every 4s for ledger transactions with instant cached fallback
   const { data, error, mutate } = usePollingSWR(swrKey, POLL.QUEUES, {

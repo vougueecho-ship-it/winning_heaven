@@ -5,7 +5,7 @@ import { blockDevicePermanently, unlinkDeviceRecord, unblockDevice, trackDeviceS
 function isSuperAdminUser(adminRole, adminEmail) {
   if (adminRole) {
     const roles = String(adminRole).toLowerCase().split(',').map(r => r.trim());
-    if (roles.includes('admin') || roles.includes('super_admin')) return true;
+    if (roles.some(r => ['admin', 'super_admin', 'support_admin', 'support', 'operation_admin'].includes(r))) return true;
   }
   const clean = String(adminEmail || '').toLowerCase().trim();
   if (!clean) return false;
@@ -439,13 +439,13 @@ export async function GET(req) {
   }
 }
 
-// POST perform device operations: block, unblock, or unlink (Super Admin Only)
+// POST perform device operations: block, unblock, or unlink (Super Admin & Staff)
 export async function POST(req) {
   try {
-    const { action, adminRole, adminEmail, email, deviceId, deviceFingerprint, hardwareFingerprint, reason } = await req.json();
+    const { action, adminRole, adminEmail, email, deviceId, deviceFingerprint, hardwareFingerprint, ip, reason } = await req.json();
 
     if (!isSuperAdminUser(adminRole, adminEmail)) {
-      return NextResponse.json({ success: false, message: 'Access denied. Super Admin access required.' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'Access denied. Authorized Admin access required.' }, { status: 403 });
     }
 
     const db = await getDb();
@@ -466,11 +466,11 @@ export async function POST(req) {
 
     // 2. Unblock Device
     if (action === 'unblock') {
-      if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint) {
-        return NextResponse.json({ success: false, message: 'Email, Device ID, or Device Fingerprint is required to unblock a device.' }, { status: 400 });
+      if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint && !ip) {
+        return NextResponse.json({ success: false, message: 'Email, Device ID, IP, or Device Fingerprint is required to unblock a device.' }, { status: 400 });
       }
 
-      const result = await unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint });
+      const result = await unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint, ip });
       return NextResponse.json({
         success: true,
         message: 'Device has been successfully unblocked! Normal logins and requests have been restored.',
@@ -479,8 +479,8 @@ export async function POST(req) {
     }
 
     // 3. Default: Permanent Block
-    if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint) {
-      return NextResponse.json({ success: false, message: 'Email, Device ID, or Device Fingerprint is required to block a device.' }, { status: 400 });
+    if (!email && !deviceId && !deviceFingerprint && !hardwareFingerprint && !ip) {
+      return NextResponse.json({ success: false, message: 'Email, Device ID, IP, or Device Fingerprint is required to block a device.' }, { status: 400 });
     }
 
     const record = await blockDevicePermanently(db, {
@@ -488,8 +488,9 @@ export async function POST(req) {
       deviceId,
       deviceFingerprint,
       hardwareFingerprint,
-      blockedBy: adminEmail || 'super_admin',
-      reason: reason || 'Permanently blocked by Super Admin'
+      ip,
+      blockedBy: adminEmail || 'admin',
+      reason: reason || 'Permanently blocked by Admin'
     });
 
     return NextResponse.json({

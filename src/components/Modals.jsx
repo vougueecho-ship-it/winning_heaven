@@ -885,24 +885,36 @@ export function ViewProofModal({ isOpen, onClose, proofUrl, proofMeta }) {
                 borderRadius: '14px',
                 padding: '0.85rem 1rem',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: '0.75rem',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                overflow: 'hidden'
               }}>
                 {proofMeta.noteCode && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0 }}>
                     <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <i className="fa-solid fa-hashtag" style={{ color: 'var(--cyan-primary)', marginRight: '4px' }} /> Auto Note Code:
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '1.05rem', color: 'var(--cyan-primary)', fontWeight: 900, fontFamily: 'monospace', background: 'rgba(0, 240, 255, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(0, 240, 255, 0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '1.05rem',
+                        color: 'var(--cyan-primary)',
+                        fontWeight: 900,
+                        fontFamily: 'monospace',
+                        background: 'rgba(0, 240, 255, 0.1)',
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(0, 240, 255, 0.3)',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere'
+                      }}>
                         {proofMeta.noteCode}
                       </span>
                       <button
                         type="button"
                         onClick={() => copyToClipboard(proofMeta.noteCode, 'noteCode')}
                         className="btn-gold-glow"
-                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px' }}
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}
                       >
                         {copiedField === 'noteCode' ? 'COPIED!' : 'COPY'}
                       </button>
@@ -911,19 +923,30 @@ export function ViewProofModal({ isOpen, onClose, proofUrl, proofMeta }) {
                 )}
 
                 {(proofMeta.senderTag || proofMeta.senderName) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0 }}>
                     <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <i className="fa-solid fa-user-tag" style={{ color: '#ffd700', marginRight: '4px' }} /> Sender Tag / Name:
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.95rem', color: '#ffd700', fontWeight: 800, background: 'rgba(255, 215, 0, 0.1)', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '0.92rem',
+                        color: '#ffd700',
+                        fontWeight: 800,
+                        background: 'rgba(255, 215, 0, 0.1)',
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 215, 0, 0.3)',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                        maxWidth: '100%'
+                      }}>
                         {proofMeta.senderTag || proofMeta.senderName}
                       </span>
                       <button
                         type="button"
                         onClick={() => copyToClipboard(proofMeta.senderTag || proofMeta.senderName, 'senderTag')}
                         className="btn-gold-glow"
-                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px' }}
+                        style={{ padding: '0.25rem 0.55rem', fontSize: '0.68rem', fontWeight: 800, borderRadius: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}
                       >
                         {copiedField === 'senderTag' ? 'COPIED!' : 'COPY'}
                       </button>
@@ -932,7 +955,7 @@ export function ViewProofModal({ isOpen, onClose, proofUrl, proofMeta }) {
                 )}
 
                 {proofMeta.gateway && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0 }}>
                     <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <i className="fa-solid fa-credit-card" style={{ color: '#a855f7', marginRight: '4px' }} /> Gateway & Amount:
                     </span>

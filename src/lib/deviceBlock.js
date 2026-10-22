@@ -195,21 +195,23 @@ export function getRolePostTitle(role = '') {
 }
 
 /**
- * Check if a device ID, fingerprint, or user email is permanently blocked in blockedDevices collection or users collection.
+ * Check if a device ID, fingerprint, user email, or IP is permanently blocked in blockedDevices collection or users collection.
  */
-export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint = '', email = '') {
+export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint = '', email = '', ip = '') {
   const cleanId = typeof deviceId === 'string' ? deviceId.trim() : '';
   const cleanFp = typeof deviceFingerprint === 'string' ? deviceFingerprint.trim() : '';
   const cleanHfp = typeof hardwareFingerprint === 'string' ? hardwareFingerprint.trim() : '';
   const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
+  const cleanIp = typeof ip === 'string' && ip !== '127.0.0.1' && ip !== '::1' && ip !== '—' && ip !== 'Current Session' ? ip.trim() : '';
 
-  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) return false;
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail && !cleanIp) return false;
 
   const conditions = [];
   if (cleanId) conditions.push({ deviceId: cleanId });
   if (cleanFp) conditions.push({ deviceFingerprint: cleanFp });
   if (cleanHfp) conditions.push({ hardwareFingerprint: cleanHfp });
   if (cleanEmail) conditions.push({ email: cleanEmail });
+  if (cleanIp) conditions.push({ ip: cleanIp });
 
   // 1. Direct match in blockedDevices collection
   if (conditions.length > 0) {
@@ -223,10 +225,10 @@ export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareF
   if (cleanEmail) {
     const user = await db.collection('users').findOne(
       { email: cleanEmail },
-      { projection: { isDeviceBlocked: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1 } }
+      { projection: { isDeviceBlocked: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, status: 1 } }
     );
     if (user) {
-      if (user.isDeviceBlocked) return true;
+      if (user.isDeviceBlocked || user.status === 'blocked') return true;
 
       // If user has a registered device in MongoDB that is blocked
       const userDevConditions = [];
@@ -259,34 +261,39 @@ export async function isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareF
 }
 
 /**
- * Permanently block a device ID, fingerprint, and associated user account.
+ * Permanently block a device ID, fingerprint, IP, and associated user account.
  * Irreversible operation that also revokes live sessions so requests are killed immediately.
  */
-export async function blockDevicePermanently(db, { email, deviceId, deviceFingerprint, hardwareFingerprint, blockedBy, reason }) {
+export async function blockDevicePermanently(db, { email, deviceId, deviceFingerprint, hardwareFingerprint, ip, blockedBy, reason }) {
   const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
   const cleanId = typeof deviceId === 'string' ? deviceId.trim() : '';
   const cleanFp = typeof deviceFingerprint === 'string' ? deviceFingerprint.trim() : '';
   const cleanHfp = typeof hardwareFingerprint === 'string' ? hardwareFingerprint.trim() : '';
+  const cleanIp = typeof ip === 'string' && ip !== '127.0.0.1' && ip !== '::1' && ip !== '—' && ip !== 'Current Session' ? ip.trim() : '';
 
-  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) {
-    throw new Error('Email, Device ID, or Fingerprint is required to block a device.');
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail && !cleanIp) {
+    throw new Error('Email, Device ID, IP, or Fingerprint is required to block a device.');
   }
 
   const allDeviceIds = new Set();
   const allFingerprints = new Set();
   const allHardwareFps = new Set();
+  const allIps = new Set();
 
   if (cleanId) allDeviceIds.add(cleanId);
   if (cleanFp) allFingerprints.add(cleanFp);
   if (cleanHfp) allHardwareFps.add(cleanHfp);
+  if (cleanIp) allIps.add(cleanIp);
 
-  // If email is provided, gather all associated device identifiers from users and deviceSessions
+  // If email is provided, gather all associated device identifiers from users, deviceSessions & supportMessages
   if (cleanEmail) {
     const userDoc = await db.collection('users').findOne({ email: cleanEmail });
     if (userDoc) {
       if (userDoc.deviceId) allDeviceIds.add(String(userDoc.deviceId).trim());
       if (userDoc.deviceFingerprint) allFingerprints.add(String(userDoc.deviceFingerprint).trim());
       if (userDoc.hardwareFingerprint) allHardwareFps.add(String(userDoc.hardwareFingerprint).trim());
+      if (userDoc.lastLoginIp && userDoc.lastLoginIp !== '127.0.0.1' && userDoc.lastLoginIp !== '::1') allIps.add(String(userDoc.lastLoginIp).trim());
+      if (userDoc.registrationIp && userDoc.registrationIp !== '127.0.0.1' && userDoc.registrationIp !== '::1') allIps.add(String(userDoc.registrationIp).trim());
     }
 
     const sessions = await db.collection('deviceSessions').find({ email: cleanEmail }).toArray();
@@ -294,16 +301,30 @@ export async function blockDevicePermanently(db, { email, deviceId, deviceFinger
       if (s.deviceId) allDeviceIds.add(String(s.deviceId).trim());
       if (s.deviceFingerprint) allFingerprints.add(String(s.deviceFingerprint).trim());
       if (s.hardwareFingerprint) allHardwareFps.add(String(s.hardwareFingerprint).trim());
+      if (s.ip && s.ip !== '127.0.0.1' && s.ip !== '::1' && s.ip !== '—') allIps.add(String(s.ip).trim());
     }
 
-    // Set permanent block flag on user document
+    // Also gather from supportMessages (for guests or users who chatted)
+    const supportMsgs = await db.collection('supportMessages').find(
+      { userEmail: cleanEmail },
+      { projection: { deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, ip: 1 } }
+    ).toArray();
+    for (const sm of supportMsgs) {
+      if (sm.deviceId) allDeviceIds.add(String(sm.deviceId).trim());
+      if (sm.deviceFingerprint) allFingerprints.add(String(sm.deviceFingerprint).trim());
+      if (sm.hardwareFingerprint) allHardwareFps.add(String(sm.hardwareFingerprint).trim());
+      if (sm.ip && sm.ip !== '127.0.0.1' && sm.ip !== '::1' && sm.ip !== '—') allIps.add(String(sm.ip).trim());
+    }
+
+    // Set permanent block flag on user document if exists
     await db.collection('users').updateOne(
       { email: cleanEmail },
       {
         $set: {
           isDeviceBlocked: true,
+          status: 'blocked',
           deviceBlockedAt: new Date(),
-          deviceBlockReason: reason || 'Permanently blocked by Super Admin'
+          deviceBlockReason: reason || 'Permanently blocked by Admin'
         }
       }
     );
@@ -317,11 +338,13 @@ export async function blockDevicePermanently(db, { email, deviceId, deviceFinger
     deviceId: cleanId || Array.from(allDeviceIds)[0] || '',
     deviceFingerprint: cleanFp || Array.from(allFingerprints)[0] || '',
     hardwareFingerprint: cleanHfp || Array.from(allHardwareFps)[0] || '',
+    ip: cleanIp || Array.from(allIps)[0] || '',
     allDeviceIds: Array.from(allDeviceIds),
     allFingerprints: Array.from(allFingerprints),
     allHardwareFps: Array.from(allHardwareFps),
-    blockedBy: blockedBy || 'super_admin',
-    reason: reason || 'Permanently blocked by Super Admin',
+    allIps: Array.from(allIps),
+    blockedBy: blockedBy || 'admin',
+    reason: reason || 'Permanently blocked by Admin',
     isPermanent: true,
     blockedAt: new Date()
   };
@@ -365,6 +388,17 @@ export async function blockDevicePermanently(db, { email, deviceId, deviceFinger
         updateOne: {
           filter: { hardwareFingerprint: hfp },
           update: { $set: { hardwareFingerprint: hfp, email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
+          upsert: true
+        }
+      });
+    }
+  });
+  allIps.forEach((ipAddr) => {
+    if (ipAddr) {
+      bulkBlockOps.push({
+        updateOne: {
+          filter: { ip: ipAddr },
+          update: { $set: { ip: ipAddr, email: cleanEmail, blockedAt: new Date(), blockedBy, reason, isPermanent: true } },
           upsert: true
         }
       });
@@ -545,14 +579,15 @@ export async function unlinkDeviceRecord(db, { email, deviceId, deviceFingerprin
 /**
  * Unblocks a permanently blocked device.
  */
-export async function unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint }) {
+export async function unblockDevice(db, { email, deviceId, deviceFingerprint, hardwareFingerprint, ip }) {
   const cleanEmail = email ? String(email).toLowerCase().trim() : '';
   const cleanId = deviceId ? String(deviceId).trim() : '';
   const cleanFp = deviceFingerprint ? String(deviceFingerprint).trim() : '';
   const cleanHfp = hardwareFingerprint ? String(hardwareFingerprint).trim() : '';
+  const cleanIp = ip ? String(ip).trim() : '';
 
-  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail) {
-    throw new Error('Email, Device ID, or Fingerprint is required to unblock a device.');
+  if (!cleanId && !cleanFp && !cleanHfp && !cleanEmail && !cleanIp) {
+    throw new Error('Email, Device ID, IP, or Fingerprint is required to unblock a device.');
   }
 
   const conditions = [];
@@ -560,6 +595,7 @@ export async function unblockDevice(db, { email, deviceId, deviceFingerprint, ha
   if (cleanId) conditions.push({ deviceId: cleanId });
   if (cleanFp) conditions.push({ deviceFingerprint: cleanFp });
   if (cleanHfp) conditions.push({ hardwareFingerprint: cleanHfp });
+  if (cleanIp) conditions.push({ ip: cleanIp });
 
   // If email is provided, gather any user device identifiers
   if (cleanEmail) {
@@ -572,7 +608,7 @@ export async function unblockDevice(db, { email, deviceId, deviceFingerprint, ha
 
     await db.collection('users').updateOne(
       { email: cleanEmail },
-      { $unset: { isDeviceBlocked: '', deviceBlockedAt: '', deviceBlockReason: '' } }
+      { $unset: { isDeviceBlocked: '', deviceBlockedAt: '', deviceBlockReason: '' }, $set: { status: 'active' } }
     );
 
     clearSessionRevoke(cleanEmail);

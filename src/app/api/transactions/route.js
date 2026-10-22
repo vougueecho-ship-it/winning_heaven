@@ -61,13 +61,8 @@ export async function GET(req) {
       Object.assign(query, await typeBExclusionFilter(db));
     }
     if (status) {
-      let statuses = status.split(',').map(s => s.toUpperCase().trim()).filter(Boolean);
-      if (statuses.length === 1 && statuses[0] === 'PENDING') {
-        query.status = { $in: ['PENDING', 'PENDING_COINS', 'COINS_LOADING'] };
-      } else if (statuses.length > 1) {
-        if (statuses.includes('PENDING')) {
-          statuses = Array.from(new Set([...statuses, 'PENDING_COINS', 'COINS_LOADING']));
-        }
+      const statuses = status.split(',').map(s => s.toUpperCase().trim()).filter(Boolean);
+      if (statuses.length > 1) {
         query.status = { $in: statuses };
       } else {
         query.status = statuses[0];

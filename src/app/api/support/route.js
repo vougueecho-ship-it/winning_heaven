@@ -5,6 +5,7 @@ import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
 import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { typeBExclusionFilter } from '../../../lib/typeBDistributors';
+import { isDeviceBlocked, trackDeviceSession } from '../../../lib/deviceBlock';
 
 // GET support chat messages
 export async function GET(req) {
@@ -107,26 +108,51 @@ export async function GET(req) {
 
       const viewerEmail = (searchParams.get('viewerEmail') || searchParams.get('senderEmail') || '').toLowerCase().trim();
       const viewerRole = searchParams.get('role') || '';
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '';
+
+      // Check device block status
+      const [deviceSession, latestDeviceMsg, targetUserDoc, blockedDeviceDoc] = await Promise.all([
+        db.collection('deviceSessions').findOne({ email: emailKey }, { sort: { lastActive: -1 } }),
+        supportCollection.findOne(
+          { userEmail: emailKey, $or: [{ deviceId: { $exists: true, $ne: '' } }, { ip: { $exists: true, $ne: '' } }] },
+          { sort: { timestamp: -1 } }
+        ),
+        db.collection('users').findOne(
+          { email: emailKey },
+          { projection: { name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, lastLoginIp: 1, registrationIp: 1, userAgent: 1, isDeviceBlocked: 1, deviceBlockedAt: 1, deviceBlockReason: 1 } }
+        ),
+        db.collection('blockedDevices').findOne({
+          $or: [
+            { email: emailKey },
+            ...(clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' ? [{ ip: clientIp }] : [])
+          ]
+        })
+      ]);
+
+      const isChatBlocked = Boolean(blockedDeviceDoc || targetUserDoc?.isDeviceBlocked);
+
+      // If a player is polling their own chat and they are blocked, reject with 403
+      if (viewerRole === 'player' && isChatBlocked) {
+        return NextResponse.json({
+          success: false,
+          isBlocked: true,
+          message: 'Your account and device have been permanently blocked from customer support.',
+          messages: []
+        }, { status: 403 });
+      }
 
       const isGuest =
         emailKey.includes('@winningheavenguest.com') || emailKey.startsWith('guest_');
-      let playerName = isGuest ? 'Guest' : '';
-      if (!isGuest) {
-        const userDoc = await db.collection('users').findOne(
-          { email: emailKey },
-          { projection: { name: 1 } }
-        );
-        playerName = (userDoc?.name || '').trim();
-        if (!playerName) {
-          const fromMsg = [...messages].reverse().find((m) => {
-            const raw = String(m.userName || '').trim();
-            return raw && !/^support\s*agent$/i.test(raw) && !/^player$/i.test(raw);
-          });
-          const raw = String(fromMsg?.userName || '').trim();
-          playerName = raw
-            ? (/^guest(\s*#?\d+)?$/i.test(raw) ? 'Guest' : raw)
-            : emailKey.split('@')[0] || 'Guest';
-        }
+      let playerName = isGuest ? 'Guest' : (targetUserDoc?.name || '').trim();
+      if (!isGuest && !playerName) {
+        const fromMsg = [...messages].reverse().find((m) => {
+          const raw = String(m.userName || '').trim();
+          return raw && !/^support\s*agent$/i.test(raw) && !/^player$/i.test(raw);
+        });
+        const raw = String(fromMsg?.userName || '').trim();
+        playerName = raw
+          ? (/^guest(\s*#?\d+)?$/i.test(raw) ? 'Guest' : raw)
+          : emailKey.split('@')[0] || 'Guest';
       }
 
       // Filter out messages deleted for current viewer, and format deleted-for-everyone messages
@@ -154,7 +180,35 @@ export async function GET(req) {
           };
         });
 
-      return NextResponse.json({ success: true, messages: leanMessages, playerName });
+      const effectiveDeviceId = deviceSession?.deviceId || targetUserDoc?.deviceId || latestDeviceMsg?.deviceId || '';
+      const effectiveFingerprint = deviceSession?.deviceFingerprint || targetUserDoc?.deviceFingerprint || latestDeviceMsg?.deviceFingerprint || '';
+      const effectiveHardwareFp = deviceSession?.hardwareFingerprint || targetUserDoc?.hardwareFingerprint || latestDeviceMsg?.hardwareFingerprint || '';
+      const effectiveIp = deviceSession?.ip || targetUserDoc?.lastLoginIp || targetUserDoc?.registrationIp || latestDeviceMsg?.ip || clientIp || '';
+      const effectiveDeviceName = deviceSession?.deviceName || (targetUserDoc?.userAgent ? 'Mobile / PC' : 'Smartphone / PC');
+      const effectiveOs = deviceSession?.os || '';
+      const effectiveBrowser = deviceSession?.browser || '';
+
+      const deviceInfo = {
+        email: emailKey,
+        deviceId: effectiveDeviceId,
+        deviceFingerprint: effectiveFingerprint,
+        hardwareFingerprint: effectiveHardwareFp,
+        ip: effectiveIp,
+        deviceName: effectiveDeviceName,
+        os: effectiveOs,
+        browser: effectiveBrowser,
+        isBlocked: isChatBlocked,
+        blockedAt: blockedDeviceDoc?.blockedAt || targetUserDoc?.deviceBlockedAt || null,
+        blockReason: blockedDeviceDoc?.reason || targetUserDoc?.deviceBlockReason || ''
+      };
+
+      return NextResponse.json({
+        success: true,
+        messages: leanMessages,
+        playerName,
+        isBlocked: isChatBlocked,
+        deviceInfo
+      });
     }
 
     // Admin / distributor conversation list — group by player so unread chats
@@ -351,14 +405,29 @@ export async function GET(req) {
 // POST new support message (Player or Admin reply)
 export async function POST(req) {
   try {
-    const { userEmail, userName, message, attachment, senderType, senderEmail, replyTo } = await req.json();
+    const { userEmail, userName, message, attachment, senderType, senderEmail, replyTo, deviceId, deviceFingerprint, hardwareFingerprint } = await req.json();
 
     if (!userEmail || !senderType) {
       return NextResponse.json({ success: false, message: 'User email and sender type are required.' }, { status: 400 });
     }
 
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '';
+    const clientUserAgent = req.headers.get('user-agent') || '';
+
     const db = await getDb();
     const supportCollection = db.collection('supportMessages');
+
+    // If message is from a player or guest, enforce permanent device block check
+    if (senderType === 'player') {
+      const isBlocked = await isDeviceBlocked(db, deviceId, deviceFingerprint, hardwareFingerprint, userEmail, clientIp);
+      if (isBlocked) {
+        return NextResponse.json({
+          success: false,
+          isBlocked: true,
+          message: 'Your account and device have been permanently blocked from customer support.'
+        }, { status: 403 });
+      }
+    }
 
     // Look up the player to tag their distributor settings
     const userDoc = await db.collection('users').findOne({ email: userEmail.toLowerCase().trim() });
@@ -403,6 +472,11 @@ export async function POST(req) {
       distributorId: distId,
       distributorType: distType,
       distributorName: distName,
+      deviceId: deviceId || userDoc?.deviceId || '',
+      deviceFingerprint: deviceFingerprint || userDoc?.deviceFingerprint || '',
+      hardwareFingerprint: hardwareFingerprint || userDoc?.hardwareFingerprint || '',
+      ip: clientIp || (userDoc?.lastLoginIp || ''),
+      userAgent: clientUserAgent || '',
       replyTo: replyTo && typeof replyTo === 'object' ? {
         id: String(replyTo.id || ''),
         message: String(replyTo.message || '').slice(0, 300),
@@ -416,6 +490,20 @@ export async function POST(req) {
     };
 
     await supportCollection.insertOne(newMsg);
+
+    // Track device session for player messages
+    if (senderType === 'player') {
+      trackDeviceSession(db, {
+        email: userEmail.toLowerCase().trim(),
+        name: newMsg.userName || 'Guest',
+        role: userDoc?.role || 'player',
+        deviceId: newMsg.deviceId,
+        deviceFingerprint: newMsg.deviceFingerprint,
+        hardwareFingerprint: newMsg.hardwareFingerprint,
+        userAgent: clientUserAgent,
+        ip: clientIp
+      }).catch(() => {});
+    }
 
     // Invalidate stats cache + SSE so Support tab opens the new thread instantly
     cache.del('admin_stats');
