@@ -33,6 +33,13 @@ export default function SupportTab({ adminUser }) {
   // Message Edit & Delete States
   const [editingMessage, setEditingMessage] = useState(null); // { id, message }
   const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, senderType, message, isMe }
+
+  // Device Block / Unblock States
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showDeviceInfoModal, setShowDeviceInfoModal] = useState(false);
+  const [blockReason, setBlockReason] = useState('Abusive language / harassment');
+  const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
+  const [isSubmittingUnblock, setIsSubmittingUnblock] = useState(false);
   
   const chatEndRef = useRef(null);
   const adminInputRef = useRef(null);
@@ -160,7 +167,8 @@ export default function SupportTab({ adminUser }) {
       name: resolveDisplayName(c.email || c.userEmail, c.name || c.playerName),
       lastMessage: c.lastMessage || '',
       timestamp: c.timestamp,
-      unread: !!c.unread
+      unread: !!c.unread,
+      isBlocked: !!c.isBlocked
     })).filter((c) => c.email);
   } else {
     const groups = {};
@@ -252,6 +260,89 @@ export default function SupportTab({ adminUser }) {
     setPlayerHits([]);
     setAdminReplyText('');
     setAdminAttachment('');
+  };
+
+  const isChatBlocked = Boolean(
+    activeChatData?.isBlocked ||
+    conversations.find((c) => c.email.toLowerCase() === (activeChatEmail || '').toLowerCase())?.isBlocked
+  );
+  const activeDeviceInfo = activeChatData?.deviceInfo || null;
+
+  const handleConfirmBlockChatUser = async (e) => {
+    if (e) e.preventDefault();
+    if (!activeChatEmail) return;
+    setIsSubmittingBlock(true);
+    try {
+      const devInfo = activeDeviceInfo || {};
+      const res = await fetch('/api/admin/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'block',
+          email: activeChatEmail,
+          deviceId: devInfo.deviceId || '',
+          deviceFingerprint: devInfo.deviceFingerprint || '',
+          hardwareFingerprint: devInfo.hardwareFingerprint || '',
+          ip: devInfo.ip || '',
+          reason: blockReason.trim() || 'Permanently blocked from Support Chat by Admin',
+          adminRole: adminUser?.role || 'admin',
+          adminEmail: adminUser?.email || ''
+        })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        alert('Player and device permanently blocked! Active sessions revoked immediately.');
+        setShowBlockModal(false);
+        setBlockReason('Abusive language / harassment');
+        mutateActiveChat();
+        mutateConversations();
+      } else {
+        alert(data?.message || 'Failed to block player device.');
+      }
+    } catch (err) {
+      console.error('Error blocking support player:', err);
+      alert('Network error while blocking player.');
+    } finally {
+      setIsSubmittingBlock(false);
+    }
+  };
+
+  const handleConfirmUnblockChatUser = async () => {
+    if (!activeChatEmail) return;
+    if (!window.confirm(`Are you sure you want to unblock "${activeChatDisplayName}" (${activeChatEmail})? They will be allowed to use support chat and login again.`)) {
+      return;
+    }
+    setIsSubmittingUnblock(true);
+    try {
+      const devInfo = activeDeviceInfo || {};
+      const res = await fetch('/api/admin/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'unblock',
+          email: activeChatEmail,
+          deviceId: devInfo.deviceId || '',
+          deviceFingerprint: devInfo.deviceFingerprint || '',
+          hardwareFingerprint: devInfo.hardwareFingerprint || '',
+          ip: devInfo.ip || '',
+          adminRole: adminUser?.role || 'admin',
+          adminEmail: adminUser?.email || ''
+        })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        alert('Player and device successfully unblocked! Normal logins and support chat restored.');
+        mutateActiveChat();
+        mutateConversations();
+      } else {
+        alert(data?.message || 'Failed to unblock player.');
+      }
+    } catch (err) {
+      console.error('Error unblocking support player:', err);
+      alert('Network error while unblocking player.');
+    } finally {
+      setIsSubmittingUnblock(false);
+    }
   };
 
   useEffect(() => {
@@ -755,20 +846,35 @@ export default function SupportTab({ adminUser }) {
                     <strong style={{ fontSize: '0.775rem', color: '#fff', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, marginRight: '0.5rem' }}>
                       {chat.name}
                     </strong>
-                    {chat.unread && (
-                      <span style={{
-                        background: '#ef4444',
-                        color: '#fff',
-                        fontSize: '0.55rem',
-                        padding: '0.1rem 0.35rem',
-                        borderRadius: '10px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        flexShrink: 0
-                      }}>
-                        New
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      {chat.isBlocked && (
+                        <span style={{
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          color: '#ef4444',
+                          fontSize: '0.52rem',
+                          padding: '0.08rem 0.3rem',
+                          borderRadius: '8px',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase'
+                        }}>
+                          Blocked
+                        </span>
+                      )}
+                      {chat.unread && (
+                        <span style={{
+                          background: '#ef4444',
+                          color: '#fff',
+                          fontSize: '0.55rem',
+                          padding: '0.1rem 0.35rem',
+                          borderRadius: '10px',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase'
+                        }}>
+                          New
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '0.15rem' }}>
                     {chat.lastMessage}
@@ -808,25 +914,119 @@ export default function SupportTab({ adminUser }) {
             </button>
 
             <div className="support-chat-player-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold-primary)', border: '1px solid rgba(255,215,0,0.2)', flexShrink: 0 }}>
-                <i className="fa-solid fa-user" style={{ fontSize: '0.9rem' }}></i>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: isChatBlocked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isChatBlocked ? '#ef4444' : 'var(--gold-primary)', border: isChatBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(255,215,0,0.2)', flexShrink: 0 }}>
+                <i className={isChatBlocked ? "fa-solid fa-user-slash" : "fa-solid fa-user"} style={{ fontSize: '0.9rem' }}></i>
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <h4 style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {activeChatDisplayName}
-                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <h4 style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {activeChatDisplayName}
+                  </h4>
+                  {isChatBlocked && (
+                    <span style={{
+                      background: 'rgba(239, 68, 68, 0.25)',
+                      border: '1px solid #ef4444',
+                      color: '#ef4444',
+                      fontSize: '0.58rem',
+                      padding: '0.08rem 0.35rem',
+                      borderRadius: '6px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      <i className="fa-solid fa-ban" style={{ marginRight: '3px' }}></i> Blocked
+                    </span>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {activeChatEmail}
+                  {activeDeviceInfo?.ip ? ` • IP: ${activeDeviceInfo.ip}` : ''}
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#10b981', marginTop: '1px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
-                  <span>Live Chat</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: isChatBlocked ? '#ef4444' : '#10b981', marginTop: '1px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isChatBlocked ? '#ef4444' : '#10b981', display: 'inline-block' }}></span>
+                  <span>{isChatBlocked ? 'Device Blocked' : 'Live Chat'}</span>
                 </div>
               </div>
             </div>
 
             {/* Action Controls on Right */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, flexWrap: 'nowrap' }}>
+              {/* Device Inspector Button */}
+              <button
+                type="button"
+                onClick={() => setShowDeviceInfoModal(true)}
+                style={{
+                  background: 'rgba(0, 240, 255, 0.1)',
+                  border: '1px solid rgba(0, 240, 255, 0.3)',
+                  borderRadius: '8px',
+                  padding: '0.35rem 0.55rem',
+                  color: 'var(--cyan-primary)',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  whiteSpace: 'nowrap'
+                }}
+                title="View Player Device & IP Connection Info"
+              >
+                <i className="fa-solid fa-mobile-screen"></i>
+                <span>Device</span>
+              </button>
+
+              {/* Block / Unblock Button */}
+              {isChatBlocked ? (
+                <button
+                  type="button"
+                  onClick={handleConfirmUnblockChatUser}
+                  disabled={isSubmittingUnblock}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%)',
+                    border: '1px solid #22c55e',
+                    borderRadius: '8px',
+                    padding: '0.35rem 0.65rem',
+                    color: '#4ade80',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    cursor: isSubmittingUnblock ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)'
+                  }}
+                  title="Unblock this player and restore chat / logins"
+                >
+                  <i className={isSubmittingUnblock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-unlock"}></i>
+                  <span>{isSubmittingUnblock ? 'Unblocking...' : 'Unblock'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowBlockModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.25) 100%)',
+                    border: '1px solid #ef4444',
+                    borderRadius: '8px',
+                    padding: '0.35rem 0.65rem',
+                    color: '#ef4444',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.15)'
+                  }}
+                  title="Permanently block this player and device"
+                >
+                  <i className="fa-solid fa-ban"></i>
+                  <span>Block User</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setAutoTranslateIncoming((prev) => !prev)}
@@ -874,6 +1074,54 @@ export default function SupportTab({ adminUser }) {
             </div>
 
             <div className="support-chat-messages">
+              {isChatBlocked && (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(185, 28, 28, 0.18) 100%)',
+                  border: '1px solid rgba(239, 68, 68, 0.45)',
+                  borderRadius: '12px',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <i className="fa-solid fa-shield-halved" style={{ color: '#ef4444', fontSize: '1.25rem' }}></i>
+                    <div>
+                      <strong style={{ fontSize: '0.8rem', color: '#ef4444', display: 'block' }}>
+                        This Account & Device are Permanently Blocked
+                      </strong>
+                      <span style={{ fontSize: '0.68rem', color: '#fca5a5' }}>
+                        {activeDeviceInfo?.blockReason ? `Reason: ${activeDeviceInfo.blockReason}` : 'Permanently blocked by Admin.'}
+                        {activeDeviceInfo?.ip ? ` • IP: ${activeDeviceInfo.ip}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleConfirmUnblockChatUser}
+                    disabled={isSubmittingUnblock}
+                    style={{
+                      background: 'rgba(34, 197, 94, 0.2)',
+                      border: '1px solid #22c55e',
+                      color: '#4ade80',
+                      borderRadius: '8px',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <i className={isSubmittingUnblock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-unlock"}></i>
+                    <span>Unblock User</span>
+                  </button>
+                </div>
+              )}
               {showChatLoading ? (
                 <div style={{ margin: 'auto', textAlign: 'center', opacity: 0.7, padding: '1.25rem' }}>
                   <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '1.6rem', color: 'var(--gold-primary)', display: 'block', marginBottom: '0.55rem' }}></i>
@@ -1363,6 +1611,56 @@ export default function SupportTab({ adminUser }) {
                   );
                 }
 
+                if (isChatBlocked) {
+                  return (
+                    <div style={{
+                      padding: '0.85rem 1rem',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.75rem',
+                      margin: '0.4rem 0',
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <i className="fa-solid fa-ban" style={{ color: '#ef4444', fontSize: '1.2rem' }}></i>
+                        <div>
+                          <strong style={{ fontSize: '0.78rem', color: '#ef4444', display: 'block' }}>
+                            Player & Device Blocked
+                          </strong>
+                          <span style={{ fontSize: '0.68rem', color: '#fca5a5' }}>
+                            {activeDeviceInfo?.blockReason || 'Blocked from Customer Support & System Access'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleConfirmUnblockChatUser}
+                        disabled={isSubmittingUnblock}
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '0.45rem 0.85rem',
+                          color: '#fff',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem'
+                        }}
+                      >
+                        <i className={isSubmittingUnblock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-unlock"}></i>
+                        <span>{isSubmittingUnblock ? 'Unblocking...' : 'Unblock Player'}</span>
+                      </button>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="support-chat-compose" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', width: '100%', boxSizing: 'border-box' }}>
                     {/* Row 1: Attachment + Input */}
@@ -1593,6 +1891,338 @@ export default function SupportTab({ adminUser }) {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block User & Device Confirmation Modal */}
+      {showBlockModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.84)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #161a2e 0%, #0d101d 100%)',
+            border: '1px solid rgba(239, 68, 68, 0.5)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            maxWidth: '460px',
+            width: '100%',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.9), 0 0 30px rgba(239, 68, 68, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontSize: '1.05rem', fontWeight: 'bold' }}>
+                <i className="fa-solid fa-ban"></i> Permanently Block User & Device
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBlockModal(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem' }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.45 }}>
+              This will permanently revoke active sessions and block this player&apos;s account, device ID, hardware fingerprint, and IP address from logging in, depositing, or chatting.
+            </p>
+
+            {/* Target Details Card */}
+            <div style={{
+              background: 'rgba(0,0,0,0.45)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '10px',
+              padding: '0.75rem 0.9rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.35rem',
+              fontSize: '0.74rem'
+            }}>
+              <div><strong style={{ color: 'var(--gold-primary)' }}>Player:</strong> {activeChatDisplayName}</div>
+              <div><strong style={{ color: 'var(--gold-primary)' }}>Email:</strong> {activeChatEmail}</div>
+              {activeDeviceInfo?.ip && <div><strong style={{ color: 'var(--gold-primary)' }}>IP Address:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--cyan-primary)' }}>{activeDeviceInfo.ip}</span></div>}
+              {activeDeviceInfo?.deviceId && (
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <strong style={{ color: 'var(--gold-primary)' }}>Device ID:</strong> <span style={{ fontFamily: 'monospace' }}>{activeDeviceInfo.deviceId}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Block Reason Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.72rem', color: 'var(--gold-primary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select or Enter Reason:
+              </label>
+
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {[
+                  'Abusive language / harassment',
+                  'Fraud / fake payment receipt',
+                  'Spam or bot messages',
+                  'Disruptive behavior'
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setBlockReason(preset)}
+                    style={{
+                      background: blockReason === preset ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.05)',
+                      border: blockReason === preset ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                      color: blockReason === preset ? '#ef4444' : 'var(--text-muted)',
+                      borderRadius: '6px',
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.65rem',
+                      cursor: 'pointer',
+                      fontWeight: blockReason === preset ? 'bold' : 'normal'
+                    }}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="text"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Enter custom block reason..."
+                style={{
+                  background: '#0a0d18',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  padding: '0.6rem 0.8rem',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  outline: 'none',
+                  marginTop: '0.2rem'
+                }}
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowBlockModal(false)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  padding: '0.65rem',
+                  color: '#ccc',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBlockChatUser}
+                disabled={isSubmittingBlock}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.65rem',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold',
+                  cursor: isSubmittingBlock ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)'
+                }}
+              >
+                <i className={isSubmittingBlock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-ban"}></i>
+                <span>{isSubmittingBlock ? 'Blocking...' : 'Confirm Block'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Device Info Inspector Modal */}
+      {showDeviceInfoModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.82)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #13172b 0%, #0a0d18 100%)',
+            border: '1px solid rgba(0, 240, 255, 0.4)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.9), 0 0 30px rgba(0, 240, 255, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--cyan-primary)', fontSize: '1.05rem', fontWeight: 'bold' }}>
+                <i className="fa-solid fa-mobile-screen"></i> Device & Connection Details
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDeviceInfoModal(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem' }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.65rem',
+              fontSize: '0.74rem'
+            }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>Player Name</span>
+                <strong style={{ color: '#fff' }}>{activeChatDisplayName}</strong>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>Device Status</span>
+                {isChatBlocked ? (
+                  <span style={{ color: '#ef4444', fontWeight: 'bold' }}>🚫 Permanently Blocked</span>
+                ) : (
+                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓ Active / Unblocked</span>
+                )}
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>IP Address</span>
+                <strong style={{ color: 'var(--cyan-primary)', fontFamily: 'monospace' }}>
+                  {activeDeviceInfo?.ip || '—'}
+                </strong>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>Device / OS</span>
+                <strong style={{ color: '#fff' }}>
+                  {activeDeviceInfo?.deviceName || 'Smartphone / PC'} {activeDeviceInfo?.os ? `(${activeDeviceInfo.os})` : ''}
+                </strong>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', gridColumn: '1 / -1' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>Device ID</span>
+                <span style={{ color: '#ffd700', fontFamily: 'monospace', fontSize: '0.72rem', wordBreak: 'break-all' }}>
+                  {activeDeviceInfo?.deviceId || 'No fixed hardware ID registered'}
+                </span>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', gridColumn: '1 / -1' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase' }}>Device Fingerprint</span>
+                <span style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '0.68rem', wordBreak: 'break-all' }}>
+                  {activeDeviceInfo?.deviceFingerprint || 'Generated dynamically'}
+                </span>
+              </div>
+
+              {isChatBlocked && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', gridColumn: '1 / -1' }}>
+                  <span style={{ color: '#ef4444', fontSize: '0.65rem', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Block Details</span>
+                  <div style={{ color: '#fca5a5', fontSize: '0.74rem' }}>
+                    <strong>Reason:</strong> {activeDeviceInfo?.blockReason || 'Blocked by Admin'}
+                  </div>
+                  {activeDeviceInfo?.blockedAt && (
+                    <div style={{ color: '#fca5a5', fontSize: '0.68rem', marginTop: '2px' }}>
+                      <strong>Blocked On:</strong> {formatDeviceTime(activeDeviceInfo.blockedAt)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowDeviceInfoModal(false)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  padding: '0.6rem',
+                  color: '#ccc',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+              {isChatBlocked ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeviceInfoModal(false);
+                    handleConfirmUnblockChatUser();
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.6rem',
+                    color: '#fff',
+                    fontSize: '0.78rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Unblock Device
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeviceInfoModal(false);
+                    setShowBlockModal(true);
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.6rem',
+                    color: '#fff',
+                    fontSize: '0.78rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Block This Device
+                </button>
+              )}
             </div>
           </div>
         </div>

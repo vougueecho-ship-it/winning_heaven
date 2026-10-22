@@ -338,14 +338,29 @@ export async function GET(req) {
     );
 
     const nameByEmail = {};
+    const blockedSet = new Set();
     if (emails.length > 0) {
-      const users = await db
-        .collection('users')
-        .find({ email: { $in: emails } })
-        .project({ email: 1, name: 1 })
-        .toArray();
+      const [users, blockedDocs] = await Promise.all([
+        db
+          .collection('users')
+          .find({ email: { $in: emails } })
+          .project({ email: 1, name: 1, isDeviceBlocked: 1, status: 1 })
+          .toArray(),
+        db
+          .collection('blockedDevices')
+          .find({ email: { $in: emails } })
+          .project({ email: 1 })
+          .toArray()
+      ]);
       users.forEach((u) => {
-        if (u.email) nameByEmail[u.email.toLowerCase().trim()] = (u.name || '').trim();
+        if (u.email) {
+          const em = u.email.toLowerCase().trim();
+          nameByEmail[em] = (u.name || '').trim();
+          if (u.isDeviceBlocked || u.status === 'blocked') blockedSet.add(em);
+        }
+      });
+      blockedDocs.forEach((b) => {
+        if (b.email) blockedSet.add(b.email.toLowerCase().trim());
       });
     }
 
@@ -366,6 +381,7 @@ export async function GET(req) {
       const preview =
         (g.lastMessage && String(g.lastMessage).trim()) ||
         (g.lastAttachment ? '[Image]' : '');
+      const isBlocked = blockedSet.has(emailKey);
       return {
         email: emailKey,
         userEmail: emailKey,
@@ -373,7 +389,8 @@ export async function GET(req) {
         playerName,
         lastMessage: preview,
         timestamp: g.timestamp,
-        unread: !!g.unread
+        unread: !!g.unread,
+        isBlocked
       };
     });
 
