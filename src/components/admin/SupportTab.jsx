@@ -40,6 +40,7 @@ export default function SupportTab({ adminUser }) {
   const [blockReason, setBlockReason] = useState('Abusive language / harassment');
   const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
   const [isSubmittingUnblock, setIsSubmittingUnblock] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   
   const chatEndRef = useRef(null);
   const adminInputRef = useRef(null);
@@ -889,188 +890,370 @@ export default function SupportTab({ adminUser }) {
       <div className="admin-section-card support-chat-window">
         {activeChatEmail ? (
           <>
-            <div className="support-chat-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.85rem', gap: '0.5rem', background: 'rgba(14, 18, 36, 0.98)', borderBottom: '1px solid rgba(255, 215, 0, 0.18)', boxSizing: 'border-box', flexShrink: 0 }}>
-            <button
-              type="button"
-              className="support-chat-back-btn"
-              onClick={() => setActiveChatEmail(null)}
-              style={{
-                background: 'rgba(255, 215, 0, 0.12)',
-                border: '1px solid rgba(255, 215, 0, 0.3)',
-                borderRadius: '8px',
-                color: 'var(--gold-primary)',
-                padding: '0.4rem 0.65rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              <i className="fa-solid fa-chevron-left"></i>
-              <span>Chats</span>
-            </button>
-
-            <div className="support-chat-player-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: isChatBlocked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isChatBlocked ? '#ef4444' : 'var(--gold-primary)', border: isChatBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(255,215,0,0.2)', flexShrink: 0 }}>
-                <i className={isChatBlocked ? "fa-solid fa-user-slash" : "fa-solid fa-user"} style={{ fontSize: '0.9rem' }}></i>
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <h4 style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeChatDisplayName}
-                  </h4>
-                  {isChatBlocked && (
-                    <span style={{
-                      background: 'rgba(239, 68, 68, 0.25)',
-                      border: '1px solid #ef4444',
-                      color: '#ef4444',
-                      fontSize: '0.58rem',
-                      padding: '0.08rem 0.35rem',
-                      borderRadius: '6px',
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em'
-                    }}>
-                      <i className="fa-solid fa-ban" style={{ marginRight: '3px' }}></i> Blocked
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {activeChatEmail}
-                  {activeDeviceInfo?.ip ? ` • IP: ${activeDeviceInfo.ip}` : ''}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: isChatBlocked ? '#ef4444' : '#10b981', marginTop: '1px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isChatBlocked ? '#ef4444' : '#10b981', display: 'inline-block' }}></span>
-                  <span>{isChatBlocked ? 'Device Blocked' : 'Live Chat'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Controls on Right */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, flexWrap: 'nowrap' }}>
-              {/* Device Inspector Button */}
+            <div className="support-chat-header">
+              {/* Back button (Compact arrow on mobile, "Chats" on desktop) */}
               <button
                 type="button"
-                onClick={() => setShowDeviceInfoModal(true)}
-                style={{
-                  background: 'rgba(0, 240, 255, 0.1)',
-                  border: '1px solid rgba(0, 240, 255, 0.3)',
-                  borderRadius: '8px',
-                  padding: '0.35rem 0.55rem',
-                  color: 'var(--cyan-primary)',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  whiteSpace: 'nowrap'
-                }}
-                title="View Player Device & IP Connection Info"
+                className="support-chat-back-btn"
+                onClick={() => setActiveChatEmail(null)}
+                title="Back to conversation list"
               >
-                <i className="fa-solid fa-mobile-screen"></i>
-                <span>Device</span>
+                <i className="fa-solid fa-chevron-left"></i>
+                <span className="support-chat-back-text">Chats</span>
               </button>
 
-              {/* Block / Unblock Button */}
-              {isChatBlocked ? (
+              {/* Player Meta: clicking this opens the Device & User info modal on both mobile and desktop! */}
+              <div
+                className="support-chat-player-meta"
+                onClick={() => setShowDeviceInfoModal(true)}
+                title="Click to view player connection, IP, & device details"
+              >
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: isChatBlocked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,215,0,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isChatBlocked ? '#ef4444' : 'var(--gold-primary)',
+                  border: isChatBlocked ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(255,215,0,0.25)',
+                  flexShrink: 0
+                }}>
+                  <i className={isChatBlocked ? "fa-solid fa-user-slash" : "fa-solid fa-user"} style={{ fontSize: '0.9rem' }}></i>
+                </div>
+                <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <h4 style={{
+                      fontSize: '0.84rem',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      margin: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {activeChatDisplayName}
+                    </h4>
+                    {isChatBlocked && (
+                      <span style={{
+                        background: 'rgba(239, 68, 68, 0.25)',
+                        border: '1px solid #ef4444',
+                        color: '#ef4444',
+                        fontSize: '0.55rem',
+                        padding: '0.05rem 0.3rem',
+                        borderRadius: '4px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        flexShrink: 0
+                      }}>
+                        Blocked
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.64rem', color: isChatBlocked ? '#ef4444' : '#10b981', marginTop: '1px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isChatBlocked ? '#ef4444' : '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
+                    <span style={{ fontWeight: 600 }}>{isChatBlocked ? 'Device Blocked' : 'Live Chat'}</span>
+                    <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85 }}>
+                      • {activeChatEmail}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Actions (Shown on >= 900px screens) */}
+              <div className="support-chat-desktop-actions">
+                {/* Device Inspector Button */}
                 <button
                   type="button"
-                  onClick={handleConfirmUnblockChatUser}
-                  disabled={isSubmittingUnblock}
+                  onClick={() => setShowDeviceInfoModal(true)}
                   style={{
-                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%)',
-                    border: '1px solid #22c55e',
+                    background: 'rgba(0, 240, 255, 0.1)',
+                    border: '1px solid rgba(0, 240, 255, 0.3)',
                     borderRadius: '8px',
-                    padding: '0.35rem 0.65rem',
-                    color: '#4ade80',
+                    padding: '0.35rem 0.55rem',
+                    color: 'var(--cyan-primary)',
                     fontSize: '0.68rem',
-                    fontWeight: 800,
-                    cursor: isSubmittingUnblock ? 'wait' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)'
-                  }}
-                  title="Unblock this player and restore chat / logins"
-                >
-                  <i className={isSubmittingUnblock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-unlock"}></i>
-                  <span>{isSubmittingUnblock ? 'Unblocking...' : 'Unblock'}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowBlockModal(true)}
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.25) 100%)',
-                    border: '1px solid #ef4444',
-                    borderRadius: '8px',
-                    padding: '0.35rem 0.65rem',
-                    color: '#ef4444',
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.3rem',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.15)'
+                    whiteSpace: 'nowrap'
                   }}
-                  title="Permanently block this player and device"
+                  title="View Player Device & IP Connection Info"
                 >
-                  <i className="fa-solid fa-ban"></i>
-                  <span>Block User</span>
+                  <i className="fa-solid fa-mobile-screen"></i>
+                  <span>Device</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={() => setAutoTranslateIncoming((prev) => !prev)}
-                style={{
-                  background: autoTranslateIncoming ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-                  border: autoTranslateIncoming ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  padding: '0.35rem 0.55rem',
-                  color: autoTranslateIncoming ? 'var(--gold-primary)' : 'var(--text-muted)',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  whiteSpace: 'nowrap'
-                }}
-                title={autoTranslateIncoming ? 'Auto Roman Urdu translation: ON' : 'Turn ON Auto Roman Urdu translation'}
-              >
-                <i className="fa-solid fa-language" style={{ fontSize: '0.85rem' }}></i>
-                <span>{autoTranslateIncoming ? 'Auto Ur' : 'Auto Ur'}</span>
-              </button>
+                {/* Block / Unblock Button */}
+                {isChatBlocked ? (
+                  <button
+                    type="button"
+                    onClick={handleConfirmUnblockChatUser}
+                    disabled={isSubmittingUnblock}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(16, 185, 129, 0.25) 100%)',
+                      border: '1px solid #22c55e',
+                      borderRadius: '8px',
+                      padding: '0.35rem 0.65rem',
+                      color: '#4ade80',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      cursor: isSubmittingUnblock ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)'
+                    }}
+                    title="Unblock this player and restore chat / logins"
+                  >
+                    <i className={isSubmittingUnblock ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-unlock"}></i>
+                    <span>{isSubmittingUnblock ? 'Unblocking...' : 'Unblock'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowBlockModal(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.25) 100%)',
+                      border: '1px solid #ef4444',
+                      borderRadius: '8px',
+                      padding: '0.35rem 0.65rem',
+                      color: '#ef4444',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 0 10px rgba(239, 68, 68, 0.15)'
+                    }}
+                    title="Permanently block this player and device"
+                  >
+                    <i className="fa-solid fa-ban"></i>
+                    <span>Block User</span>
+                  </button>
+                )}
 
-              <button
-                type="button"
-                onClick={() => { setActiveChatEmail(null); }}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#aaa',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-                title="Close chat window"
-              >
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoTranslateIncoming((prev) => !prev)}
+                  style={{
+                    background: autoTranslateIncoming ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                    border: autoTranslateIncoming ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    padding: '0.35rem 0.55rem',
+                    color: autoTranslateIncoming ? 'var(--gold-primary)' : 'var(--text-muted)',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={autoTranslateIncoming ? 'Auto Roman Urdu translation: ON' : 'Turn ON Auto Roman Urdu translation'}
+                >
+                  <i className="fa-solid fa-language" style={{ fontSize: '0.85rem' }}></i>
+                  <span>{autoTranslateIncoming ? 'Auto Ur' : 'Auto Ur'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveChatEmail(null); }}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#aaa',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                  title="Close chat window"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              {/* Mobile Actions Dropdown (Shown on < 900px screens) */}
+              <div className="support-chat-mobile-actions" style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowHeaderMenu((prev) => !prev)}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: showHeaderMenu ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                    border: showHeaderMenu ? '1px solid var(--gold-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                    color: showHeaderMenu ? 'var(--gold-primary)' : '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    flexShrink: 0
+                  }}
+                  title="Options & Device Actions"
+                >
+                  <i className="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+
+                {showHeaderMenu && (
+                  <>
+                    <div
+                      onClick={() => setShowHeaderMenu(false)}
+                      style={{ position: 'fixed', inset: 0, zIndex: 998, background: 'rgba(0,0,0,0.3)' }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 6px)',
+                        zIndex: 999,
+                        background: 'linear-gradient(135deg, #13172b 0%, #0a0d18 100%)',
+                        border: '1px solid rgba(255, 215, 0, 0.3)',
+                        borderRadius: '12px',
+                        boxShadow: '0 12px 35px rgba(0,0,0,0.85), 0 0 15px rgba(255,215,0,0.15)',
+                        minWidth: '200px',
+                        padding: '0.35rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.2rem',
+                        animation: 'fade-in 0.15s ease-out'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => { setShowHeaderMenu(false); setShowDeviceInfoModal(true); }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fa-solid fa-mobile-screen" style={{ color: 'var(--cyan-primary)', width: '16px' }}></i>
+                        <span>Device & IP Info</span>
+                      </button>
+
+                      {isChatBlocked ? (
+                        <button
+                          type="button"
+                          onClick={() => { setShowHeaderMenu(false); handleConfirmUnblockChatUser(); }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            background: 'rgba(34, 197, 94, 0.12)',
+                            border: '1px solid rgba(34, 197, 94, 0.25)',
+                            color: '#4ade80',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                        >
+                          <i className="fa-solid fa-unlock" style={{ width: '16px' }}></i>
+                          <span>Unblock Player</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setShowHeaderMenu(false); setShowBlockModal(true); }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#ef4444',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                        >
+                          <i className="fa-solid fa-ban" style={{ width: '16px' }}></i>
+                          <span>Block User & Device</span>
+                        </button>
+                      )}
+
+                      <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.15rem 0' }} />
+
+                      <button
+                        type="button"
+                        onClick={() => { setAutoTranslateIncoming((prev) => !prev); }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: autoTranslateIncoming ? 'rgba(255,215,0,0.12)' : 'transparent',
+                          border: 'none',
+                          color: autoTranslateIncoming ? 'var(--gold-primary)' : 'var(--text-muted)',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <i className="fa-solid fa-language" style={{ width: '16px' }}></i>
+                          <span>Auto Roman Urdu</span>
+                        </div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{autoTranslateIncoming ? 'ON' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { setShowHeaderMenu(false); setActiveChatEmail(null); }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#aaa',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fa-solid fa-xmark" style={{ width: '16px' }}></i>
+                        <span>Close Chat</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="support-chat-messages">
@@ -1719,7 +1902,7 @@ export default function SupportTab({ adminUser }) {
                     </div>
 
                     {/* Row 2: Action Buttons */}
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
                       {/* 1-Click Translate & Send English */}
                       <button
                         type="button"
@@ -1727,25 +1910,27 @@ export default function SupportTab({ adminUser }) {
                         disabled={!adminReplyText.trim() || isTranslatingAdmin}
                         style={{
                           flex: 1,
-                          padding: '0.6rem 0.85rem',
+                          minWidth: 0,
+                          padding: '0.6rem 0.5rem',
                           background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                           color: '#fff',
                           border: 'none',
                           borderRadius: '8px',
                           fontWeight: 'bold',
-                          fontSize: '0.78rem',
+                          fontSize: '0.74rem',
                           cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
                           opacity: !adminReplyText.trim() || isTranslatingAdmin ? 0.5 : 1,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.35rem',
-                          whiteSpace: 'nowrap'
+                          gap: '0.3rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden'
                         }}
                         title="Translate Roman Urdu to English and Send to Player instantly"
                       >
-                        <i className="fa-solid fa-bolt"></i>
-                        <span>Translate & Send</span>
+                        <i className="fa-solid fa-bolt" style={{ flexShrink: 0 }}></i>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Translate & Send</span>
                       </button>
 
                       {/* Translate (Preview) Button */}
@@ -1757,7 +1942,7 @@ export default function SupportTab({ adminUser }) {
                           background: adminReplyText.trim() ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                           border: adminReplyText.trim() ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
                           borderRadius: '8px',
-                          padding: '0.6rem 0.75rem',
+                          padding: '0.6rem 0.65rem',
                           color: adminReplyText.trim() ? 'var(--gold-primary)' : 'var(--text-muted)',
                           cursor: !adminReplyText.trim() || isTranslatingAdmin ? 'not-allowed' : 'pointer',
                           fontSize: '0.72rem',
@@ -1765,7 +1950,8 @@ export default function SupportTab({ adminUser }) {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.3rem',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}
                         title="Translate Roman Urdu to English Preview (or press Ctrl+Enter)"
                       >
@@ -1774,7 +1960,7 @@ export default function SupportTab({ adminUser }) {
                         ) : (
                           <>
                             <i className="fa-solid fa-language" style={{ fontSize: '0.9rem' }}></i>
-                            <span>Preview</span>
+                            <span className="support-chat-preview-text">Preview</span>
                           </>
                         )}
                       </button>
@@ -1782,7 +1968,17 @@ export default function SupportTab({ adminUser }) {
                       <button
                         type="submit"
                         className="submit-btn support-chat-reply-btn"
-                        style={{ margin: 0, padding: '0.6rem 0.95rem', width: 'auto', background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)', color: '#000', fontWeight: 'bold', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                        style={{
+                          margin: 0,
+                          padding: '0.6rem 0.85rem',
+                          width: 'auto',
+                          background: 'linear-gradient(135deg, #ffd700 0%, #cca000 100%)',
+                          color: '#000',
+                          fontWeight: 'bold',
+                          fontSize: '0.78rem',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
                         title="Send message directly"
                       >
                         {activeChatMessages.length === 0 ? 'Send' : 'Reply'}
