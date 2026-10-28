@@ -304,9 +304,9 @@ export async function blockDevicePermanently(db, { email, deviceId, deviceFinger
       if (s.ip && s.ip !== '127.0.0.1' && s.ip !== '::1' && s.ip !== '—') allIps.add(String(s.ip).trim());
     }
 
-    // Also gather from supportMessages (for guests or users who chatted)
+    // Also gather from supportMessages (for guests or users who chatted) - ONLY from messages sent by the player, NEVER by admin!
     const supportMsgs = await db.collection('supportMessages').find(
-      { userEmail: cleanEmail },
+      { userEmail: cleanEmail, senderType: 'player' },
       { projection: { deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, ip: 1 } }
     ).toArray();
     for (const sm of supportMsgs) {
@@ -314,6 +314,12 @@ export async function blockDevicePermanently(db, { email, deviceId, deviceFinger
       if (sm.deviceFingerprint) allFingerprints.add(String(sm.deviceFingerprint).trim());
       if (sm.hardwareFingerprint) allHardwareFps.add(String(sm.hardwareFingerprint).trim());
       if (sm.ip && sm.ip !== '127.0.0.1' && sm.ip !== '::1' && sm.ip !== '—') allIps.add(String(sm.ip).trim());
+    }
+
+    // Safety guard: NEVER allow an admin IP to be blocked
+    const adminSessions = await db.collection('deviceSessions').find({ role: 'admin' }).toArray();
+    for (const as of adminSessions) {
+      if (as.ip) allIps.delete(as.ip);
     }
 
     // Set permanent block flag on user document if exists
@@ -604,6 +610,17 @@ export async function unblockDevice(db, { email, deviceId, deviceFingerprint, ha
       if (userDoc.deviceId) conditions.push({ deviceId: String(userDoc.deviceId).trim() });
       if (userDoc.deviceFingerprint) conditions.push({ deviceFingerprint: String(userDoc.deviceFingerprint).trim() });
       if (userDoc.hardwareFingerprint) conditions.push({ hardwareFingerprint: String(userDoc.hardwareFingerprint).trim() });
+    }
+
+    // Also gather any IPs recorded for this user/guest from player support messages
+    const msgs = await db.collection('supportMessages').find(
+      { userEmail: cleanEmail, senderType: 'player' },
+      { projection: { ip: 1 } }
+    ).toArray();
+    for (const m of msgs) {
+      if (m.ip && m.ip !== '127.0.0.1' && m.ip !== '::1') {
+        conditions.push({ ip: String(m.ip).trim() });
+      }
     }
 
     await db.collection('users').updateOne(

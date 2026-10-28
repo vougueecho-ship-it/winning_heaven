@@ -48,7 +48,34 @@ export default function PlayerDepositPage({
   const [zoomedQr, setZoomedQr] = useState(false);
   const [downloadingQr, setDownloadingQr] = useState(false);
   const [timeLeft, setTimeLeft] = useState(() => (pendingRestored?.expiresAt ? remainingSeconds(pendingRestored.expiresAt) : 600));
+  const [claimedHalloweenBonus, setClaimedHalloweenBonus] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('active_halloween_bonus');
+        return cached ? JSON.parse(cached) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const fileInputRef = useRef(null);
+
+  // Check active claimed Halloween bonus on player's account
+  useEffect(() => {
+    if (!userEmail) return;
+    fetch(`/api/halloween/claim?email=${encodeURIComponent(userEmail)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.claimedBonus) {
+          setClaimedHalloweenBonus(data.claimedBonus);
+          try {
+            localStorage.setItem('active_halloween_bonus', JSON.stringify(data.claimedBonus));
+          } catch (e) {}
+        }
+      })
+      .catch((err) => console.error('Error fetching claimed Halloween bonus:', err));
+  }, [userEmail]);
 
   // If initial default game title changes, keep it synced
   useEffect(() => {
@@ -200,6 +227,10 @@ export default function PlayerDepositPage({
       return;
     }
 
+    const activeBonusPercent = claimedHalloweenBonus?.bonusPercent || 0;
+    const bonusNum = activeBonusPercent > 0 ? (numAmt * (activeBonusPercent / 100)) : 0;
+    const totalCoinsExpected = Math.floor(numAmt + bonusNum);
+
     setSubmitting(true);
     try {
       await onSubmitTransaction({
@@ -211,7 +242,12 @@ export default function PlayerDepositPage({
         noteCode,
         senderTag: senderTag.trim(),
         senderName: senderTag.trim(),
-        screenshot
+        screenshot,
+        bonusPercent: activeBonusPercent > 0 ? activeBonusPercent : undefined,
+        bonusName: claimedHalloweenBonus?.name || undefined,
+        bonusCoins: bonusNum > 0 ? bonusNum : undefined,
+        totalCoins: totalCoinsExpected > 0 ? totalCoinsExpected : undefined,
+        note: activeBonusPercent > 0 ? `[Halloween Bonus: ${claimedHalloweenBonus?.name || 'Halloween'} (+${activeBonusPercent}%)]` : ''
       });
       clearPendingDeposit();
       if (showToast) showToast('Deposit submitted successfully! Processing in 2-5 minutes.', 'success');
@@ -465,6 +501,50 @@ export default function PlayerDepositPage({
                 className="custom-amt-input"
               />
             </div>
+
+            {(() => {
+              const activeBonusPercent = claimedHalloweenBonus?.bonusPercent || 0;
+              if (!activeBonusPercent) return null;
+              const depAmt = parseFloat(amount) || 0;
+              const bonusAmt = (depAmt * activeBonusPercent) / 100;
+              const totalCoins = Math.floor(depAmt + bonusAmt);
+
+              return (
+                <div style={{
+                  marginTop: '0.75rem',
+                  background: 'linear-gradient(135deg, rgba(255, 117, 24, 0.16) 0%, rgba(147, 51, 234, 0.16) 100%)',
+                  border: '1.5px solid rgba(255, 117, 24, 0.65)',
+                  borderRadius: '12px',
+                  padding: '0.75rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  boxShadow: '0 4px 20px rgba(255, 117, 24, 0.25)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '1.8rem', filter: 'drop-shadow(0 0 8px #ff7518)' }}>🎃</span>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 900, color: '#ff9d42', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <span>HALLOWEEN BONUS ACTIVE:</span>
+                        <span style={{ background: '#ff7518', color: '#000', padding: '0.15rem 0.5rem', borderRadius: '6px', fontFamily: 'Russo One' }}>
+                          +{activeBonusPercent}% EXTRA COINS
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: '#e2e8f0', marginTop: '3px' }}>
+                        {claimedHalloweenBonus?.name || 'Halloween Reward'} is active! Deposit <strong>${depAmt.toFixed(2)}</strong> ➔ Receive <strong style={{ color: 'var(--gold-primary)' }}>{totalCoins} Coins</strong> (+{bonusAmt.toFixed(2)} Bonus Coins)!
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--gold-primary)', fontFamily: 'Russo One' }}>
+                      {totalCoins}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: '#fb923c', fontWeight: 800 }}>TOTAL COINS</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* 3. SELECT PAYMENT METHOD */}

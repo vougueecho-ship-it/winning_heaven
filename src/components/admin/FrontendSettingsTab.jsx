@@ -33,6 +33,15 @@ export default function FrontendSettingsTab({ adminUser }) {
   const [withdrawTier2Multiplier, setWithdrawTier2Multiplier] = useState(3);
   const [withdrawTier1MinDeposit, setWithdrawTier1MinDeposit] = useState(5);
   const [withdrawTier1MaxDeposit, setWithdrawTier1MaxDeposit] = useState(50);
+
+  // Halloween Settings
+  const [halloweenActive, setHalloweenActive] = useState(true);
+  const [halloweenBonus1, setHalloweenBonus1] = useState(150);
+  const [halloweenBonus2, setHalloweenBonus2] = useState(100);
+  const [halloweenBonus3, setHalloweenBonus3] = useState(200);
+  const [halloweenBonus1Name, setHalloweenBonus1Name] = useState('Jackpot Pumpkin');
+  const [halloweenBonus2Name, setHalloweenBonus2Name] = useState('Phantom Fortune');
+  const [halloweenBonus3Name, setHalloweenBonus3Name] = useState('Vampire Vault');
   const [withdrawTier1Basis, setWithdrawTier1Basis] = useState('coins');
   const [withdrawTier2Basis, setWithdrawTier2Basis] = useState('deposit');
   const [withdrawCalculationBasis, setWithdrawCalculationBasis] = useState('');
@@ -156,6 +165,15 @@ export default function FrontendSettingsTab({ adminUser }) {
       }
       setWithdrawRequireGameScreenshot(s.withdrawRequireGameScreenshot === true);
       setWithdrawRequireTagQrScreenshot(s.withdrawRequireTagQrScreenshot !== false);
+
+      // Halloween settings load
+      setHalloweenActive(s.halloweenActive !== false);
+      setHalloweenBonus1(s.halloweenBonus1 !== undefined ? s.halloweenBonus1 : 150);
+      setHalloweenBonus2(s.halloweenBonus2 !== undefined ? s.halloweenBonus2 : 100);
+      setHalloweenBonus3(s.halloweenBonus3 !== undefined ? s.halloweenBonus3 : 200);
+      setHalloweenBonus1Name(s.halloweenBonus1Name || 'Jackpot Pumpkin');
+      setHalloweenBonus2Name(s.halloweenBonus2Name || 'Phantom Fortune');
+      setHalloweenBonus3Name(s.halloweenBonus3Name || 'Vampire Vault');
 
       setWithdrawNotice(s.withdrawNotice || 'Fastest Withdrawals inside 5 Minutes!');
       setCashoutNotice(s.cashoutNotice || 'Standard cashout processing hours: 24/7 Instant Processing');
@@ -357,6 +375,13 @@ export default function FrontendSettingsTab({ adminUser }) {
         withdrawNotice,
         cashoutNotice,
         announcements,
+        halloweenActive,
+        halloweenBonus1: Number(halloweenBonus1),
+        halloweenBonus2: Number(halloweenBonus2),
+        halloweenBonus3: Number(halloweenBonus3),
+        halloweenBonus1Name,
+        halloweenBonus2Name,
+        halloweenBonus3Name,
         infoPageEnabled,
         infoShowOnAuth,
         infoShowOnLobby,
@@ -496,6 +521,7 @@ export default function FrontendSettingsTab({ adminUser }) {
       }}>
         {[
           { key: 'banners', label: 'Hero Banners & Promos', icon: 'fa-rectangle-ad' },
+          { key: 'halloween', label: '🎃 Halloween Bonanza', icon: 'fa-ghost' },
           { key: 'rules', label: 'Game Rules & Limits', icon: 'fa-scale-balanced' },
           { key: 'apps', label: 'Mobile App Links', icon: 'fa-mobile-screen-button' },
           { key: 'branding', label: 'Branding & Audio', icon: 'fa-photo-film' },
@@ -562,6 +588,175 @@ export default function FrontendSettingsTab({ adminUser }) {
       ) : (
         <form onSubmit={handleSave} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* TAB: HALLOWEEN EVENT & BONUSES */}
+          {activeSubtab === 'halloween' && (
+            <section style={{
+              background: 'linear-gradient(135deg, rgba(20, 10, 36, 0.9) 0%, rgba(10, 14, 28, 0.9) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1.5px solid rgba(255, 117, 24, 0.45)',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6), 0 0 25px rgba(255, 117, 24, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid rgba(255, 117, 24, 0.25)', paddingBottom: '1rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#ff7518', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900 }}>
+                    <span>🎃 Halloween Season Event & Bonus Multipliers</span>
+                  </h3>
+                  <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    Set exact bonus percentages for all 3 mystery rewards and toggle the event in the player lobby.
+                  </p>
+                </div>
+                {/* Enable Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', background: 'rgba(255, 117, 24, 0.15)', border: '1px solid rgba(255, 117, 24, 0.35)', padding: '0.45rem 0.85rem', borderRadius: '10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={halloweenActive}
+                    onChange={(e) => setHalloweenActive(e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: '#ff7518' }}
+                  />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ff9d42' }}>
+                    {halloweenActive ? 'Event ACTIVE in Lobby' : 'Event DISABLED'}
+                  </span>
+                </label>
+              </div>
+
+              {/* 3 Mystery Reward Percentage Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.2rem' }}>
+                {/* Pumpkin 1 */}
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255, 117, 24, 0.35)', borderRadius: '14px', padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                    <span style={{ fontSize: '2rem' }}>🎃</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>Reward 1: Most Popular</div>
+                      <input
+                        type="text"
+                        value={halloweenBonus1Name}
+                        onChange={(e) => setHalloweenBonus1Name(e.target.value)}
+                        placeholder="e.g. Jackpot Pumpkin"
+                        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px dashed #ff7518', color: '#ff9d42', fontSize: '0.82rem', fontWeight: 700, outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '0.35rem', fontWeight: 700 }}>
+                    Deposit Match Bonus Percentage (%)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      value={halloweenBonus1}
+                      onChange={(e) => setHalloweenBonus1(e.target.value)}
+                      style={{ width: '100%', background: '#000', border: '1.5px solid #ff7518', borderRadius: '10px', padding: '0.65rem 2rem 0.65rem 0.85rem', color: '#ffa200', fontSize: '1.15rem', fontWeight: 900, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#ff7518', fontWeight: 800 }}>%</span>
+                  </div>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Example: Player deposits $50 ➔ receives {50 * (1 + (Number(halloweenBonus1) || 0) / 100)} Coins.
+                  </p>
+                </div>
+
+                {/* Pumpkin 2 */}
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: '14px', padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                    <span style={{ fontSize: '2rem' }}>👻</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>Reward 2: Lucky Ghost</div>
+                      <input
+                        type="text"
+                        value={halloweenBonus2Name}
+                        onChange={(e) => setHalloweenBonus2Name(e.target.value)}
+                        placeholder="e.g. Phantom Fortune"
+                        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px dashed #a855f7', color: '#c084fc', fontSize: '0.82rem', fontWeight: 700, outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '0.35rem', fontWeight: 700 }}>
+                    Deposit Match Bonus Percentage (%)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      value={halloweenBonus2}
+                      onChange={(e) => setHalloweenBonus2(e.target.value)}
+                      style={{ width: '100%', background: '#000', border: '1.5px solid #a855f7', borderRadius: '10px', padding: '0.65rem 2rem 0.65rem 0.85rem', color: '#c084fc', fontSize: '1.15rem', fontWeight: 900, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#a855f7', fontWeight: 800 }}>%</span>
+                  </div>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Example: Player deposits $50 ➔ receives {50 * (1 + (Number(halloweenBonus2) || 0) / 100)} Coins.
+                  </p>
+                </div>
+
+                {/* Pumpkin 3 */}
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255, 200, 0, 0.35)', borderRadius: '14px', padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                    <span style={{ fontSize: '2rem' }}>🦇</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>Reward 3: VIP High Roller</div>
+                      <input
+                        type="text"
+                        value={halloweenBonus3Name}
+                        onChange={(e) => setHalloweenBonus3Name(e.target.value)}
+                        placeholder="e.g. Vampire Vault"
+                        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px dashed var(--gold-primary)', color: 'var(--gold-primary)', fontSize: '0.82rem', fontWeight: 700, outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '0.35rem', fontWeight: 700 }}>
+                    Deposit Match Bonus Percentage (%)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      value={halloweenBonus3}
+                      onChange={(e) => setHalloweenBonus3(e.target.value)}
+                      style={{ width: '100%', background: '#000', border: '1.5px solid var(--gold-primary)', borderRadius: '10px', padding: '0.65rem 2rem 0.65rem 0.85rem', color: 'var(--gold-primary)', fontSize: '1.15rem', fontWeight: 900, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gold-primary)', fontWeight: 800 }}>%</span>
+                  </div>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Example: Player deposits $50 ➔ receives {50 * (1 + (Number(halloweenBonus3) || 0) / 100)} Coins.
+                  </p>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid rgba(255, 117, 24, 0.2)' }}>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  style={{
+                    background: 'linear-gradient(135deg, #ff7518 0%, #ff4500 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1.75rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 900,
+                    cursor: isSaving ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 20px rgba(255, 117, 24, 0.4)'
+                  }}
+                >
+                  <i className={isSaving ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-check"} />
+                  <span>{isSaving ? 'Saving Settings...' : 'Save Halloween Settings'}</span>
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* TAB 1: HERO PROMO BANNERS */}
           {activeSubtab === 'banners' && (
             <section style={{

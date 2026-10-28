@@ -461,6 +461,24 @@ export default function LedgerTab({
                           </div>
                         )}
                         {tx.note && <p style={{ fontSize: '0.65rem', color: '#ff8787', margin: '0.2rem 0 0 0' }}>{tx.note}</p>}
+                        {((tx.bonusPercent && tx.bonusPercent > 0) || (tx.note && String(tx.note).includes('Halloween Bonus'))) && (
+                          <div style={{
+                            marginTop: '0.25rem',
+                            background: 'linear-gradient(135deg, rgba(255, 117, 24, 0.22) 0%, rgba(147, 51, 234, 0.22) 100%)',
+                            border: '1px solid rgba(255, 117, 24, 0.55)',
+                            borderRadius: '6px',
+                            padding: '0.2rem 0.45rem',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            color: '#ff9d42',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem'
+                          }}>
+                            <span>🎃 {tx.bonusName || 'Halloween Bonus'} (+{tx.bonusPercent || 150}%)</span>
+                            {tx.totalCoins ? <span style={{ color: '#fff', fontWeight: 900 }}>➔ {tx.totalCoins} Coins</span> : ''}
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontSize: '0.7rem' }}>{formatDeviceDateTime(tx.createdAt, tx.date)}</td>
                       <td>

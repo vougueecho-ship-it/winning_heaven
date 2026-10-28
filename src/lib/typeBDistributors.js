@@ -8,11 +8,16 @@ export async function getTypeBDistributorIds(db) {
   const cached = cache.get(CACHE_KEY);
   if (cached) return cached;
 
-  const conn = db || await getDb();
-  const rows = await conn.collection('distributors').find({ type: 'B' }).project({ id: 1 }).toArray();
-  const ids = rows.map((d) => d.id).filter(Boolean);
-  cache.set(CACHE_KEY, ids, CACHE_TTL);
-  return ids;
+  try {
+    const conn = db || await getDb();
+    const rows = await conn.collection('distributors').find({ type: 'B' }).project({ id: 1 }).toArray();
+    const ids = rows.map((d) => d.id).filter(Boolean);
+    cache.set(CACHE_KEY, ids, CACHE_TTL);
+    return ids;
+  } catch (err) {
+    console.warn('[typeBDistributors] Failed to query distributors from MongoDB (network glitch):', err.message);
+    return [];
+  }
 }
 
 export async function isTypeBDistributor(db, distributorId) {

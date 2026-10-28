@@ -4,6 +4,7 @@ import { POLL } from '../../lib/pollingConfig';
 import { registerNativeBackHandler } from '../../lib/nativeBack';
 import { ImageLightbox } from '../Modals';
 import { formatDeviceTime } from '../../lib/formatDateTime';
+import DirectChatDepositModal from './DirectChatDepositModal';
 
 export default function SupportTab({ adminUser }) {
   const [chatSearch, setChatSearch] = useState('');
@@ -16,6 +17,9 @@ export default function SupportTab({ adminUser }) {
   const [openedPlayers, setOpenedPlayers] = useState({}); // email -> { email, name }
   const [replyingTo, setReplyingTo] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  // Direct Chat Deposit & Coins State
+  const [showDirectDepositModal, setShowDirectDepositModal] = useState(false);
   
   // Translation States (Roman Urdu <-> English)
   const [translatedMessages, setTranslatedMessages] = useState({}); // msgId -> { loading, show, romanUrdu, urdu }
@@ -74,7 +78,7 @@ export default function SupportTab({ adminUser }) {
     isValidating: chatValidating
   } = usePollingSWR(
     activeChatEmail
-      ? `/api/support?email=${encodeURIComponent(activeChatEmail)}&limit=100${distQueryParam}`
+      ? `/api/support?email=${encodeURIComponent(activeChatEmail)}&limit=100${distQueryParam}&viewerRole=admin`
       : null,
     POLL.CHAT,
     { keepPreviousData: false }
@@ -84,14 +88,16 @@ export default function SupportTab({ adminUser }) {
   useEffect(() => {
     const q = chatSearch.trim();
     if (q.length < 2) {
-      setPlayerHits([]);
-      setPlayerSearchLoading(false);
-      return undefined;
+      const resetTimer = setTimeout(() => {
+        setPlayerHits([]);
+        setPlayerSearchLoading(false);
+      }, 0);
+      return () => clearTimeout(resetTimer);
     }
 
     const controller = new AbortController();
-    setPlayerSearchLoading(true);
     const timer = setTimeout(async () => {
+      setPlayerSearchLoading(true);
       try {
         const distParam = adminUser?.distributorId
           ? `&adminDistributorId=${encodeURIComponent(adminUser.distributorId)}`
@@ -963,6 +969,31 @@ export default function SupportTab({ adminUser }) {
 
               {/* Desktop Actions (Shown on >= 900px screens) */}
               <div className="support-chat-desktop-actions">
+                {/* Direct Chat Deposit & Coins Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowDirectDepositModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.22) 0%, rgba(255, 117, 24, 0.22) 100%)',
+                    border: '1.5px solid var(--gold-primary)',
+                    borderRadius: '8px',
+                    padding: '0.35rem 0.65rem',
+                    color: 'var(--gold-primary)',
+                    fontSize: '0.68rem',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 12px rgba(255, 200, 0, 0.25)'
+                  }}
+                  title="Directly Process Player Deposit & Load Game Coins"
+                >
+                  <i className="fa-solid fa-bolt" />
+                  <span>Deposit & Coins</span>
+                </button>
+
                 {/* Device Inspector Button */}
                 <button
                   type="button"
@@ -1203,6 +1234,30 @@ export default function SupportTab({ adminUser }) {
                       )}
 
                       <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.15rem 0' }} />
+
+                      {/* Quick Direct Deposit in Mobile Menu */}
+                      <button
+                        type="button"
+                        onClick={() => { setShowHeaderMenu(false); setShowDirectDepositModal(true); }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.18) 0%, rgba(255, 117, 24, 0.18) 100%)',
+                          border: '1px solid rgba(255, 200, 0, 0.4)',
+                          color: 'var(--gold-primary)',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fa-solid fa-bolt" style={{ width: '16px', color: 'var(--gold-primary)' }} />
+                        <span>Deposit & Load Coins</span>
+                      </button>
 
                       <button
                         type="button"
@@ -1581,7 +1636,7 @@ export default function SupportTab({ adminUser }) {
                       <i className="fa-solid fa-pen-to-square"></i> Editing message:
                     </span>
                     <span style={{ opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      "{editingMessage.message}"
+                      &quot;{editingMessage.message}&quot;
                     </span>
                   </div>
                   <button
@@ -1650,7 +1705,7 @@ export default function SupportTab({ adminUser }) {
                   {adminOriginalRoman && (
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span style={{ background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.35rem', borderRadius: '4px', color: '#ffd700', fontWeight: 'bold' }}>Roman Urdu:</span>
-                      <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{adminOriginalRoman}"</span>
+                      <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>&quot;{adminOriginalRoman}&quot;</span>
                     </div>
                   )}
 
@@ -2027,7 +2082,7 @@ export default function SupportTab({ adminUser }) {
               <i className="fa-solid fa-trash-can"></i> Delete Message?
             </div>
             <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.4 }}>
-              "{deleteTargetMessage.message?.slice(0, 80) || 'Attachment'}{deleteTargetMessage.message?.length > 80 ? '...' : ''}"
+              &quot;{deleteTargetMessage.message?.slice(0, 80) || 'Attachment'}{deleteTargetMessage.message?.length > 80 ? '...' : ''}&quot;
             </p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.25rem' }}>
@@ -2425,6 +2480,21 @@ export default function SupportTab({ adminUser }) {
       )}
 
       <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc('')} alt="Chat screenshot" />
+
+      {/* Direct Chat Deposit & Coins Loading Modal */}
+      {showDirectDepositModal && (
+        <DirectChatDepositModal
+          isOpen={showDirectDepositModal}
+          onClose={() => setShowDirectDepositModal(false)}
+          playerEmail={activeChatEmail}
+          playerName={activeChatDisplayName}
+          adminUser={adminUser}
+          onSuccess={() => {
+            mutateActiveChat();
+            mutateConversations();
+          }}
+        />
+      )}
     </div>
   );
 }

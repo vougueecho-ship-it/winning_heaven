@@ -68,10 +68,13 @@ const isAtlas = MONGODB_URI && (MONGODB_URI.startsWith('mongodb+srv://') || MONG
 const clientOptions = {
   maxPoolSize: 20,
   minPoolSize: 2,
-  maxIdleTimeMS: 60000,
+  maxIdleTimeMS: 45000,
   connectTimeoutMS: 20000,
   serverSelectionTimeoutMS: 15000,
   socketTimeoutMS: 45000,
+  heartbeatFrequencyMS: 10000,
+  retryWrites: true,
+  retryReads: true,
   ...(isAtlas ? {
     tls: true,
     tlsAllowInvalidCertificates: true,
@@ -210,8 +213,16 @@ export async function getDb() {
     clientPromise = undefined;
     databaseReadyPromise = undefined;
     global._mongoClientPromise = undefined;
+    cachedDb = undefined;
 
     console.error('MongoDB connection failed:', err);
     throw err;
   }
+}
+
+export function resetMongoConnection() {
+  clientPromise = undefined;
+  databaseReadyPromise = undefined;
+  global._mongoClientPromise = undefined;
+  cachedDb = undefined;
 }

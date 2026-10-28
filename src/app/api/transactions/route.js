@@ -1374,9 +1374,10 @@ export async function PUT(req) {
         const usePromoBonus = originalTx.type === 'DEPOSIT' && promoBonusPercent !== null && promoBonusPercent > 0;
 
         const isBonus = originalTx.type === 'BONUS';
+        const txBonus = Number(originalTx.bonusPercent) || 0;
         const bonusPercentage = isBonus
           ? 0
-          : (usePromoBonus ? promoBonusPercent : (isFirstDeposit ? firstBonusPercent : (settings ? Number(settings.regularDepositBonus) : 20)));
+          : (txBonus > 0 ? txBonus : (usePromoBonus ? promoBonusPercent : (isFirstDeposit ? firstBonusPercent : (settings ? Number(settings.regularDepositBonus) : 20))));
         
         // Calculate total coins to allot (whole coins only — drop cents after bonus)
         const amount = parseFloat(originalTx.amount);

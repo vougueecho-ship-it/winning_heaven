@@ -56,6 +56,15 @@ const DEFAULT_SETTINGS = {
   withdrawRequireGameScreenshot: false,
   withdrawRequireTagQrScreenshot: false,
 
+  // Halloween Season Event Settings
+  halloweenActive: true,
+  halloweenBonus1: 150,
+  halloweenBonus2: 100,
+  halloweenBonus3: 200,
+  halloweenBonus1Name: 'Jackpot Pumpkin',
+  halloweenBonus2Name: 'Phantom Fortune',
+  halloweenBonus3Name: 'Vampire Vault',
+
   // Landing Page Texts
   landingWelcome: 'WELCOME TO WINNING HEAVEN',
   landingGrab: 'Celestial Vegas Casino & Instant Cashouts',

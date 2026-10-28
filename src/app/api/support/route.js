@@ -107,29 +107,42 @@ export async function GET(req) {
       const messages = newestFirst.reverse();
 
       const viewerEmail = (searchParams.get('viewerEmail') || searchParams.get('senderEmail') || '').toLowerCase().trim();
-      const viewerRole = searchParams.get('role') || '';
+      const viewerRole = (searchParams.get('viewerRole') || searchParams.get('role') || '').toLowerCase().trim();
       const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '';
 
-      // Check device block status
-      const [deviceSession, latestDeviceMsg, targetUserDoc, blockedDeviceDoc] = await Promise.all([
+      // Check device block status specifically for the player (emailKey)
+      const [deviceSession, latestDeviceMsg, targetUserDoc] = await Promise.all([
         db.collection('deviceSessions').findOne({ email: emailKey }, { sort: { lastActive: -1 } }),
         supportCollection.findOne(
-          { userEmail: emailKey, $or: [{ deviceId: { $exists: true, $ne: '' } }, { ip: { $exists: true, $ne: '' } }] },
+          { userEmail: emailKey, senderType: 'player', $or: [{ deviceId: { $exists: true, $ne: '' } }, { ip: { $exists: true, $ne: '' } }] },
           { sort: { timestamp: -1 } }
         ),
         db.collection('users').findOne(
           { email: emailKey },
-          { projection: { name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, lastLoginIp: 1, registrationIp: 1, userAgent: 1, isDeviceBlocked: 1, deviceBlockedAt: 1, deviceBlockReason: 1 } }
-        ),
-        db.collection('blockedDevices').findOne({
-          $or: [
-            { email: emailKey },
-            ...(clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' ? [{ ip: clientIp }] : [])
-          ]
-        })
+          { projection: { name: 1, role: 1, deviceId: 1, deviceFingerprint: 1, hardwareFingerprint: 1, lastLoginIp: 1, registrationIp: 1, userAgent: 1, isDeviceBlocked: 1, deviceBlockedAt: 1, deviceBlockReason: 1, status: 1 } }
+        )
       ]);
 
-      const isChatBlocked = Boolean(blockedDeviceDoc || targetUserDoc?.isDeviceBlocked);
+      const playerDevId = deviceSession?.deviceId || targetUserDoc?.deviceId || latestDeviceMsg?.deviceId || '';
+      const playerFp = deviceSession?.deviceFingerprint || targetUserDoc?.deviceFingerprint || latestDeviceMsg?.deviceFingerprint || '';
+      const playerHfp = deviceSession?.hardwareFingerprint || targetUserDoc?.hardwareFingerprint || latestDeviceMsg?.hardwareFingerprint || '';
+
+      const playerBlockConditions = [{ email: emailKey }];
+      if (playerDevId) playerBlockConditions.push({ deviceId: playerDevId });
+      if (playerFp) playerBlockConditions.push({ deviceFingerprint: playerFp });
+      if (playerHfp) playerBlockConditions.push({ hardwareFingerprint: playerHfp });
+
+      // NEVER check request clientIp if viewer is an admin, because clientIp is the admin's IP!
+      // Only check clientIp if a player is querying their own chat.
+      if (viewerRole !== 'admin' && clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1') {
+        playerBlockConditions.push({ ip: clientIp });
+      }
+
+      const blockedDeviceDoc = await db.collection('blockedDevices').findOne({
+        $or: playerBlockConditions
+      });
+
+      const isChatBlocked = Boolean(blockedDeviceDoc || targetUserDoc?.isDeviceBlocked || targetUserDoc?.status === 'blocked');
 
       // If a player is polling their own chat and they are blocked, reject with 403
       if (viewerRole === 'player' && isChatBlocked) {
@@ -489,10 +502,11 @@ export async function POST(req) {
       distributorId: distId,
       distributorType: distType,
       distributorName: distName,
-      deviceId: deviceId || userDoc?.deviceId || '',
-      deviceFingerprint: deviceFingerprint || userDoc?.deviceFingerprint || '',
-      hardwareFingerprint: hardwareFingerprint || userDoc?.hardwareFingerprint || '',
-      ip: clientIp || (userDoc?.lastLoginIp || ''),
+      deviceId: senderType === 'player' ? (deviceId || userDoc?.deviceId || '') : '',
+      deviceFingerprint: senderType === 'player' ? (deviceFingerprint || userDoc?.deviceFingerprint || '') : '',
+      hardwareFingerprint: senderType === 'player' ? (hardwareFingerprint || userDoc?.hardwareFingerprint || '') : '',
+      ip: senderType === 'player' ? (clientIp || (userDoc?.lastLoginIp || '')) : '',
+      adminIp: senderType === 'admin' ? clientIp : '',
       userAgent: clientUserAgent || '',
       replyTo: replyTo && typeof replyTo === 'object' ? {
         id: String(replyTo.id || ''),

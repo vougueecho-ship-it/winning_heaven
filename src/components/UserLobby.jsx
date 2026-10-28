@@ -27,6 +27,7 @@ import LivePayoutsMarquee from './player/LivePayoutsMarquee';
 import SubscribePromptModal from './player/SubscribePromptModal';
 import PlayerPromoModal from './player/PlayerPromoModal';
 import FreeplayTaskModal from './player/FreeplayTaskModal';
+import HalloweenEventSection from './player/HalloweenEventSection';
 import { PlayerDepositModal, PlayerWithdrawModal, PlayerGameAccountModal } from './player/PlayerModals';
 import { canShowClaimRemainderButton } from '../lib/remainderClaim';
 
@@ -430,7 +431,40 @@ export default function UserLobby({
                     </div>
                     <i className="fa-solid fa-chevron-right bonus-strip-arrow" />
                   </div>
+
+                  <div
+                    className="bonus-strip-item"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255, 117, 24, 0.12) 0%, rgba(147, 51, 234, 0.12) 100%)',
+                      border: '1px solid rgba(255, 117, 24, 0.35)'
+                    }}
+                    onClick={() => {
+                      const el = document.querySelector('.halloween-event-card');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      else handleOpenDepositForGame('');
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="bonus-strip-icon" style={{ background: 'rgba(255, 117, 24, 0.25)', color: '#ff7518', fontSize: '1.1rem' }}>
+                      🎃
+                    </div>
+                    <div className="bonus-strip-info">
+                      <span className="bonus-strip-badge" style={{ background: '#ff7518', color: '#000', fontWeight: 900 }}>HALLOWEEN</span>
+                      <span className="bonus-strip-text"><strong style={{ color: '#ffa200' }}>150% Match</strong> + Trick/Treat</span>
+                    </div>
+                    <i className="fa-solid fa-chevron-right bonus-strip-arrow" style={{ color: '#ff7518' }} />
+                  </div>
                 </div>
+
+                {/* Halloween Spooktacular 2026 Event & Mystery Rewards Section */}
+                <HalloweenEventSection
+                  currentUser={currentUser}
+                  onOpenDeposit={() => handleOpenDepositForGame('')}
+                  onOpenAuth={(tab) => onOpenAuthModal && onOpenAuthModal(tab)}
+                  showToast={showToast}
+                  frontendSettings={frontendSettings}
+                />
 
                 {/* Game Catalog & Categories */}
                 <GameGrid

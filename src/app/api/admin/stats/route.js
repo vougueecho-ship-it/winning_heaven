@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '../../../../lib/mongodb';
+import { getDb, resetMongoConnection } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { applyStaffGameFilter } from '../../../../lib/staffGameAccess';
 import { typeBExclusionFilter } from '../../../../lib/typeBDistributors';
@@ -157,6 +157,9 @@ export async function GET(req) {
     return jsonOk({ success: true, stats }, { cacheSeconds: 0 });
   } catch (err) {
     console.error('Fetch Admin Stats Error:', err);
+    if (err?.name === 'MongoServerSelectionError' || err?.name === 'MongoNetworkTimeoutError' || err?.message?.includes('timed out')) {
+      resetMongoConnection();
+    }
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });
   }
 }
