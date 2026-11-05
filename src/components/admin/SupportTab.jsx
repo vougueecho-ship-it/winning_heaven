@@ -6,6 +6,8 @@ import { ImageLightbox } from '../Modals';
 import { formatDeviceTime } from '../../lib/formatDateTime';
 import DirectChatDepositModal from './DirectChatDepositModal';
 
+const QUICK_REACTION_EMOJIS = ['❤️', '👍', '🔥', '😂', '🎰', '👏'];
+
 export default function SupportTab({ adminUser }) {
   const [chatSearch, setChatSearch] = useState('');
   const [activeChatEmail, setActiveChatEmail] = useState(null);
@@ -38,6 +40,7 @@ export default function SupportTab({ adminUser }) {
   const [editingMessage, setEditingMessage] = useState(null); // { id, message }
   const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, senderType, message, isMe }
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   const chatScrollRef = useRef(null);
 
   // Device Block / Unblock States
@@ -145,6 +148,37 @@ export default function SupportTab({ adminUser }) {
     POLL.CHAT,
     { keepPreviousData: false }
   );
+
+  const handleToggleReaction = async (msgId, emoji) => {
+    setReactionPickerMsgId(null);
+    const voter = (adminUser?.email || 'admin').toLowerCase().trim();
+    try {
+      const res = await fetch('/api/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: msgId,
+          action: 'react',
+          emoji,
+          userIdentifier: voter,
+          role: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        mutateActiveChat((current) => {
+          const prev = current?.messages || [];
+          return {
+            ...current,
+            success: true,
+            messages: prev.map((m) => (m.id === msgId ? { ...m, reactions: data.reactions } : m))
+          };
+        }, false);
+      }
+    } catch (err) {
+      console.error('Failed to react:', err);
+    }
+  };
 
   // Search registered players by Gmail/name so staff can message before player texts first
   useEffect(() => {
@@ -1438,6 +1472,8 @@ export default function SupportTab({ adminUser }) {
                 activeChatMessages.map((msg) => {
                   const isMe = msg.senderType === 'admin';
                   const msgTranslation = translatedMessages[msg.id];
+                  const reactions = msg.reactions || {};
+                  const adminVoter = (adminUser?.email || 'admin').toLowerCase().trim();
 
                   const isHighlightedMsg = highlightedMsgId === msg.id;
                   return (
@@ -1591,7 +1627,7 @@ export default function SupportTab({ adminUser }) {
 
                         {/* Message Actions: Reply + Edit + Delete + Translate */}
                         {!msg.deletedForEveryone && (
-                          <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '0.45rem', marginTop: '0.3rem', paddingTop: '0.25rem', borderTop: isMe ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '0.45rem', marginTop: '0.3rem', paddingTop: '0.25rem', borderTop: isMe ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
                             {/* Reply */}
                             <button
                               type="button"
@@ -1690,9 +1726,84 @@ export default function SupportTab({ adminUser }) {
                                 )}
                               </button>
                             )}
+
+                            <button
+                              type="button"
+                              onClick={() => setReactionPickerMsgId((cur) => (cur === msg.id ? null : msg.id))}
+                              style={{
+                                background: reactionPickerMsgId === msg.id ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                border: 'none',
+                                color: isMe ? '#111' : (reactionPickerMsgId === msg.id ? '#ffd700' : 'rgba(255,255,255,0.7)'),
+                                fontSize: '0.62rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                padding: '0.15rem 0.3rem',
+                                borderRadius: '4px'
+                              }}
+                              title="React to this message"
+                            >
+                              <i className="fa-solid fa-face-smile" /> React
+                            </button>
+                          </div>
+                        )}
+                        {reactionPickerMsgId === msg.id && !msg.deletedForEveryone && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.35rem' }}>
+                            {QUICK_REACTION_EMOJIS.map((em) => (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, em)}
+                                style={{
+                                  background: isMe ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.35)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  borderRadius: '999px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.95rem',
+                                  minWidth: '32px',
+                                  minHeight: '32px'
+                                }}
+                                title={`React with ${em}`}
+                              >
+                                {em}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
+
+                      {Object.keys(reactions).length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.2rem' }}>
+                          {Object.entries(reactions).map(([em, voters]) => {
+                            const count = Array.isArray(voters) ? voters.length : 0;
+                            if (count === 0) return null;
+                            const hasMyVote = Array.isArray(voters) && voters.includes(adminVoter);
+                            return (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, em)}
+                                style={{
+                                  background: hasMyVote ? 'rgba(255, 215, 0, 0.25)' : 'rgba(10, 14, 30, 0.8)',
+                                  border: hasMyVote ? '1px solid #ffd700' : '1px solid rgba(255, 255, 255, 0.15)',
+                                  borderRadius: '12px',
+                                  padding: '0.12rem 0.4rem',
+                                  color: '#fff',
+                                  fontSize: '0.7rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.2rem'
+                                }}
+                              >
+                                <span>{em}</span>
+                                <span style={{ fontWeight: 800 }}>{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
 
                       <span style={{ fontSize: '0.55rem', opacity: 0.65, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
                         {isMe ? 'You (Agent)' : (msg.userName && !/^support\s*agent$/i.test(msg.userName) ? msg.userName : activeChatDisplayName || 'Player')} • {formatDeviceTime(msg.timestamp)}

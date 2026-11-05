@@ -383,6 +383,21 @@ export default function UserLobby({
                 <LivePayoutsMarquee liveTransactions={transactions} />
 
                 {/* Sleek VIP Bonus Strip — Informs player of all bonuses without large messy banner boxes */}
+                <button
+                  type="button"
+                  className="referral-mobile-spotlight"
+                  onClick={() => handleSelectTab('referrals')}
+                >
+                  <div className="bonus-strip-icon cyan">
+                    <i className="fa-solid fa-users-viewfinder" />
+                  </div>
+                  <div className="bonus-strip-info">
+                    <span className="bonus-strip-badge cyan">REFER &amp; EARN</span>
+                    <span className="bonus-strip-text">Invite friends and earn <strong>referral cash</strong></span>
+                  </div>
+                  <span className="referral-spotlight-cta">OPEN</span>
+                </button>
+
                 <div className="lobby-bonus-strip">
                   <div
                     className="bonus-strip-item freeplay"
@@ -741,6 +756,9 @@ export default function UserLobby({
           flex: 1;
           box-sizing: border-box;
         }
+        .referral-mobile-spotlight {
+          display: none;
+        }
         .lobby-bonus-strip {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -840,6 +858,31 @@ export default function UserLobby({
         @media (max-width: 768px) {
           .player-shell-container {
             padding-bottom: calc(4.8rem + max(env(safe-area-inset-bottom, 0px), var(--sab, 0px)));
+          }
+          .referral-mobile-spotlight {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            gap: 0.65rem;
+            margin: 0.15rem 0 0.55rem 0;
+            padding: 0.75rem 0.8rem;
+            border-radius: 14px;
+            border: 1px solid rgba(0, 240, 255, 0.45);
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(168, 85, 247, 0.18));
+            color: #fff;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+          }
+          .referral-spotlight-cta {
+            flex-shrink: 0;
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            color: #041018;
+            background: #00f0ff;
+            border-radius: 999px;
+            padding: 0.35rem 0.7rem;
           }
           .lobby-bonus-strip {
             display: flex;

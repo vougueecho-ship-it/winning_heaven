@@ -146,6 +146,7 @@ export default function PlayerSupportModal({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
 
   // Chat Settings State (persisted in localStorage)
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -466,6 +467,7 @@ export default function PlayerSupportModal({
   // Toggle emoji reaction on message
   const handleToggleReaction = async (msgId, emoji) => {
     setActiveMenuMsgId(null);
+    setReactionPickerMsgId(null);
     try {
       const res = await fetch('/api/support', {
         method: 'PATCH',
@@ -1251,7 +1253,8 @@ export default function PlayerSupportModal({
                             marginTop: '0.35rem',
                             paddingTop: '0.35rem',
                             borderTop: '1px solid rgba(255,255,255,0.08)',
-                            justifyContent: isMe ? 'flex-end' : 'flex-start'
+                            justifyContent: isMe ? 'flex-end' : 'flex-start',
+                            flexWrap: 'wrap'
                           }}>
                             {/* Reply Button (WhatsApp Style) */}
                             <button
@@ -1333,28 +1336,50 @@ export default function PlayerSupportModal({
                               <i className="fa-solid fa-trash-can" /> Delete
                             </button>
 
-                            {/* Quick Emoji Reaction Trigger */}
-                            <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.25rem' }}>
-                              {QUICK_REACTION_EMOJIS.slice(0, 3).map((em) => (
-                                <button
-                                  key={em}
-                                  type="button"
-                                  onClick={() => handleToggleReaction(msg.id, em)}
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8rem',
-                                    padding: '0.1rem',
-                                    opacity: 0.7,
-                                    transition: 'transform 0.15s ease'
-                                  }}
-                                  title={`React with ${em}`}
-                                >
-                                  {em}
-                                </button>
-                              ))}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setReactionPickerMsgId((cur) => (cur === msg.id ? null : msg.id))}
+                              style={{
+                                background: reactionPickerMsgId === msg.id ? 'rgba(255,200,0,0.18)' : 'transparent',
+                                border: 'none',
+                                color: reactionPickerMsgId === msg.id ? '#ffc800' : 'rgba(255,255,255,0.75)',
+                                fontSize: '0.68rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.2rem 0.4rem',
+                                borderRadius: '6px',
+                                minHeight: '32px'
+                              }}
+                              title="React to this message"
+                            >
+                              <i className="fa-solid fa-face-smile" /> React
+                            </button>
+                          </div>
+                        )}
+                        {reactionPickerMsgId === msg.id && !msg.deletedForEveryone && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.4rem' }}>
+                            {QUICK_REACTION_EMOJIS.map((em) => (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, em)}
+                                style={{
+                                  background: 'rgba(0,0,0,0.35)',
+                                  border: '1px solid rgba(255,255,255,0.18)',
+                                  borderRadius: '999px',
+                                  cursor: 'pointer',
+                                  fontSize: '1.05rem',
+                                  minWidth: '36px',
+                                  minHeight: '36px',
+                                  padding: '0.15rem 0.35rem'
+                                }}
+                                title={`React with ${em}`}
+                              >
+                                {em}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>

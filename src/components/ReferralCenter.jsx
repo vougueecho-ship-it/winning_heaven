@@ -54,7 +54,7 @@ export default function ReferralCenter({
   const shareSMS = () => window.open(`sms:?&body=${encodeURIComponent(promoText)}`, '_blank');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', padding: '1rem 0 3rem 0' }}>
+    <div className="referral-page" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', padding: '1rem 0 3rem 0' }}>
       
       {/* Top Header Bar */}
       <div style={{
@@ -318,6 +318,13 @@ export default function ReferralCenter({
           </div>
         )}
       </div>
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .referral-page {
+            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -44,6 +44,16 @@ export default function MobileBottomNav({
           <span>Cashout</span>
         </button>
 
+        {/* Referral lounge — always on the dock so it is not buried in the lobby strip */}
+        <button
+          type="button"
+          onClick={() => onSelectTab && onSelectTab('referrals')}
+          className={`dock-btn dock-refer-btn ${activeTab === 'referrals' ? 'active' : ''}`}
+        >
+          <i className="fa-solid fa-users" style={{ color: activeTab === 'referrals' ? 'var(--gold-primary)' : '#c084fc' }} />
+          <span>Refer</span>
+        </button>
+
         {/* App Download / Install */}
         {/* App Download / Install Modal Trigger */}
         <button
@@ -103,17 +113,25 @@ export default function MobileBottomNav({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.2rem;
-          font-size: 0.68rem;
+          gap: 0.15rem;
+          font-size: 0.62rem;
           font-weight: 700;
           cursor: pointer;
-          padding: 0.2rem 0.35rem;
+          padding: 0.15rem 0.1rem;
           transition: all 0.2s ease;
           border-radius: 8px;
           text-decoration: none;
+          flex: 1;
+          min-width: 0;
+        }
+        .dock-btn span {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .dock-btn i {
-          font-size: 1.15rem;
+          font-size: 1.05rem;
         }
         .dock-btn.active {
           color: var(--gold-primary);
@@ -124,6 +142,9 @@ export default function MobileBottomNav({
         }
         .dock-app-btn {
           color: #22c55e;
+        }
+        .dock-refer-btn {
+          color: #c084fc;
         }
         .dock-unread-dot {
           position: absolute;

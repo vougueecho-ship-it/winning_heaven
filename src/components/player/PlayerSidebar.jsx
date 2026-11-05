@@ -190,6 +190,18 @@ export default function PlayerSidebar({
             </div>
           </button>
 
+          <button
+            type="button"
+            onClick={() => handleGuardedAction(() => handleNavClick('referrals'))}
+            className={`sidebar-nav-btn ${activeTab === 'referrals' ? 'active' : ''}`}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <i className="fa-solid fa-users" style={{ color: '#c084fc' }} />
+              <span>Refer &amp; Earn</span>
+            </div>
+            <span className="badge-fast" style={{ background: 'rgba(168, 85, 247, 0.18)', borderColor: '#c084fc', color: '#c084fc' }}>VIP</span>
+          </button>
+
         </div>
 
         {/* GAME ACCOUNTS SECTION (Active Accounts Only) */}
