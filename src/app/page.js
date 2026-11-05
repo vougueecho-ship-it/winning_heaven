@@ -129,15 +129,22 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
   const [authModalOpen, setAuthModalOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
     const p = window.location.pathname;
-    return p.startsWith('/login') || p.startsWith('/register') || p.startsWith('/forgot');
+    return p.startsWith('/login') || p.startsWith('/register') || p.startsWith('/signup') || p.startsWith('/forgot');
   });
   const [authModalTab, setAuthModalTab] = useState(() => {
     if (typeof window === 'undefined') return initialAuthTab || 'login';
     const p = window.location.pathname;
-    if (p.startsWith('/register')) return 'register';
+    if (p.startsWith('/register') || p.startsWith('/signup')) return 'register';
     if (p.startsWith('/forgot')) return 'forgot';
     return initialAuthTab || 'login';
   });
+
+  useEffect(() => {
+    if (initialAuthTab) {
+      setAuthModalTab(initialAuthTab);
+      setAuthModalOpen(true);
+    }
+  }, [initialAuthTab]);
 
   // Player / any deleted account: force logout while lobby is open.
   useSessionGuard(session?.email ? session.email : null, {
@@ -368,7 +375,7 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
       window.location.href = '/admin';
       return;
     }
-    if (session && (path === '/' || path === '/login' || path === '/register' || path === '/forgot')) {
+    if (session && (path === '/' || path === '/login' || path === '/register' || path === '/signup' || path === '/forgot')) {
       window.history.replaceState({}, '', '/lobby');
     }
     
@@ -797,6 +804,10 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
         onOpenAuthModal={(tab = 'login') => {
           setAuthModalTab(tab);
           setAuthModalOpen(true);
+          if (typeof window !== 'undefined') {
+            const target = tab === 'register' ? '/register' : '/login';
+            window.history.replaceState({}, '', target + window.location.search);
+          }
         }}
         initialTab={initialTab}
         onUpdateUser={(updated) => {
@@ -830,7 +841,15 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
       <AuthModal
         isOpen={authModalOpen}
         initialTab={authModalTab}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => {
+          setAuthModalOpen(false);
+          if (typeof window !== 'undefined') {
+            const p = window.location.pathname;
+            if (p.startsWith('/login') || p.startsWith('/register') || p.startsWith('/signup') || p.startsWith('/forgot')) {
+              window.history.replaceState({}, '', '/' + window.location.search);
+            }
+          }
+        }}
         onLoginSuccess={handleLoginSuccess}
         onRegisterSuccess={handleRegisterSuccess}
         onGoogleWarning={() => setGoogleWarnOpen(true)}

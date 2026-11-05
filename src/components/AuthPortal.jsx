@@ -90,7 +90,7 @@ export default function AuthPortal({
   const [tab, setTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname;
-      if (p.startsWith('/register')) return 'register';
+      if (p.startsWith('/register') || p.startsWith('/signup')) return 'register';
       if (p.startsWith('/forgot')) return 'forgot';
     }
     return initialTab || 'login';
@@ -99,6 +99,39 @@ export default function AuthPortal({
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+
+  const switchTab = (nextTab) => {
+    setTab(nextTab);
+    setAuthError('');
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const currentPath = window.location.pathname;
+      let targetPath = '';
+      if (nextTab === 'register') {
+        targetPath = currentPath.startsWith('/signup') ? '/signup' : '/register';
+      } else if (nextTab === 'login') {
+        targetPath = '/login';
+      } else if (nextTab === 'forgot') {
+        targetPath = '/forgot';
+      }
+      if (targetPath && currentPath !== targetPath) {
+        window.history.replaceState({}, '', targetPath + search);
+      }
+    }
+  };
+
+  // Keep browser URL synchronized with the active auth tab
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const currentPath = window.location.pathname;
+      if (tab === 'register' && currentPath === '/login') {
+        window.history.replaceState({}, '', '/register' + search);
+      } else if (tab === 'login' && (currentPath.startsWith('/register') || currentPath.startsWith('/signup'))) {
+        window.history.replaceState({}, '', '/login' + search);
+      }
+    }
+  }, [tab]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -513,7 +546,7 @@ export default function AuthPortal({
 
       if (res.ok && res.data?.success !== false) {
         showToast('Password reset instructions sent to your email!', 'success');
-        setTab('login');
+        switchTab('login');
       } else {
         showToast(cleanErrorMessage(res.data?.message, 'Password reset request failed.'), 'error');
       }
@@ -1044,7 +1077,7 @@ export default function AuthPortal({
             border: '1px solid rgba(255,255,255,0.08)'
           }}>
             <button
-              onClick={() => { setTab('login'); setAuthError(''); }}
+              onClick={() => switchTab('login')}
               style={{
                 flex: 1,
                 background: tab === 'login' ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'transparent',
@@ -1062,7 +1095,7 @@ export default function AuthPortal({
               LOGIN
             </button>
             <button
-              onClick={() => { setTab('register'); setAuthError(''); }}
+              onClick={() => switchTab('register')}
               style={{
                 flex: 1,
                 background: tab === 'register' ? 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)' : 'transparent',
@@ -1129,8 +1162,30 @@ export default function AuthPortal({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
                 onSubmit={handleLoginSubmit}
-                style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '0.95rem' }}
               >
+                {/* Google Social Auth (Top) */}
+                <button
+                  type="button"
+                  disabled={loading || googleLoading}
+                  onClick={handleGoogleClick}
+                  className="btn-glass-secondary"
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.85rem', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1, fontWeight: 700 }}
+                >
+                  {googleLoading ? (
+                    <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--gold-primary)' }} />
+                  ) : (
+                    <i className="fa-brands fa-google" style={{ color: '#ea4335' }} />
+                  )}
+                  <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
+                </button>
+
+                <div style={{ margin: '0.15rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>OR SIGN IN WITH</span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
+                </div>
+
                 <div>
                   <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
                     EMAIL OR USERNAME
@@ -1158,7 +1213,7 @@ export default function AuthPortal({
                     <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700 }}>PASSWORD</label>
                     <button
                       type="button"
-                      onClick={() => setTab('forgot')}
+                      onClick={() => switchTab('forgot')}
                       style={{ background: 'transparent', border: 'none', color: 'var(--gold-primary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Forgot Password?
@@ -1208,28 +1263,6 @@ export default function AuthPortal({
                 >
                   {loading ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-right-to-bracket" />} SIGN IN TO CASINO
                 </button>
-
-                {/* Google Social Auth */}
-                <div style={{ margin: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>OR SIGN IN WITH</span>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
-                </div>
-
-                <button
-                  type="button"
-                  disabled={loading || googleLoading}
-                  onClick={handleGoogleClick}
-                  className="btn-glass-secondary"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.85rem', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1, fontWeight: 700 }}
-                >
-                  {googleLoading ? (
-                    <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--gold-primary)' }} />
-                  ) : (
-                    <i className="fa-brands fa-google" style={{ color: '#ea4335' }} />
-                  )}
-                  <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
-                </button>
               </motion.form>
             )}
 
@@ -1242,8 +1275,30 @@ export default function AuthPortal({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     onSubmit={handleRequestOtp}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
                   >
+                    {/* Google Social Auth (Top) */}
+                    <button
+                      type="button"
+                      disabled={sendingOtp || googleLoading}
+                      onClick={handleGoogleClick}
+                      className="btn-glass-secondary"
+                      style={{ width: '100%', padding: '0.75rem', fontSize: '0.85rem', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1, fontWeight: 700 }}
+                    >
+                      {googleLoading ? (
+                        <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--gold-primary)' }} />
+                      ) : (
+                        <i className="fa-brands fa-google" style={{ color: '#ea4335' }} />
+                      )}
+                      <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
+                    </button>
+
+                    <div style={{ margin: '0.15rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>OR REGISTER WITH EMAIL</span>
+                      <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
+                    </div>
+
                     <div>
                       <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>FULL NAME</label>
                       <input
@@ -1353,28 +1408,6 @@ export default function AuthPortal({
                       style={{ width: '100%', padding: '0.85rem', fontSize: '0.9rem', marginTop: '0.25rem', fontWeight: 900 }}
                     >
                       {sendingOtp ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paper-plane" />} GET EMAIL VERIFICATION CODE &rarr;
-                    </button>
-
-                    {/* Google Social Auth */}
-                    <div style={{ margin: '0.35rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>OR REGISTER WITH</span>
-                      <div style={{ flex: 1, height: '1px', background: 'var(--border-muted)' }} />
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={sendingOtp || googleLoading}
-                      onClick={handleGoogleClick}
-                      className="btn-glass-secondary"
-                      style={{ width: '100%', padding: '0.75rem', fontSize: '0.85rem', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1, fontWeight: 700 }}
-                    >
-                      {googleLoading ? (
-                        <i className="fa-solid fa-spinner fa-spin" style={{ color: 'var(--gold-primary)' }} />
-                      ) : (
-                        <i className="fa-brands fa-google" style={{ color: '#ea4335' }} />
-                      )}
-                      <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
                     </button>
                   </motion.form>
                 ) : (
@@ -1528,7 +1561,7 @@ export default function AuthPortal({
                   {loading ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-paper-plane" />} SEND RESET LINK
                 </button>
 
-                <button type="button" onClick={() => setTab('login')} className="btn-glass-secondary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.82rem', justifyContent: 'center' }}>
+                <button type="button" onClick={() => switchTab('login')} className="btn-glass-secondary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.82rem', justifyContent: 'center' }}>
                   BACK TO LOGIN
                 </button>
               </motion.form>

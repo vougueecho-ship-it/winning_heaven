@@ -292,6 +292,55 @@ export default function PlayerSupportModal({
     }
   };
 
+  // Download image attachment
+  const handleDownloadImage = async (src, filename = 'attachment.jpg') => {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(src, '_blank');
+    }
+  };
+
+  // Render message text with clickable links
+  const renderMessageText = (text, isMe = false) => {
+    if (!text) return null;
+    const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = String(text).split(urlPattern);
+    return parts.map((part, i) => {
+      if (urlPattern.test(part)) {
+        urlPattern.lastIndex = 0;
+        const href = part.startsWith('http://') || part.startsWith('https://') ? part : `https://${part}`;
+        return (
+          <a
+            key={i}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: isMe ? '#00f0ff' : '#ffc800',
+              textDecoration: 'underline',
+              wordBreak: 'break-all',
+              fontWeight: 700
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   // Send message or edit existing
   const handleSendMessage = async (e, customText = null) => {
     if (e) e.preventDefault();
@@ -1146,7 +1195,7 @@ export default function PlayerSupportModal({
                           </div>
                         ) : (
                           <>
-                            <div>{msg.message}</div>
+                            <div>{renderMessageText(msg.message, isMe)}</div>
 
                             {/* Attachment Image */}
                             {hasMsgAttachment && (
@@ -1168,6 +1217,26 @@ export default function PlayerSupportModal({
                                     setLightboxSrc(msg.attachment);
                                   }}
                                 />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDownloadImage(msg.attachment, `chat-attachment-${msg.id || Date.now()}.jpg`); }}
+                                  style={{
+                                    marginTop: '0.3rem',
+                                    background: 'rgba(255,255,255,0.08)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    borderRadius: '5px',
+                                    padding: '0.2rem 0.5rem',
+                                    fontSize: '0.6rem',
+                                    color: 'rgba(255,255,255,0.8)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem'
+                                  }}
+                                  title="Download image"
+                                >
+                                  <i className="fa-solid fa-download" /> Download
+                                </button>
                               </div>
                             )}
                           </>

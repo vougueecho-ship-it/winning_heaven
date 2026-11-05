@@ -25,30 +25,66 @@ export function ImageLightbox({ src, onClose, alt = 'Screenshot' }) {
         cursor: 'zoom-out'
       }}
     >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          background: 'rgba(255,255,255,0.1)',
-          border: '1px solid rgba(255,255,255,0.25)',
-          borderRadius: '50%',
-          color: '#fff',
-          width: '42px',
-          height: '42px',
-          fontSize: '1.5rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1
-        }}
-      >
-        &times;
-      </button>
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', zIndex: 2 }}>
+        <button
+          type="button"
+          onClick={async (e) => {
+            e.stopPropagation();
+            try {
+              const res = await fetch(src);
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `image-${Date.now()}.jpg`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch {
+              window.open(src, '_blank');
+            }
+          }}
+          aria-label="Download"
+          title="Download Image"
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '50%',
+            color: '#fff',
+            width: '42px',
+            height: '42px',
+            fontSize: '1rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <i className="fa-solid fa-download" />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          title="Close"
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '50%',
+            color: '#fff',
+            width: '42px',
+            height: '42px',
+            fontSize: '1.5rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          &times;
+        </button>
+      </div>
       <img
         src={src}
         alt={alt}

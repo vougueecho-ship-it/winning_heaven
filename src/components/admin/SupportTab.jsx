@@ -37,6 +37,8 @@ export default function SupportTab({ adminUser }) {
   // Message Edit & Delete States
   const [editingMessage, setEditingMessage] = useState(null); // { id, message }
   const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, senderType, message, isMe }
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const chatScrollRef = useRef(null);
 
   // Device Block / Unblock States
   const [showBlockModal, setShowBlockModal] = useState(false);
@@ -48,6 +50,66 @@ export default function SupportTab({ adminUser }) {
   
   const chatEndRef = useRef(null);
   const adminInputRef = useRef(null);
+
+  // Scroll to a quoted message in admin chat
+  const scrollToAdminMessage = (msgId) => {
+    if (!msgId) return;
+    const targetEl = document.getElementById(`admin-msg-${msgId}`);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(msgId);
+      setTimeout(() => setHighlightedMsgId(null), 2500);
+    }
+  };
+
+  // Download image from attachment URL
+  const handleDownloadImage = async (src, filename = 'attachment.jpg') => {
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(src, '_blank');
+    }
+  };
+
+  // Render message text with clickable links
+  const renderMessageText = (text, isMe = false) => {
+    if (!text) return null;
+    const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = String(text).split(urlPattern);
+    return parts.map((part, i) => {
+      if (urlPattern.test(part)) {
+        urlPattern.lastIndex = 0;
+        const href = part.startsWith('http://') || part.startsWith('https://') ? part : `https://${part}`;
+        return (
+          <a
+            key={i}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: isMe ? '#052c65' : '#00f0ff',
+              textDecoration: 'underline',
+              wordBreak: 'break-all',
+              fontWeight: 700
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
 
   const distQueryParam = adminUser?.distributorId ? `&adminDistributorId=${adminUser.distributorId}` : '';
 
@@ -1377,8 +1439,21 @@ export default function SupportTab({ adminUser }) {
                   const isMe = msg.senderType === 'admin';
                   const msgTranslation = translatedMessages[msg.id];
 
+                  const isHighlightedMsg = highlightedMsgId === msg.id;
                   return (
-                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div
+                      key={msg.id}
+                      id={`admin-msg-${msg.id}`}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: isMe ? 'flex-end' : 'flex-start',
+                        transition: 'background 0.3s ease',
+                        borderRadius: '10px',
+                        padding: '2px 4px',
+                        background: isHighlightedMsg ? 'rgba(255,200,0,0.12)' : 'transparent'
+                      }}
+                    >
                       <div style={{
                         background: isMe ? 'var(--gold-primary)' : 'rgba(255,255,255,0.08)',
                         color: isMe ? '#000' : '#fff',
@@ -1392,9 +1467,10 @@ export default function SupportTab({ adminUser }) {
                         wordBreak: 'break-word',
                         position: 'relative'
                       }}>
-                        {/* QUOTED REPLY BANNER (WHATSAPP STYLE) */}
+                        {/* QUOTED REPLY BANNER (WHATSAPP STYLE) — click to scroll */}
                         {msg.replyTo && (
                           <div
+                            onClick={() => scrollToAdminMessage(msg.replyTo.id)}
                             style={{
                               background: isMe ? 'rgba(0, 0, 0, 0.18)' : 'rgba(0, 0, 0, 0.4)',
                               borderLeft: `3px solid ${msg.replyTo.senderType === 'admin' ? '#000' : 'var(--gold-primary)'}`,
@@ -1403,10 +1479,12 @@ export default function SupportTab({ adminUser }) {
                               marginBottom: '0.4rem',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '0.1rem'
+                              gap: '0.1rem',
+                              cursor: 'pointer'
                             }}
                           >
                             <span style={{ fontSize: '0.62rem', fontWeight: 'bold', color: isMe ? '#000' : 'var(--gold-primary)' }}>
+                              <i className="fa-solid fa-reply" style={{ marginRight: '3px', fontSize: '0.58rem' }} />
                               {msg.replyTo.senderType === 'admin' ? 'Agent' : 'Player'}
                             </span>
                             <span style={{ fontSize: '0.68rem', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1423,7 +1501,7 @@ export default function SupportTab({ adminUser }) {
                           </div>
                         ) : (
                           <>
-                            <div>{msg.message}</div>
+                            <div>{renderMessageText(msg.message, isMe)}</div>
 
                             {/* ROMAN URDU TRANSLATION BOX FOR PLAYER MESSAGES */}
                             {!isMe && msgTranslation?.show && (
@@ -1484,8 +1562,28 @@ export default function SupportTab({ adminUser }) {
                                     e.stopPropagation();
                                     setLightboxSrc(msg.attachment);
                                   }}
-                                  title="Click to enlarge screenshot"
+                                  title="Click to enlarge"
                                 />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDownloadImage(msg.attachment, `chat-attachment-${msg.id || Date.now()}.jpg`); }}
+                                  style={{
+                                    marginTop: '0.3rem',
+                                    background: 'rgba(255,255,255,0.08)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    borderRadius: '5px',
+                                    padding: '0.2rem 0.5rem',
+                                    fontSize: '0.6rem',
+                                    color: 'rgba(255,255,255,0.75)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem'
+                                  }}
+                                  title="Download image"
+                                >
+                                  <i className="fa-solid fa-download" /> Download
+                                </button>
                               </div>
                             )}
                           </>
