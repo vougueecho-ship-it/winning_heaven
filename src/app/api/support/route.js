@@ -736,13 +736,38 @@ export async function DELETE(req) {
     }
 
     if (email) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Chat conversation history cannot be deleted to preserve records and support compliance.'
-        },
-        { status: 403 }
-      );
+      const role = (searchParams.get('role') || '').toLowerCase().trim();
+      if (role !== 'admin') {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Only an admin can delete a chat conversation.'
+          },
+          { status: 403 }
+        );
+      }
+
+      const emailKey = email.toLowerCase().trim();
+      if (!emailKey) {
+        return NextResponse.json({ success: false, message: 'Player email is required.' }, { status: 400 });
+      }
+
+      const adminDistributorId = (searchParams.get('adminDistributorId') || '').trim();
+      const filter = {
+        $expr: { $eq: [{ $toLower: { $ifNull: ['$userEmail', ''] } }, emailKey] }
+      };
+      if (adminDistributorId) {
+        filter.distributorId = adminDistributorId;
+      }
+
+      const result = await supportCollection.deleteMany(filter);
+      cache.del('admin_stats');
+      publishAdminEvent('support', { distributorId: adminDistributorId });
+      return NextResponse.json({
+        success: true,
+        message: 'Conversation deleted.',
+        deletedCount: result.deletedCount || 0
+      });
     }
 
     return NextResponse.json({ success: false, message: 'Missing email or message ID.' }, { status: 400 });

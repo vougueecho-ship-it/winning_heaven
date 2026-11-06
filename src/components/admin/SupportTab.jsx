@@ -39,6 +39,8 @@ export default function SupportTab({ adminUser }) {
   // Message Edit & Delete States
   const [editingMessage, setEditingMessage] = useState(null); // { id, message }
   const [deleteTargetMessage, setDeleteTargetMessage] = useState(null); // { id, senderType, message, isMe }
+  const [conversationToDelete, setConversationToDelete] = useState(null); // { email, name }
+  const [deletingConversation, setDeletingConversation] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   const chatScrollRef = useRef(null);
@@ -646,6 +648,44 @@ export default function SupportTab({ adminUser }) {
     }
   };
 
+  const handleDeleteConversation = async () => {
+    const target = conversationToDelete;
+    if (!target?.email || deletingConversation) return;
+    const emailKey = target.email.toLowerCase().trim();
+    setDeletingConversation(true);
+    try {
+      const params = new URLSearchParams({
+        email: emailKey,
+        role: 'admin'
+      });
+      if (adminUser?.distributorId) params.set('adminDistributorId', adminUser.distributorId);
+      const res = await fetch(`/api/support?${params.toString()}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Could not delete conversation.');
+      }
+      if (activeChatEmail && activeChatEmail.toLowerCase() === emailKey) {
+        setActiveChatEmail(null);
+        setAdminReplyText('');
+        setAdminAttachment('');
+        setReplyingTo(null);
+        setEditingMessage(null);
+      }
+      setOpenedPlayers((prev) => {
+        const next = { ...prev };
+        delete next[emailKey];
+        return next;
+      });
+      setConversationToDelete(null);
+      await mutateConversations();
+    } catch (err) {
+      console.error('Delete conversation error:', err);
+      window.alert(err?.message || 'Could not delete this conversation.');
+    } finally {
+      setDeletingConversation(false);
+    }
+  };
+
   // Delete message for everyone (replaces with "🚫 This message was deleted")
   const handleDeleteForEveryone = async (msgId) => {
     if (!msgId) return;
@@ -983,6 +1023,29 @@ export default function SupportTab({ adminUser }) {
                     {chat.lastMessage}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  title="Delete this conversation"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConversationToDelete({ email: chat.email, name: chat.name });
+                  }}
+                  style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    color: '#f87171',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <i className="fa-solid fa-trash-can" style={{ fontSize: '0.72rem' }} />
+                </button>
               </div>
             ))
           )}
@@ -1191,6 +1254,29 @@ export default function SupportTab({ adminUser }) {
 
                 <button
                   type="button"
+                  onClick={() => setConversationToDelete({ email: activeChatEmail, name: activeChatDisplayName })}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    borderRadius: '8px',
+                    padding: '0.35rem 0.55rem',
+                    color: '#f87171',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Delete this entire conversation"
+                >
+                  <i className="fa-solid fa-trash-can" />
+                  <span>Delete</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => { setActiveChatEmail(null); }}
                   style={{
                     width: '32px',
@@ -1378,6 +1464,32 @@ export default function SupportTab({ adminUser }) {
                           <span>Auto Roman Urdu</span>
                         </div>
                         <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{autoTranslateIncoming ? 'ON' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHeaderMenu(false);
+                          setConversationToDelete({ email: activeChatEmail, name: activeChatDisplayName });
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          color: '#f87171',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          cursor: 'pointer',
+                          fontWeight: 700
+                        }}
+                      >
+                        <i className="fa-solid fa-trash-can" style={{ width: '16px' }}></i>
+                        <span>Delete Conversation</span>
                       </button>
 
                       <button
@@ -2260,6 +2372,77 @@ export default function SupportTab({ adminUser }) {
           </div>
         )}
       </div>
+
+      {conversationToDelete && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.78)',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #101426 0%, #080a14 100%)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            borderRadius: '14px',
+            padding: '1.25rem',
+            maxWidth: '380px',
+            width: '100%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.85)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.85rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              <i className="fa-solid fa-trash-can"></i> Delete conversation?
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.45 }}>
+              This removes the whole chat with <strong style={{ color: '#fff' }}>{conversationToDelete.name || conversationToDelete.email}</strong>. The player account stays. Only this support thread is deleted.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                disabled={deletingConversation}
+                onClick={() => setConversationToDelete(null)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingConversation}
+                onClick={handleDeleteConversation}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '0.65rem',
+                  borderRadius: '8px',
+                  fontWeight: 800,
+                  cursor: deletingConversation ? 'wait' : 'pointer'
+                }}
+              >
+                {deletingConversation ? 'Deleting…' : 'Delete chat'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Message Options Modal (WhatsApp Style) */}
       {deleteTargetMessage && (
