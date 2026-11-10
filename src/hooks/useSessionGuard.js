@@ -39,6 +39,7 @@ function isClientProtectedSuperAdmin(email) {
  */
 export default function useSessionGuard(email, { redirectTo = '/login', intervalMs = 2500 } = {}) {
   const redirectingRef = useRef(false);
+  const missingStrikesRef = useRef(0);
 
   useEffect(() => {
     const cleanEmail = String(email || '').toLowerCase().trim();
@@ -72,6 +73,13 @@ export default function useSessionGuard(email, { redirectTo = '/login', interval
         );
         const data = await res.json().catch(() => null);
         if (!data || data.success === false) return; // transient server error — stay logged in
+        if (data.valid === false && data.reason === 'missing') {
+          // Right after Google signup the account row can lag one poll. Don't kick on the first miss.
+          missingStrikesRef.current += 1;
+          if (missingStrikesRef.current < 3) return;
+        } else {
+          missingStrikesRef.current = 0;
+        }
         if (data.valid === false) {
           forceLogout(data.reason || 'deleted');
         }

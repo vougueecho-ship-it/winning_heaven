@@ -191,7 +191,8 @@ export default function AuthPortal({
       const googleTicket = params.get('google_ticket');
       if (googleTicket) {
         window.history.replaceState({}, '', '/login');
-        triggerLoading(1200, async () => {
+        (async () => {
+          setGoogleLoading(true);
           try {
             const ticketRes = await safeFetchJson(`/api/auth/google/ticket?ticket=${encodeURIComponent(googleTicket)}`);
             if (ticketRes.ok && ticketRes.data?.user) {
@@ -199,8 +200,10 @@ export default function AuthPortal({
             }
           } catch (err) {
             console.error('Ticket redeem failed:', err);
+          } finally {
+            setGoogleLoading(false);
           }
-        });
+        })();
       }
     }
   }, []);
@@ -248,6 +251,11 @@ export default function AuthPortal({
       }
 
       const sid = res.data.sid;
+      try {
+        sessionStorage.setItem('winning_heaven_google_sid', sid);
+      } catch {
+        /* ignore */
+      }
       const rawOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://winningheaven.com';
       // Use live production domain for native apps and webviews
       const origin = (!rawOrigin || rawOrigin.includes('capacitor://') || (rawOrigin.includes('localhost') && !rawOrigin.includes(':3000')))
@@ -278,27 +286,44 @@ export default function AuthPortal({
         }
       }
 
-      // Start ticket status polling
-      if (googlePollRef.current) clearInterval(googlePollRef.current);
-      googlePollRef.current = setInterval(async () => {
+      const pollGoogleSidReady = async () => {
         try {
           const checkRes = await safeFetchJson(`/api/auth/google/ticket?sid=${encodeURIComponent(sid)}`);
           if (checkRes.ok && checkRes.data?.status === 'ready' && checkRes.data?.user) {
-            clearInterval(googlePollRef.current);
-            googlePollRef.current = null;
+            if (googlePollRef.current) {
+              clearInterval(googlePollRef.current);
+              googlePollRef.current = null;
+            }
             try {
               const { Browser } = await import('@capacitor/browser');
               await Browser.close();
             } catch {}
+            try {
+              sessionStorage.removeItem('winning_heaven_google_sid');
+            } catch {
+              /* ignore */
+            }
             finishGoogleLogin(checkRes.data);
+            return true;
           }
         } catch {
           /* ignore polling hiccups */
         }
-      }, 1500);
+        return false;
+      };
+
+      if (googlePollRef.current) clearInterval(googlePollRef.current);
+      pollGoogleSidReady();
+      googlePollRef.current = setInterval(pollGoogleSidReady, 500);
+
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') pollGoogleSidReady();
+      };
+      document.addEventListener('visibilitychange', onVisible);
 
       // Auto cancel polling after 3 minutes
       setTimeout(() => {
+        document.removeEventListener('visibilitychange', onVisible);
         if (googlePollRef.current) {
           clearInterval(googlePollRef.current);
           googlePollRef.current = null;
@@ -314,18 +339,18 @@ export default function AuthPortal({
 
   const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      triggerLoading(1500, async () => {
-        try {
-          setAuthError('');
-          const googleData = await loginWithGoogleProfile(tokenResponse.access_token);
-          finishGoogleLogin(googleData);
-        } catch (err) {
-          console.error('Google Login Error:', err);
-          const errMsg = cleanErrorMessage(err, 'Google Sign-In failed.');
-          setAuthError(errMsg);
-          showToast(errMsg, 'error');
-        }
-      });
+      setGoogleLoading(true);
+      setAuthError('');
+      try {
+        const googleData = await loginWithGoogleProfile(tokenResponse.access_token);
+        finishGoogleLogin(googleData);
+      } catch (err) {
+        console.error('Google Login Error:', err);
+        const errMsg = cleanErrorMessage(err, 'Google Sign-In failed.');
+        setAuthError(errMsg);
+        showToast(errMsg, 'error');
+        setGoogleLoading(false);
+      }
     },
     onError: (error) => {
       console.error('Google Login Popup Error:', error);

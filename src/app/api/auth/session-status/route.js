@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
-import { isSessionRevoked, isProtectedSuperAdminEmail } from '../../../../lib/sessionRevoke';
+import { isSessionRevoked, isProtectedSuperAdminEmail, clearSessionRevoke } from '../../../../lib/sessionRevoke';
 import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
 
 /**
@@ -36,22 +36,6 @@ export async function GET(req) {
       return NextResponse.json({ success: true, valid: true, role: 'admin' });
     }
 
-    if (isSessionRevoked(email)) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        reason: 'revoked'
-      });
-    }
-
-    const deleted = await db.collection('deletedUsers').findOne(
-      { email },
-      { projection: { email: 1 } }
-    );
-    if (deleted) {
-      return NextResponse.json({ success: true, valid: false, reason: 'deleted' });
-    }
-
     const user = await db.collection('users').findOne(
       { email },
       { projection: { email: 1, role: 1, status: 1, isDeviceBlocked: 1 } }
@@ -71,6 +55,10 @@ export async function GET(req) {
         return NextResponse.json({ success: true, valid: false, reason: 'suspended' });
       }
 
+      // A live account wins over a stale deleted/revoked flag left from an older signup.
+      clearSessionRevoke(email);
+      db.collection('deletedUsers').deleteOne({ email }).catch(() => {});
+
       const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
       const userAgent = req.headers.get('user-agent') || '';
       trackDeviceSession(db, {
@@ -85,6 +73,22 @@ export async function GET(req) {
       }).catch(() => {});
 
       return NextResponse.json({ success: true, valid: true, role: user.role || 'user' });
+    }
+
+    if (isSessionRevoked(email)) {
+      return NextResponse.json({
+        success: true,
+        valid: false,
+        reason: 'revoked'
+      });
+    }
+
+    const deleted = await db.collection('deletedUsers').findOne(
+      { email },
+      { projection: { email: 1 } }
+    );
+    if (deleted) {
+      return NextResponse.json({ success: true, valid: false, reason: 'deleted' });
     }
 
     // Distributor owner accounts live in `distributors`, not `users`

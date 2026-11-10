@@ -113,7 +113,7 @@ function markSupportMessagesSeen(email, messages) {
 
 const subscribeNoop = () => () => {};
 
-export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) {
+export default function Home({ initialAuthTab = '', initialTab = 'main' }) {
   const mounted = React.useSyncExternalStore(subscribeNoop, () => true, () => false);
   const [session, setSession] = useState(() => {
     if (typeof window === 'undefined') return null;
@@ -140,10 +140,18 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
   });
 
   useEffect(() => {
-    if (initialAuthTab) {
-      setAuthModalTab(initialAuthTab);
-      setAuthModalOpen(true);
+    if (!initialAuthTab) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem('winning_heaven_session') || 'null');
+      if (existing?.email) {
+        setAuthModalOpen(false);
+        return;
+      }
+    } catch {
+      /* ignore bad session */
     }
+    setAuthModalTab(initialAuthTab);
+    setAuthModalOpen(true);
   }, [initialAuthTab]);
 
   // Player / any deleted account: force logout while lobby is open.
@@ -488,12 +496,92 @@ export default function Home({ initialAuthTab = 'login', initialTab = 'main' }) 
 
     setSession(user);
     localStorage.setItem('winning_heaven_session', JSON.stringify(user));
+    try {
+      window.dispatchEvent(new Event('winning_heaven_session_change'));
+    } catch {
+      /* ignore */
+    }
     setView('lobby');
     setAuthModalOpen(false);
+    try {
+      sessionStorage.removeItem('winning_heaven_google_sid');
+    } catch {
+      /* ignore */
+    }
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', '/lobby');
     }
   };
+
+  // If Google sign-in reloads the page, finish the login that was started earlier.
+  useEffect(() => {
+    let sid = '';
+    try {
+      sid = sessionStorage.getItem('winning_heaven_google_sid') || '';
+    } catch {
+      sid = '';
+    }
+    if (!sid) return undefined;
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('winning_heaven_session') || 'null');
+      if (existing?.email) {
+        sessionStorage.removeItem('winning_heaven_google_sid');
+        setSession(existing);
+        setAuthModalOpen(false);
+        return undefined;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    let stopped = false;
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/api/auth/google/ticket?sid=${encodeURIComponent(sid)}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => null);
+        if (stopped) return;
+        if (data?.status === 'ready' && data?.user?.email) {
+          try {
+            sessionStorage.removeItem('winning_heaven_google_sid');
+          } catch {
+            /* ignore */
+          }
+          handleLoginSuccess(data.user);
+          stopped = true;
+          return;
+        }
+        if (res.status === 404 || data?.status === 'expired') {
+          try {
+            sessionStorage.removeItem('winning_heaven_google_sid');
+          } catch {
+            /* ignore */
+          }
+          stopped = true;
+        }
+      } catch {
+        /* keep polling through network blips */
+      }
+    };
+
+    poll();
+    const timer = window.setInterval(poll, 500);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const stopAt = window.setTimeout(() => {
+      stopped = true;
+      window.clearInterval(timer);
+    }, 180000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      window.clearTimeout(stopAt);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   const handleRegisterSuccess = (newUser) => {
     trackCompleteRegistration('email');

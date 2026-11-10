@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { healOrphanedDistributorPlayer } from '../../../../lib/orphanDistributorPlayer';
 import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
+import { clearSessionRevoke } from '../../../../lib/sessionRevoke';
 import crypto from 'crypto';
 
 function generateReferralCode() {
@@ -137,6 +138,11 @@ export async function POST(req) {
     if (!isNewUser) {
       matchedUser = await healOrphanedDistributorPlayer(db, matchedUser);
     }
+
+    // Google sign-in is a fresh login. Drop stale delete/revoke flags so the
+    // session check does not kick the player out a few seconds later.
+    clearSessionRevoke(cleanEmail);
+    db.collection('deletedUsers').deleteOne({ email: cleanEmail }).catch(() => {});
 
     const clientIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
     const userAgent = req.headers.get('user-agent') || '';

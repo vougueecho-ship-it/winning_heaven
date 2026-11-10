@@ -47,7 +47,7 @@ async function completeGoogleFromToken(accessToken, sid) {
     if (!completeRes.ok || !completeData.success) {
       throw new Error(completeData.message || 'Could not finish Google sign-in.');
     }
-    return { mode: 'session', sid };
+    return { mode: 'session', sid, user: googleData.user };
   }
 
   const ticketRes = await fetch('/api/auth/google/ticket', {
@@ -59,7 +59,7 @@ async function completeGoogleFromToken(accessToken, sid) {
   if (!ticketRes.ok || !ticketData.ticket) {
     throw new Error(ticketData.message || 'Could not finish Google sign-in.');
   }
-  return { mode: 'ticket', ticket: ticketData.ticket };
+  return { mode: 'ticket', ticket: ticketData.ticket, user: googleData.user };
 }
 
 export default function GoogleOAuthCallbackPage() {
@@ -85,15 +85,22 @@ export default function GoogleOAuthCallbackPage() {
         const result = await completeGoogleFromToken(accessToken, sid);
         if (cancelled) return;
 
-        if (result.mode === 'session') {
-          setStatus('Signed in! Return to the Winning Heaven app — login will finish automatically.');
-          return;
+        if (result.user?.email) {
+          localStorage.setItem('winning_heaven_session', JSON.stringify(result.user));
+          try {
+            sessionStorage.removeItem('winning_heaven_google_sid');
+          } catch {
+            /* ignore */
+          }
         }
 
-        setStatus('Signed in. Returning to Winning Heaven…');
-        window.location.replace(
-          `${window.location.origin}/login?google_ticket=${encodeURIComponent(result.ticket)}`
-        );
+        setStatus('Signed in. Opening your lobby…');
+        try {
+          window.dispatchEvent(new Event('winning_heaven_session_change'));
+        } catch {
+          /* ignore */
+        }
+        window.location.replace(`${window.location.origin}/lobby`);
       } catch (err) {
         if (cancelled) return;
         setError(err.message || 'Google sign-in failed.');
