@@ -44,6 +44,10 @@ export default function SupportTab({ adminUser }) {
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   const chatScrollRef = useRef(null);
+  const chatStickToBottomRef = useRef(true);
+  const prevChatEmailForScrollRef = useRef(null);
+  const prevChatLastMsgIdRef = useRef('');
+  const prevChatMsgCountRef = useRef(0);
 
   // Device Block / Unblock States
   const [showBlockModal, setShowBlockModal] = useState(false);
@@ -450,9 +454,42 @@ export default function SupportTab({ adminUser }) {
     }
   };
 
+  const scrollAdminChatToBottom = (behavior = 'auto') => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  const handleAdminChatScroll = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    chatStickToBottomRef.current = distanceFromBottom < 120;
+  };
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeChatMessages]);
+    const messages = activeChatMessages || [];
+    const lastMsg = messages.length ? messages[messages.length - 1] : null;
+    const lastId = lastMsg?.id ? String(lastMsg.id) : '';
+
+    if (activeChatEmail !== prevChatEmailForScrollRef.current) {
+      prevChatEmailForScrollRef.current = activeChatEmail;
+      prevChatMsgCountRef.current = messages.length;
+      prevChatLastMsgIdRef.current = lastId;
+      chatStickToBottomRef.current = true;
+      requestAnimationFrame(() => scrollAdminChatToBottom('auto'));
+      return;
+    }
+
+    const countGrew = messages.length > prevChatMsgCountRef.current;
+    const newTailMessage = Boolean(lastId && lastId !== prevChatLastMsgIdRef.current);
+    prevChatMsgCountRef.current = messages.length;
+    prevChatLastMsgIdRef.current = lastId;
+
+    if ((countGrew || newTailMessage) && chatStickToBottomRef.current) {
+      requestAnimationFrame(() => scrollAdminChatToBottom('smooth'));
+    }
+  }, [activeChatMessages, activeChatEmail]);
 
   useEffect(() => {
     if (!activeChatEmail) return;
@@ -796,10 +833,12 @@ export default function SupportTab({ adminUser }) {
       replyTo: currentReplyTo
     };
 
+    chatStickToBottomRef.current = true;
     mutateActiveChat(
       { success: true, messages: [...activeChatMessages, tempMessage], playerName: activeChatDisplayName },
       false
     );
+    requestAnimationFrame(() => scrollAdminChatToBottom('smooth'));
 
     try {
       const response = await fetch('/api/support', {
@@ -1519,7 +1558,11 @@ export default function SupportTab({ adminUser }) {
               </div>
             </div>
 
-            <div className="support-chat-messages">
+            <div
+              ref={chatScrollRef}
+              className="support-chat-messages"
+              onScroll={handleAdminChatScroll}
+            >
               {isChatBlocked && (
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(185, 28, 28, 0.18) 100%)',
