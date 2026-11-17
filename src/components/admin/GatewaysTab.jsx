@@ -3,9 +3,11 @@ import useSWR from 'swr';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onDeleteGateway }) {
+export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onDeleteGateway, showToast }) {
   const { data: gatewaysData, error, mutate } = useSWR('/api/gateways', fetcher);
+  const { data: frontendData, mutate: mutateFrontend } = useSWR('/api/settings/frontend', fetcher);
   const [gatewaySearch, setGatewaySearch] = useState('');
+  const frontend = frontendData?.settings || {};
 
   const gateways = gatewaysData?.gateways || [];
   const filteredGateways = gateways.filter((g) =>
@@ -16,6 +18,23 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
   const handleDelete = async (id) => {
     await onDeleteGateway(id);
     mutate();
+  };
+
+  const toggleFrontendTeaser = async (key, nextVal) => {
+    try {
+      const res = await fetch('/api/settings/frontend', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: nextVal })
+      });
+      const data = await res.json();
+      if (data.success) {
+        mutateFrontend();
+        if (showToast) showToast('Deposit visibility updated.', 'success');
+      } else if (showToast) showToast(data.message || 'Save failed', 'error');
+    } catch {
+      if (showToast) showToast('Connection error.', 'error');
+    }
   };
 
   if (!gatewaysData && !error) {
@@ -48,6 +67,39 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
         </div>
       </div>
 
+      <div
+        style={{
+          marginBottom: '1rem',
+          padding: '1rem',
+          borderRadius: '14px',
+          border: '1px solid rgba(255, 215, 0, 0.18)',
+          background: 'rgba(255, 215, 0, 0.04)'
+        }}
+      >
+        <div style={{ fontWeight: 800, fontSize: '0.82rem', marginBottom: '0.65rem', color: 'var(--gold-primary)' }}>
+          <i className="fa-solid fa-eye" /> Show on Deposit (no full gateway required)
+        </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0' }}>
+          When enabled, players see the method even if you have not added an active gateway. Tap sends a support chat request for link / QR / tag.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          {[
+            { key: 'cashappActive', label: 'Cash App teaser' },
+            { key: 'applePayTeaser', label: 'Apple Pay teaser' },
+            { key: 'googlePayTeaser', label: 'Google Pay teaser' }
+          ].map(({ key, label }) => (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={key === 'cashappActive' ? frontend.cashappActive !== false : frontend[key] === true}
+                onChange={(e) => toggleFrontendTeaser(key, e.target.checked)}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="admin-table">
           <thead>
@@ -58,7 +110,8 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
               <th>Phone / Contact Info</th>
               <th>Visual Theme</th>
               <th>Cashout</th>
-              <th>Pay Redirect URL</th>
+              <th>Deposit</th>
+              <th>Live Pay Link</th>
               <th>QR Image Link</th>
               <th>Actions</th>
             </tr>
@@ -66,7 +119,7 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
           <tbody>
             {filteredGateways.length === 0 ? (
               <tr>
-                <td colSpan="9" className="text-center text-muted" style={{ padding: '2rem' }}>
+                <td colSpan="10" className="text-center text-muted" style={{ padding: '2rem' }}>
                   No gateways configured. Click Add to create one.
                 </td>
               </tr>
@@ -89,6 +142,14 @@ export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onD
                       title={gt.isWithdrawActive ? 'Shown on player Withdraw' : 'Deposit only (unless no cashout gateways are enabled)'}
                     >
                       {gt.isWithdrawActive ? 'CASHOUT ON' : 'DEPOSIT'}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '0.65rem', display: 'block', color: gt.isVisibleOnDeposit === false ? '#f87171' : '#4ade80' }}>
+                      {gt.isVisibleOnDeposit === false ? 'Hidden' : 'Visible'}
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      {gt.depositMode === 'support_request' ? '→ support' : '→ active'}
                     </span>
                   </td>
                   <td>

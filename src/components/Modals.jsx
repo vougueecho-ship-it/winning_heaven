@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PanelModalBackdrop from './PanelModalBackdrop';
 import PlayerSupportModal from './player/PlayerSupportModal';
+import { buildGatewayRedirectTemplate } from '../lib/gatewayPayLink';
 
 /** Full-screen image viewer for chat attachments / proofs (works with base64; no new tab). */
 export function ImageLightbox({ src, onClose, alt = 'Screenshot' }) {
@@ -390,6 +391,10 @@ export function PaymentMethodModal({ isOpen, onClose, amount, gateways = [], onS
                   btnStyle = { background: '#0079c1' };
                 } else if (g.theme === 'venmo') {
                   btnStyle = { background: '#008cff' };
+                } else if (g.theme === 'applepay') {
+                  btnStyle = { background: '#000000', color: '#fff', border: '1px solid #555' };
+                } else if (g.theme === 'googlepay') {
+                  btnStyle = { background: '#fff', color: '#1f1f1f' };
                 }
 
                 return (
@@ -541,6 +546,8 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
   const [theme, setTheme] = useState('chime');
   const [qrImage, setQrImage] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
+  const [isVisibleOnDeposit, setIsVisibleOnDeposit] = useState(true);
+  const [depositMode, setDepositMode] = useState('active');
 
   // Withdrawal configurations — default ON so new gateways appear for cashout too
   const [isWithdrawActive, setIsWithdrawActive] = useState(true);
@@ -555,7 +562,17 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
   const [redirectError, setRedirectError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isLinkPayTheme = theme === 'cashapp' || theme === 'stripe';
+  const linkHintByTheme = {
+    cashapp: 'Cash App: $Cashtag → auto link, or paste https://cash.app/$You/{amount}',
+    paypal: 'PayPal: username → paypal.me link, or paste your full PayPal link',
+    venmo: 'Venmo: @username → pay link with amount + note code',
+    stripe: 'Stripe: paste your Stripe payment / checkout link (required)',
+    zelle: 'Zelle: paste QR link or any custom pay URL (optional)',
+    chime: 'Chime: paste pay link if you have one, or use tag + QR',
+    crypto: 'Crypto: wallet tag + QR, or a payment page URL',
+    applepay: 'Apple Pay: use Support Request mode, then send link/QR via live chat',
+    googlepay: 'Google Pay: use Support Request mode, then send link/QR via live chat'
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -567,6 +584,8 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
         setTheme(editGateway.theme);
         setQrImage(editGateway.qrImage);
         setRedirectUrl(editGateway.redirectUrl || '');
+        setIsVisibleOnDeposit(editGateway.isVisibleOnDeposit !== false);
+        setDepositMode(editGateway.depositMode === 'support_request' ? 'support_request' : 'active');
         setIsWithdrawActive(editGateway.isWithdrawActive === true);
         setRequireNameOnTag(editGateway.requireNameOnTag !== false);
         setRequireTag(editGateway.requireTag !== false);
@@ -580,6 +599,8 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
         setTheme('chime');
         setQrImage('');
         setRedirectUrl('');
+        setIsVisibleOnDeposit(true);
+        setDepositMode('active');
         setIsWithdrawActive(false);
         setRequireNameOnTag(true);
         setRequireTag(true);
@@ -623,8 +644,14 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
       isValid = false;
     }
 
-    if (tag.trim() === '' && redirectUrl.trim() === '') {
+    const supportOnly = depositMode === 'support_request';
+    if (!supportOnly && tag.trim() === '' && redirectUrl.trim() === '' && !['applepay', 'googlepay'].includes(theme)) {
       setTagError('Please enter a Payment Tag (e.g. $Cashtag) or Pay URL.');
+      isValid = false;
+    }
+
+    if (theme === 'stripe' && !supportOnly && !redirectUrl.trim()) {
+      setRedirectError('Paste your Stripe checkout / payment link.');
       isValid = false;
     }
 
@@ -632,11 +659,14 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
       setIsSubmitting(true);
       try {
         const safeName = name.trim();
-        const safeTag = tag.trim() || (isLinkPayTheme ? `${theme}-pay` : '');
+        const safeTag = tag.trim() || (['cashapp', 'stripe', 'paypal', 'venmo'].includes(theme) ? `${theme}-pay` : '');
         let safeRedirect = redirectUrl.trim();
-        if (theme === 'cashapp' && !safeRedirect && safeTag && safeTag !== 'cashapp-pay') {
-          const cleanTag = safeTag.replace(/[^a-zA-Z0-9_-]/g, '');
-          if (cleanTag) safeRedirect = `https://cash.app/$${cleanTag}`;
+        if (!safeRedirect && safeTag) {
+          const auto = buildGatewayRedirectTemplate(theme, safeTag);
+          if (auto) safeRedirect = auto;
+        }
+        if (theme === 'cashapp' && safeRedirect && !safeRedirect.includes('{amount}') && !/\/\d+(\.\d+)?$/.test(safeRedirect)) {
+          safeRedirect = `${safeRedirect.replace(/\/$/, '')}/{amount}`;
         }
 
         await onSave({
@@ -652,7 +682,9 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
           requireNameOnTag: isWithdrawActive ? requireNameOnTag : false,
           requireTag: isWithdrawActive ? requireTag : false,
           requirePhoneOnTag: isWithdrawActive ? requirePhoneOnTag : false,
-          requireEmailOnTag: isWithdrawActive ? requireEmailOnTag : false
+          requireEmailOnTag: isWithdrawActive ? requireEmailOnTag : false,
+          isVisibleOnDeposit,
+          depositMode
         });
       } finally {
         setIsSubmitting(false);
@@ -726,9 +758,35 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
                   <option value="zelle">Zelle Purple</option>
                   <option value="paypal">PayPal Blue</option>
                   <option value="venmo">Venmo Cyan</option>
+                  <option value="applepay">Apple Pay</option>
+                  <option value="googlepay">Google Pay</option>
                 </select>
               </div>
             </div>
+
+            <div className="input-group" style={{ marginTop: '0.25rem' }}>
+              <label htmlFor="gt-deposit-mode">Player deposit behavior</label>
+              <div className="input-wrapper select-wrapper">
+                <i className="fa-solid fa-user-check input-icon"></i>
+                <select
+                  id="gt-deposit-mode"
+                  value={depositMode}
+                  onChange={(e) => setDepositMode(e.target.value)}
+                >
+                  <option value="active">Active — full pay link, QR, deposit submit</option>
+                  <option value="support_request">Support request — tap sends chat message to you</option>
+                </select>
+              </div>
+            </div>
+
+            <label className="checkbox-modern-label" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0.75rem 0', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={isVisibleOnDeposit}
+                onChange={(e) => setIsVisibleOnDeposit(e.target.checked)}
+              />
+              <span>Show this method on player Deposit page</span>
+            </label>
 
             <div className="input-group">
               <label htmlFor="gt-tag">Payment Tag / ID Address (e.g. $Cashtag, Chime username)</label>
@@ -746,20 +804,22 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
             </div>
 
             <div className="input-group">
-              <label htmlFor="gt-redirect">Pay Redirect URL (Optional)</label>
+              <label htmlFor="gt-redirect">Live Pay Link (players tap to open app / checkout)</label>
               <div className="input-wrapper">
                 <i className="fa-solid fa-link input-icon"></i>
                 <input
                   type="url"
                   id="gt-redirect"
-                  placeholder="e.g. https://cash.app/$YourTag or Stripe payment link"
+                  placeholder="https://… use {amount} and {code} for auto-fill"
                   value={redirectUrl}
                   onChange={(e) => { setRedirectUrl(e.target.value); setRedirectError(''); }}
                 />
               </div>
               <span className="error-msg">{redirectError}</span>
-              <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                Optional for Cash App / Stripe. If empty, Cash App link auto-generates from the $tag.
+              <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                {linkHintByTheme[theme] || 'Paste any payment URL, or leave empty to auto-build from tag (Cash App, PayPal, Venmo).'}
+                {' '}
+                Placeholders: <strong>{'{amount}'}</strong>, <strong>{'{code}'}</strong>.
               </span>
             </div>
 

@@ -1692,6 +1692,22 @@ export default function SupportTab({ adminUser }) {
                           </div>
                         ) : (
                           <>
+                            {msg.messageCategory === 'payment_activation_request' && (
+                              <div
+                                style={{
+                                  fontSize: '0.62rem',
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.04em',
+                                  marginBottom: '0.35rem',
+                                  color: isMe ? '#000' : '#fbbf24'
+                                }}
+                              >
+                                <i className="fa-solid fa-wallet" style={{ marginRight: 4 }} />
+                                Payment details requested
+                                {msg.paymentMethodName ? ` — ${msg.paymentMethodName}` : ''}
+                              </div>
+                            )}
                             <div>{renderMessageText(msg.message, isMe)}</div>
 
                             {/* ROMAN URDU TRANSLATION BOX FOR PLAYER MESSAGES */}

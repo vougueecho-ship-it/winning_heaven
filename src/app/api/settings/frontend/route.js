@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS = {
   chimeActive: true,
   venmoActive: true,
   cashappActive: true,
+  applePayTeaser: false,
+  googlePayTeaser: false,
   firstDepositBonus: 300,
   signupFreeplay: 3,
   minimumDepositLimit: 5,

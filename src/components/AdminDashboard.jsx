@@ -53,7 +53,8 @@ export default function AdminDashboard({
   onCreateAdmin,
   onUpdateSettings,
   onUpdateCoinsNotification,
-  onUpdateGameCoinsPool
+  onUpdateGameCoinsPool,
+  showToast
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1055,7 +1056,12 @@ export default function AdminDashboard({
                 />
               )}
               {activeTab === 'gateways' && hasAccess('gateways') && (
-                <GatewaysTab onAddGatewayClick={onAddGatewayClick} onEditGatewayClick={onEditGatewayClick} onDeleteGateway={onDeleteGateway} />
+                <GatewaysTab
+                  onAddGatewayClick={onAddGatewayClick}
+                  onEditGatewayClick={onEditGatewayClick}
+                  onDeleteGateway={onDeleteGateway}
+                  showToast={showToast}
+                />
               )}
               {activeTab === 'coins' && hasAccess('coins') && (
                 <CoinsAllotmentTab

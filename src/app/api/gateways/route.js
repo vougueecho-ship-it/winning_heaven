@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
+import { buildGatewayRedirectTemplate, normalizePayTag } from '../../../lib/gatewayPayLink';
 
 const PLATFORM_GATEWAY_QUERY = {
   $or: [
@@ -71,15 +72,34 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: 'Gateway name is required.' }, { status: 400 });
     }
 
-    const theme = gateway.theme || 'cashapp';
-    const isLinkPay = theme === 'cashapp' || theme === 'stripe' || Boolean(String(gateway.redirectUrl || '').trim());
-    const tag = String(gateway.tag || '').trim() || (isLinkPay ? `${theme}-pay` : '');
-    if (!isLinkPay && !tag) {
-      return NextResponse.json({ success: false, message: 'Name and payment tag/handle are required.' }, { status: 400 });
+    const theme = gateway.theme || 'chime';
+    const depositMode = gateway.depositMode === 'support_request' ? 'support_request' : 'active';
+    const isVisibleOnDeposit = gateway.isVisibleOnDeposit !== false;
+    const tag = normalizePayTag(gateway.tag);
+    let redirectUrl = String(gateway.redirectUrl || '').trim();
+    if (!redirectUrl && tag) {
+      redirectUrl = buildGatewayRedirectTemplate(theme, tag);
     }
-    if (isLinkPay && !String(gateway.redirectUrl || '').trim()) {
-      return NextResponse.json({ success: false, message: 'Pay redirect URL is required for Cash App / Stripe.' }, { status: 400 });
+    const isStripe = theme === 'stripe';
+    const walletThemes = ['applepay', 'googlepay'];
+    if (depositMode !== 'support_request' && !tag && !redirectUrl && !walletThemes.includes(theme)) {
+      return NextResponse.json(
+        { success: false, message: 'Add a payment tag/handle or a Pay redirect URL.' },
+        { status: 400 }
+      );
     }
+    if (isStripe && !redirectUrl) {
+      return NextResponse.json(
+        { success: false, message: 'Stripe requires a Pay redirect URL (your Stripe payment link).' },
+        { status: 400 }
+      );
+    }
+    const isLinkPay =
+      Boolean(redirectUrl) ||
+      ['cashapp', 'paypal', 'venmo', 'stripe', 'applepay', 'googlepay'].includes(theme);
+    const savedTag =
+      tag ||
+      (depositMode === 'support_request' || isLinkPay ? `${theme}-pay` : '');
 
     const db = await getDb();
     const gatewaysCollection = db.collection('gateways');
@@ -88,22 +108,23 @@ export async function POST(req) {
       id: gateway.id || Date.now().toString(),
       name: gateway.name,
       subtitle: gateway.subtitle || '',
-      tag,
-      phone: isLinkPay ? '' : (gateway.phone || ''),
+      tag: savedTag,
+      phone: gateway.phone || '',
       theme,
-      qrImage: isLinkPay
-        ? ''
-        : (
-            (gateway.qrImage && !gateway.qrImage.includes('/api/gateways/image'))
-              ? gateway.qrImage
-              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(tag || gateway.name)}`
-          ),
-      redirectUrl: String(gateway.redirectUrl || '').trim(),
+      qrImage:
+        gateway.qrImage && !String(gateway.qrImage).includes('/api/gateways/image')
+          ? gateway.qrImage
+          : !redirectUrl
+            ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(savedTag || gateway.name)}`
+            : '',
+      redirectUrl,
       isWithdrawActive: Boolean(gateway.isWithdrawActive),
       requireNameOnTag: Boolean(gateway.requireNameOnTag),
       requireTag: Boolean(gateway.requireTag),
       requirePhoneOnTag: Boolean(gateway.requirePhoneOnTag),
-      requireEmailOnTag: Boolean(gateway.requireEmailOnTag)
+      requireEmailOnTag: Boolean(gateway.requireEmailOnTag),
+      isVisibleOnDeposit,
+      depositMode
     };
 
     await gatewaysCollection.insertOne(newGateway);
@@ -130,6 +151,14 @@ export async function PUT(req) {
     const db = await getDb();
     const gatewaysCollection = db.collection('gateways');
 
+    const theme = gateway.theme || 'chime';
+    const tag = normalizePayTag(gateway.tag);
+    let redirectUrl =
+      gateway.redirectUrl !== undefined ? String(gateway.redirectUrl || '').trim() : undefined;
+    if (redirectUrl !== undefined && !redirectUrl && tag) {
+      redirectUrl = buildGatewayRedirectTemplate(theme, tag);
+    }
+
     const updateFields = {
       name: gateway.name,
       subtitle: gateway.subtitle,
@@ -137,12 +166,20 @@ export async function PUT(req) {
       phone: gateway.phone,
       theme: gateway.theme,
       qrImage: gateway.qrImage,
-      redirectUrl: gateway.redirectUrl !== undefined ? String(gateway.redirectUrl || '').trim() : undefined,
+      redirectUrl,
       isWithdrawActive: gateway.isWithdrawActive !== undefined ? Boolean(gateway.isWithdrawActive) : undefined,
       requireNameOnTag: gateway.requireNameOnTag !== undefined ? Boolean(gateway.requireNameOnTag) : undefined,
       requireTag: gateway.requireTag !== undefined ? Boolean(gateway.requireTag) : undefined,
       requirePhoneOnTag: gateway.requirePhoneOnTag !== undefined ? Boolean(gateway.requirePhoneOnTag) : undefined,
-      requireEmailOnTag: gateway.requireEmailOnTag !== undefined ? Boolean(gateway.requireEmailOnTag) : undefined
+      requireEmailOnTag: gateway.requireEmailOnTag !== undefined ? Boolean(gateway.requireEmailOnTag) : undefined,
+      isVisibleOnDeposit:
+        gateway.isVisibleOnDeposit !== undefined ? gateway.isVisibleOnDeposit !== false : undefined,
+      depositMode:
+        gateway.depositMode !== undefined
+          ? gateway.depositMode === 'support_request'
+            ? 'support_request'
+            : 'active'
+          : undefined
     };
 
     // Admin edit form sends public proxy URL (/api/gateways/image?id=...) if not re-uploaded.

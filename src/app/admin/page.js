@@ -983,6 +983,7 @@ export default function AdminPage({ portalName, forcedRole }) {
           onUpdateSettings={handleUpdateSettings}
           onUpdateCoinsNotification={handleUpdateCoinsNotification}
           onUpdateGameCoinsPool={handleUpdateGameCoinsPool}
+          showToast={showToast}
         />
       )}
 

@@ -16,6 +16,14 @@ import {
 import useSWR from 'swr';
 import { getDepositBasedMinWithdraw, getDepositWithdrawRule, findLastSuccessDeposit } from '../../lib/withdrawRules';
 import { cleanErrorMessage } from '../../lib/safeFetch';
+import {
+  resolveGatewayPayUrl,
+  getGatewayPayButtonStyle,
+  normalizePayTag,
+  isGenericPayTag
+} from '../../lib/gatewayPayLink';
+import { isSupportRequestGateway } from '../../lib/depositGateways';
+import { submitPaymentActivationRequest } from '../../lib/paymentActivationClient';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -27,6 +35,8 @@ export function PlayerDepositModal({
   onSubmitTransaction,
   showToast,
   userEmail,
+  userName = '',
+  onOpenSupport,
   defaultGameTitle = '',
   games = [],
   transactions = []
@@ -95,7 +105,37 @@ export function PlayerDepositModal({
 
   if (!isOpen) return null;
 
-  const handleSelectGateway = (g) => {
+  const handleSelectGateway = async (g) => {
+    if (isSupportRequestGateway(g)) {
+      setSelectedGateway(g);
+      try {
+        const data = await submitPaymentActivationRequest({
+          userEmail,
+          userName,
+          theme: g.theme,
+          methodName: g.name,
+          amount: parseFloat(amount) || 0,
+          gameTitle: targetGameTitle
+        });
+        if (data?.success) {
+          if (showToast) {
+            showToast(
+              data.deduped
+                ? 'Support already has your request — check live chat.'
+                : 'Request sent! VIP Support will send link, QR, and tag in chat + email.',
+              'success'
+            );
+          }
+          if (onOpenSupport) onOpenSupport();
+        } else if (showToast) {
+          showToast(data?.message || 'Could not send request.', 'error');
+        }
+      } catch {
+        if (showToast) showToast('Connection error.', 'error');
+      }
+      return;
+    }
+
     setSelectedGateway(g);
 
     // Check if a valid pending code already exists for this game
@@ -477,34 +517,34 @@ export function PlayerDepositModal({
 
           {/* Step 3: Confirm Note Code & Upload Proof */}
           {step === 3 && (() => {
-            const rawTag = (selectedGateway?.accountNumber || selectedGateway?.recipientTag || selectedGateway?.tag || selectedGateway?.handle || selectedGateway?.accountName || '').trim();
-            const isTagAUrl = rawTag.startsWith('http://') || rawTag.startsWith('https://');
-            const isGenericPlaceholder = isTagAUrl || ['stripe-checkout', 'stripe-pay', 'cashapp-pay', 'none', 'n/a'].includes(rawTag.toLowerCase());
-
-            let payUrl = (selectedGateway?.redirectUrl || selectedGateway?.payUrl || selectedGateway?.link || '').trim();
-            if (!payUrl && isTagAUrl) {
-              payUrl = rawTag;
+            if (isSupportRequestGateway(selectedGateway)) {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <p style={{ fontSize: '0.88rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.88)' }}>
+                    Open live chat — VIP Support will send your active {selectedGateway?.name} details (link, QR, cashtag) there and
+                    to your email.
+                  </p>
+                  <button type="button" className="btn-gold-glow" onClick={() => onOpenSupport?.()}>
+                    <i className="fa-solid fa-comments" /> OPEN LIVE CHAT
+                  </button>
+                  <button type="button" onClick={() => setStep(2)} className="btn-glass-secondary" style={{ padding: '0.65rem' }}>
+                    <i className="fa-solid fa-arrow-left" /> CHOOSE ANOTHER METHOD
+                  </button>
+                </div>
+              );
             }
 
-            const nameLower = (selectedGateway?.name || '').toLowerCase();
-            const themeLower = (selectedGateway?.theme || '').toLowerCase();
-            const isCashApp = themeLower === 'cashapp' || nameLower.includes('cash app') || nameLower.includes('cashapp');
-            const isStripe = themeLower === 'stripe' || nameLower.includes('stripe');
-
-            if (isCashApp && !payUrl && rawTag && !isGenericPlaceholder) {
-              const cleanCashtag = rawTag.replace(/[^a-zA-Z0-9_-]/g, '');
-              if (cleanCashtag) {
-                const amtNum = parseFloat(amount || 0).toFixed(2);
-                payUrl = `https://cash.app/$${cleanCashtag}/${amtNum}`;
-              }
-            }
-
-            if (payUrl) {
-              payUrl = payUrl
-                .replace(/\{amount\}/gi, encodeURIComponent(amount || ''))
-                .replace(/\{code\}/gi, encodeURIComponent(noteCode || ''))
-                .replace(/\{note\}/gi, encodeURIComponent(noteCode || ''));
-            }
+            const rawTag = normalizePayTag(
+              selectedGateway?.accountNumber ||
+                selectedGateway?.recipientTag ||
+                selectedGateway?.tag ||
+                selectedGateway?.handle ||
+                selectedGateway?.accountName
+            );
+            const isGenericPlaceholder = isGenericPayTag(rawTag);
+            const themeLower = String(selectedGateway?.theme || '').toLowerCase();
+            const payUrl = resolveGatewayPayUrl(selectedGateway, { amount, noteCode });
+            const payBtnStyle = getGatewayPayButtonStyle(selectedGateway);
 
             const handleOpenPayLink = async (e) => {
               if (e && e.preventDefault) e.preventDefault();
@@ -520,15 +560,22 @@ export function PlayerDepositModal({
               window.open(payUrl, '_blank', 'noopener,noreferrer');
             };
 
-            const tagLabel = isCashApp
-              ? 'CASH APP CASHTAG ($TAG)'
-              : themeLower === 'zelle'
-              ? 'ZELLE RECIPIENT'
-              : themeLower === 'chime'
-              ? 'CHIME HANDLE'
-              : themeLower === 'crypto'
-              ? 'CRYPTO WALLET ADDRESS'
-              : 'RECIPIENT PAY TAG / PHONE / ACCOUNT';
+            const tagLabel =
+              themeLower === 'cashapp'
+                ? 'CASH APP CASHTAG ($TAG)'
+                : themeLower === 'paypal'
+                  ? 'PAYPAL USERNAME / EMAIL'
+                  : themeLower === 'venmo'
+                    ? 'VENMO @USERNAME'
+                    : themeLower === 'zelle'
+                      ? 'ZELLE RECIPIENT'
+                      : themeLower === 'chime'
+                        ? 'CHIME HANDLE'
+                        : themeLower === 'crypto'
+                          ? 'CRYPTO WALLET ADDRESS'
+                          : themeLower === 'stripe'
+                            ? 'STRIPE PAYMENT LINK'
+                            : 'RECIPIENT PAY TAG / PHONE / ACCOUNT';
 
             return (
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -559,9 +606,9 @@ export function PlayerDepositModal({
                             width: '100%',
                             padding: '0.95rem 1.1rem',
                             borderRadius: '14px',
-                            border: isStripe ? '1.5px solid #635bff' : isCashApp ? '1.5px solid #00d632' : '1.5px solid var(--gold-primary)',
-                            background: isStripe ? 'linear-gradient(135deg, #635bff 0%, #4338ca 100%)' : isCashApp ? 'linear-gradient(135deg, #00d632 0%, #009922 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
-                            color: isStripe ? '#ffffff' : '#000000',
+                            border: payBtnStyle.border,
+                            background: payBtnStyle.background,
+                            color: payBtnStyle.color,
                             fontWeight: 900,
                             fontFamily: 'var(--font-heading)',
                             fontSize: '0.95rem',
@@ -570,12 +617,12 @@ export function PlayerDepositModal({
                             justifyContent: 'center',
                             gap: '0.6rem',
                             cursor: 'pointer',
-                            boxShadow: isStripe ? '0 0 25px rgba(99, 91, 255, 0.45)' : isCashApp ? '0 0 25px rgba(0, 214, 50, 0.45)' : '0 0 25px rgba(255, 200, 0, 0.45)',
+                            boxShadow: payBtnStyle.shadow,
                             transition: 'all 0.2s ease',
                             letterSpacing: '0.02em'
                           }}
                         >
-                          <i className={isStripe ? 'fa-brands fa-stripe' : isCashApp ? 'fa-solid fa-dollar-sign' : 'fa-solid fa-arrow-up-right-from-square'} style={{ fontSize: '1.2rem' }} />
+                          <i className={payBtnStyle.icon} style={{ fontSize: '1.2rem' }} />
                           <span>OPEN &amp; PAY ${parseFloat(amount || 0).toFixed(2)} ON {selectedGateway.name?.toUpperCase()} &rarr;</span>
                         </button>
                         <div style={{ fontSize: '0.7rem', color: 'var(--cyan-primary)', marginTop: '0.35rem', fontWeight: 600 }}>

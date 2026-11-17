@@ -14,17 +14,27 @@ import {
   DEPOSIT_CODE_TTL_MS
 } from '../../lib/pendingDeposit';
 import { cleanErrorMessage } from '../../lib/safeFetch';
+import {
+  resolveGatewayPayUrl,
+  getGatewayPayButtonStyle,
+  normalizePayTag,
+  isGenericPayTag
+} from '../../lib/gatewayPayLink';
+import { isSupportRequestGateway } from '../../lib/depositGateways';
+import { submitPaymentActivationRequest } from '../../lib/paymentActivationClient';
 
 const getCurrentTime = () => (typeof window !== 'undefined' ? Date.now() : 0);
 
 export default function PlayerDepositPage({
   userEmail,
+  userName = '',
   gateways = [],
   games = [],
   transactions = [],
   onSubmitTransaction,
   showToast,
   onBack,
+  onOpenSupport,
   defaultGameTitle = ''
 }) {
   // Lazy initial state restored from localStorage
@@ -42,6 +52,8 @@ export default function PlayerDepositPage({
   const [selectedGateway, setSelectedGateway] = useState(() => pendingRestored?.gateway || gateways[0] || null);
   const [noteCode, setNoteCode] = useState(() => pendingRestored?.noteCode || generateDepositNoteCode());
   const [senderTag, setSenderTag] = useState(() => pendingRestored?.senderTag || '');
+  const [activationRequestSent, setActivationRequestSent] = useState(false);
+  const [activationSending, setActivationSending] = useState(false);
   const [screenshot, setScreenshot] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -134,8 +146,50 @@ export default function PlayerDepositPage({
     }
   }, [userEmail, targetGameTitle, amount, selectedGateway, noteCode, senderTag, timeLeft]);
 
-  const handleSelectGateway = (g) => {
+  const sendSupportActivationRequest = async (g) => {
+    if (!g || activationSending) return;
+    setActivationSending(true);
+    try {
+      const data = await submitPaymentActivationRequest({
+        userEmail,
+        userName,
+        theme: g.theme,
+        methodName: g.name,
+        amount: parseFloat(amount) || 0,
+        gameTitle: targetGameTitle
+      });
+      if (data?.success) {
+        setActivationRequestSent(true);
+        if (showToast) {
+          showToast(
+            data.deduped
+              ? 'Support already has your request — check live chat.'
+              : 'Request sent! VIP Support will reply with link, QR, and tag.',
+            'success'
+          );
+        }
+        if (onOpenSupport) onOpenSupport();
+      } else if (showToast) {
+        showToast(data?.message || 'Could not send support request.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast('Connection error. Try again or open live chat.', 'error');
+    } finally {
+      setActivationSending(false);
+    }
+  };
+
+  const handleSelectGateway = async (g) => {
+    if (isSupportRequestGateway(g)) {
+      setSelectedGateway(g);
+      setActivationRequestSent(false);
+      await sendSupportActivationRequest(g);
+      return;
+    }
+
     setSelectedGateway(g);
+    setActivationRequestSent(false);
     const pending = readPendingDeposit(userEmail);
     const reuse = pending && pendingMatchesGame(pending, targetGameTitle) && remainingSeconds(pending.expiresAt) > 0;
     const code = reuse ? pending.noteCode : generateDepositNoteCode();
@@ -297,35 +351,18 @@ export default function PlayerDepositPage({
   const minutes = Math.floor(timeLeft / 60);
   const seconds = String(timeLeft % 60).padStart(2, '0');
 
-  // Compute recipient tag and payUrl
-  const rawTag = (selectedGateway?.accountNumber || selectedGateway?.recipientTag || selectedGateway?.tag || selectedGateway?.handle || selectedGateway?.accountName || '').trim();
-  const isTagAUrl = rawTag.startsWith('http://') || rawTag.startsWith('https://');
-  const isGenericPlaceholder = isTagAUrl || ['stripe-checkout', 'stripe-pay', 'cashapp-pay', 'none', 'n/a'].includes(rawTag.toLowerCase());
-
-  let payUrl = (selectedGateway?.redirectUrl || selectedGateway?.payUrl || selectedGateway?.link || '').trim();
-  if (!payUrl && isTagAUrl) {
-    payUrl = rawTag;
-  }
-
-  const nameLower = (selectedGateway?.name || '').toLowerCase();
-  const themeLower = (selectedGateway?.theme || '').toLowerCase();
-  const isCashApp = themeLower === 'cashapp' || nameLower.includes('cash app') || nameLower.includes('cashapp');
-  const isStripe = themeLower === 'stripe' || nameLower.includes('stripe');
-
-  if (isCashApp && !payUrl && rawTag && !isGenericPlaceholder) {
-    const cleanCashtag = rawTag.replace(/[^a-zA-Z0-9_-]/g, '');
-    if (cleanCashtag) {
-      const amtNum = parseFloat(amount || 0).toFixed(2);
-      payUrl = `https://cash.app/$${cleanCashtag}/${amtNum}`;
-    }
-  }
-
-  if (payUrl) {
-    payUrl = payUrl
-      .replace(/\{amount\}/gi, encodeURIComponent(amount || ''))
-      .replace(/\{code\}/gi, encodeURIComponent(noteCode || ''))
-      .replace(/\{note\}/gi, encodeURIComponent(noteCode || ''));
-  }
+  const rawTag = normalizePayTag(
+    selectedGateway?.accountNumber ||
+      selectedGateway?.recipientTag ||
+      selectedGateway?.tag ||
+      selectedGateway?.handle ||
+      selectedGateway?.accountName
+  );
+  const isGenericPlaceholder = isGenericPayTag(rawTag);
+  const themeLower = String(selectedGateway?.theme || '').toLowerCase();
+  const payUrl = resolveGatewayPayUrl(selectedGateway, { amount, noteCode });
+  const payBtnStyle = getGatewayPayButtonStyle(selectedGateway);
+  const supportOnlyGateway = isSupportRequestGateway(selectedGateway);
 
   // QR Code Image source (supports all admin schema fields: qrImage, qrCode, qrCodeUrl, imageUrl, etc.)
   const gatewayQrImage = (
@@ -395,15 +432,22 @@ export default function PlayerDepositPage({
     }
   };
 
-  const tagLabel = isCashApp
-    ? 'CASH APP CASHTAG ($TAG)'
-    : themeLower === 'zelle'
-    ? 'ZELLE RECIPIENT'
-    : themeLower === 'chime'
-    ? 'CHIME HANDLE'
-    : themeLower === 'crypto'
-    ? 'CRYPTO WALLET ADDRESS'
-    : 'RECIPIENT PAY TAG / PHONE / ACCOUNT';
+  const tagLabel =
+    themeLower === 'cashapp'
+      ? 'CASH APP CASHTAG ($TAG)'
+      : themeLower === 'paypal'
+        ? 'PAYPAL USERNAME / EMAIL'
+        : themeLower === 'venmo'
+          ? 'VENMO @USERNAME'
+          : themeLower === 'zelle'
+            ? 'ZELLE RECIPIENT'
+            : themeLower === 'chime'
+              ? 'CHIME HANDLE'
+              : themeLower === 'crypto'
+                ? 'CRYPTO WALLET ADDRESS'
+                : themeLower === 'stripe'
+                  ? 'STRIPE PAYMENT LINK'
+                  : 'RECIPIENT PAY TAG / PHONE / ACCOUNT';
 
   return (
     <div className="deposit-page-wrapper">
@@ -559,6 +603,8 @@ export default function PlayerDepositPage({
               ) : (
                 gateways.map((g) => {
                   const isSelected = selectedGateway && (selectedGateway.id === g.id || selectedGateway.name === g.name);
+                  const cardStyle = getGatewayPayButtonStyle(g);
+                  const isSupportCard = isSupportRequestGateway(g);
                   return (
                     <div
                       key={g.id || g._id || g.name}
@@ -566,21 +612,21 @@ export default function PlayerDepositPage({
                       className={`gateway-card ${isSelected ? 'selected' : ''}`}
                     >
                       <div className="gateway-avatar">
-                        {g.name?.toLowerCase().includes('cash') ? (
-                          <i className="fa-solid fa-dollar-sign" style={{ color: '#00d632' }} />
-                        ) : g.name?.toLowerCase().includes('chime') ? (
-                          <i className="fa-solid fa-building-columns" style={{ color: '#25c974' }} />
-                        ) : g.name?.toLowerCase().includes('zelle') ? (
-                          <i className="fa-solid fa-bolt" style={{ color: '#7414ca' }} />
-                        ) : g.name?.toLowerCase().includes('crypto') ? (
-                          <i className="fa-brands fa-bitcoin" style={{ color: '#f7931a' }} />
-                        ) : (
-                          <i className="fa-solid fa-credit-card" style={{ color: 'var(--gold-primary)' }} />
-                        )}
+                        <i className={cardStyle.icon} style={{ color: 'var(--gold-primary)' }} />
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div className="gateway-name-text">{g.name}</div>
-                        <div className="gateway-sub-text">{isSelected ? '✓ Ready' : 'Tap to pay'}</div>
+                        <div className="gateway-sub-text">
+                          {isSelected
+                            ? isSupportCard
+                              ? activationRequestSent
+                                ? '✓ Request sent'
+                                : 'Contacting support…'
+                              : '✓ Ready'
+                            : isSupportCard
+                              ? 'Tap — request via chat'
+                              : 'Tap to pay'}
+                        </div>
                       </div>
                     </div>
                   );
@@ -597,28 +643,69 @@ export default function PlayerDepositPage({
               {/* Header: Gateway Name + Status */}
               <div className="flow-card-header">
                 <div>
-                  <div className="flow-step-tag">TRANSFER INSTRUCTIONS</div>
-                  <h3 className="flow-title">Send to {selectedGateway?.name}</h3>
+                  <div className="flow-step-tag">
+                    {supportOnlyGateway ? 'VIP SUPPORT ACTIVATION' : 'TRANSFER INSTRUCTIONS'}
+                  </div>
+                  <h3 className="flow-title">
+                    {supportOnlyGateway
+                      ? `Request active ${selectedGateway?.name}`
+                      : `Send to ${selectedGateway?.name}`}
+                  </h3>
                 </div>
                 <span className="gateway-badge-glow">{selectedGateway?.name?.toUpperCase()}</span>
               </div>
 
+              {supportOnlyGateway && (
+                <div
+                  style={{
+                    padding: '1.1rem',
+                    borderRadius: '14px',
+                    border: '1px solid rgba(255, 215, 0, 0.25)',
+                    background: 'rgba(255, 215, 0, 0.06)',
+                    marginBottom: '1rem'
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.9)' }}>
+                    We sent your request to VIP Support for an active{' '}
+                    <strong>{selectedGateway?.name}</strong> (payment link, QR code, and cashtag). Reply will appear in
+                    live chat and your email.
+                  </p>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.98 }}
+                    className="btn-gold-glow"
+                    style={{ marginTop: '1rem', width: '100%' }}
+                    disabled={activationSending}
+                    onClick={() => {
+                      if (onOpenSupport) onOpenSupport();
+                      else if (!activationRequestSent) sendSupportActivationRequest(selectedGateway);
+                    }}
+                  >
+                    <i className="fa-solid fa-comments" /> OPEN LIVE CHAT
+                  </motion.button>
+                </div>
+              )}
+
               {/* Direct 1-Click Pay App Button if pay link available */}
-              {payUrl && (
+              {!supportOnlyGateway && payUrl && (
                 <button
                   type="button"
                   onClick={handleOpenPayLink}
                   className="btn-pay-direct-action"
                   style={{
-                    background: isStripe ? 'linear-gradient(135deg, #635bff 0%, #4338ca 100%)' : isCashApp ? 'linear-gradient(135deg, #00d632 0%, #009922 100%)' : 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)',
-                    color: isStripe ? '#fff' : '#000'
+                    background: payBtnStyle.background,
+                    border: payBtnStyle.border,
+                    color: payBtnStyle.color,
+                    boxShadow: payBtnStyle.shadow
                   }}
                 >
-                  <i className={isStripe ? 'fa-brands fa-stripe' : isCashApp ? 'fa-solid fa-dollar-sign' : 'fa-solid fa-arrow-up-right-from-square'} />
+                  <i className={payBtnStyle.icon} />
                   <span>OPEN &amp; PAY ${parseFloat(amount || 0).toFixed(2)} ON {selectedGateway?.name?.toUpperCase()} &rarr;</span>
                 </button>
               )}
 
+              {!supportOnlyGateway && (
+              <>
               {/* Recipient Handle Row */}
               {rawTag && !isGenericPlaceholder && (
                 <div className="clean-info-row">
@@ -785,6 +872,8 @@ export default function PlayerDepositPage({
                   <span><i className="fa-solid fa-paper-plane" /> CONFIRM &amp; SUBMIT DEPOSIT (${parseFloat(amount || 0).toFixed(2)})</span>
                 )}
               </button>
+              </>
+              )}
             </div>
           </div>
         )}

@@ -30,6 +30,7 @@ import FreeplayTaskModal from './player/FreeplayTaskModal';
 import HalloweenEventSection from './player/HalloweenEventSection';
 import { PlayerDepositModal, PlayerWithdrawModal, PlayerGameAccountModal } from './player/PlayerModals';
 import { canShowClaimRemainderButton } from '../lib/remainderClaim';
+import { mergeDepositGatewaysForPlayer } from '../lib/depositGateways';
 
 export default function UserLobby({
   games = [],
@@ -54,6 +55,11 @@ export default function UserLobby({
   onOpenAuthModal,
   initialTab = 'main'
 }) {
+  const depositGateways = useMemo(
+    () => mergeDepositGatewaysForPlayer(gateways, frontendSettings),
+    [gateways, frontendSettings]
+  );
+
   // Navigation State ('main' | 'deposit' | 'withdraw' | 'history' | 'referrals' | 'profile' | 'game_hub')
   const [activeTab, setActiveTab] = useState(initialTab || 'main');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -502,12 +508,14 @@ export default function UserLobby({
               {activeTab === 'deposit' && (
                 <PlayerDepositPage
                   userEmail={currentUserEmail}
-                  gateways={gateways}
+                  userName={currentUser?.name || ''}
+                  gateways={depositGateways}
                   games={games}
                   transactions={transactions}
                   onSubmitTransaction={onSubmitTransaction}
                   showToast={showToast}
                   onBack={() => setActiveTab('main')}
+                  onOpenSupport={onOpenSupport}
                   defaultGameTitle={depositGameTitle}
                 />
               )}
@@ -636,10 +644,12 @@ export default function UserLobby({
         <PlayerDepositModal
           isOpen={true}
           onClose={() => setDepositModalOpen(false)}
-          gateways={gateways}
+          gateways={depositGateways}
           onSubmitTransaction={onSubmitTransaction}
           showToast={showToast}
           userEmail={currentUserEmail}
+          userName={currentUser?.name || ''}
+          onOpenSupport={onOpenSupport}
           defaultGameTitle={depositGameTitle}
           games={games}
           transactions={transactions}
