@@ -134,9 +134,22 @@ export async function GET(req) {
               ]
             }
       ),
-      db.collection('transactions').countDocuments({ type: { $in: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW'] }, distributorId: adminDistributorId || { $exists: true }, status: 'PENDING' }),
-      db.collection('transactions').countDocuments({ type: 'AFFILIATE_COMMISSION_WITHDRAW', status: 'PENDING' }),
-      db.collection('campaignRequests').countDocuments({ status: 'PENDING' }),
+      adminDistributorId
+        ? db.collection('transactions').countDocuments({
+            type: { $in: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW'] },
+            distributorId: adminDistributorId,
+            status: 'PENDING'
+          })
+        : db.collection('transactions').countDocuments({
+            type: { $in: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW'] },
+            status: 'PENDING'
+          }),
+      adminDistributorId
+        ? Promise.resolve(0)
+        : db.collection('transactions').countDocuments({ type: 'AFFILIATE_COMMISSION_WITHDRAW', status: 'PENDING' }),
+      adminDistributorId
+        ? Promise.resolve(0)
+        : db.collection('campaignRequests').countDocuments({ status: 'PENDING' }),
       aggregateFinancialTotals(db, baseQuery)
     ]);
 

@@ -12,7 +12,6 @@ import RequestsTab from '../../components/admin/RequestsTab';
 import LedgerTab from '../../components/admin/LedgerTab';
 import ShiftDashboardTab from '../../components/admin/ShiftDashboardTab';
 import PlayerAccountsTab from '../../components/admin/PlayerAccountsTab';
-import OverviewTab from '../../components/admin/OverviewTab';
 import RemainderClaimAction from '../../components/RemainderClaimAction';
 import { canShowClaimRemainderButton } from '../../lib/remainderClaim';
 import { filterGamesForStaff } from '../../lib/staffGameAccess';
@@ -236,7 +235,7 @@ export default function DistributorPortal() {
   const staffAdminUser = React.useMemo(
     () => ({
       name: distSession?.name || 'Distributor',
-      role: distSession?.isStaff ? (distSession.staffRole || distSession.role || 'coins_admin') : 'admin',
+      role: distSession?.isStaff ? (distSession.staffRole || distSession.role || 'coins_admin') : 'distributor',
       distributorId: distId || '',
       email: distSession?.email || '',
       allowedGameIds: distSession?.allowedGameIds || []
@@ -2354,11 +2353,10 @@ export default function DistributorPortal() {
           </div>
         )}
 
-        {/* TAB 1: DASHBOARD (same queues/widgets as Super Admin, scoped to this distributor) */}
+        {/* TAB 1: DASHBOARD — only this distributor's players/stats (not HQ OverviewTab) */}
         {activeTab === 'overview' && (
           <div>
-            <OverviewTab adminUser={staffAdminUser} onUpdateGameCoinsPool={() => {}} />
-            <div className="panel-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
+            <div className="panel-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
               <div>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>Overview & Analytics</h1>
                 <p style={{ fontSize: '0.75rem', color: '#888' }}>Track your referred players, deposits, and commission summaries.</p>
@@ -2881,6 +2879,7 @@ export default function DistributorPortal() {
         {activeTab === 'operations' && (
           <CoinsAllotmentTab
             onUpdateCoinsNotification={handleUpdateCoinsNotificationDirect}
+            onInspectProof={handleInspectProof}
             completedActionIds={{}}
             processingIds={{}}
             wrapAction={(id, fn) => fn}

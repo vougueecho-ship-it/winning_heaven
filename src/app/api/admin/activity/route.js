@@ -16,11 +16,17 @@ export async function GET(req) {
     const db = await getDb();
     const usersCollection = db.collection('users');
 
-    // Fetch staff (roles: support_admin, financial_admin, coins_admin, operation_admin, admin, distributor_staff)
-    const staff = await usersCollection.find(
-      { role: { $in: ['admin', 'operation_admin', 'financial_admin', 'coins_admin', 'support_admin', 'distributor_staff'] } },
-      { projection: { name: 1, email: 1, role: 1, lastActive: 1 } }
-    ).toArray();
+    const staffQuery = adminDistributorId
+      ? { distributorId: adminDistributorId, role: { $ne: 'user' } }
+      : {
+          role: {
+            $in: ['admin', 'operation_admin', 'financial_admin', 'coins_admin', 'support_admin', 'distributor_staff']
+          }
+        };
+
+    const staff = await usersCollection.find(staffQuery, {
+      projection: { name: 1, email: 1, role: 1, lastActive: 1, distributorId: 1 }
+    }).toArray();
 
     // Calculate active staff list (heartbeat in the last 10 minutes)
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
