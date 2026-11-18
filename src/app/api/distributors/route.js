@@ -5,6 +5,7 @@ import { enrichDistributorsWithStats } from '../../../lib/entityStats';
 import { invalidateTypeBDistributorCache } from '../../../lib/typeBDistributors';
 import { jsonOk } from '../../../lib/apiResponse';
 import { purgeAccountAccess, revokeSession } from '../../../lib/sessionRevoke';
+import { restoreDistributorFromArchive } from '../../../lib/restoreDistributor';
 
 // GET list of distributors (with dynamic statistics)
 export async function GET() {
@@ -41,9 +42,35 @@ export async function POST(req) {
     const db = await getDb();
     const distributorsCollection = db.collection('distributors');
 
-    const existing = await distributorsCollection.findOne({ email: email.toLowerCase().trim() });
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await distributorsCollection.findOne({ email: cleanEmail });
     if (existing) {
       return NextResponse.json({ success: false, message: 'A distributor with this email is already registered.' }, { status: 400 });
+    }
+
+    const archived = await db.collection('deletedUsers').findOne({
+      deletedEntityType: 'distributor',
+      $or: [{ email: cleanEmail }, { email: `distributor:${cleanEmail}` }]
+    });
+
+    if (archived) {
+      const restoreResult = await restoreDistributorFromArchive(db, archived, {
+        name: name.trim(),
+        password: password.trim(),
+        type,
+        commissionRate,
+        websiteCommissionRate
+      });
+      if (!restoreResult.success) {
+        return NextResponse.json({ success: false, message: restoreResult.message }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        restored: true,
+        distributor: restoreResult.distributor,
+        reLinkedPlayers: restoreResult.reLinkedPlayers,
+        message: restoreResult.message
+      });
     }
 
     const id = 'dist_' + Math.random().toString(36).substring(2, 7);
@@ -165,6 +192,10 @@ export async function DELETE(req) {
       db.collection('coinsNotifications').updateMany(
         { $or: [{ distributorId: id }, ...(playerEmails.length ? [{ userEmail: { $in: playerEmails } }] : [])] },
         { $set: hqClear }
+      ),
+      db.collection('supportMessages').updateMany(
+        { $or: [{ distributorId: id }, ...(playerEmails.length ? [{ userEmail: { $in: playerEmails } }] : [])] },
+        { $set: { distributorId: '' } }
       )
     ]);
 

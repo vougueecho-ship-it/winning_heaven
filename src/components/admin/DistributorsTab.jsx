@@ -70,6 +70,9 @@ export default function DistributorsTab() {
       });
       const resData = await response.json();
       if (resData.success) {
+        if (resData.restored) {
+          alert(resData.message || `Distributor restored. ${resData.reLinkedPlayers || 0} player(s) re-linked.`);
+        }
         const created = resData.distributor;
         const savedPassword = password.trim();
         setOnboardKit({

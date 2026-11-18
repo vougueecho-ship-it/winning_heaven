@@ -11,7 +11,19 @@ export async function POST(req) {
     }
 
     const db = await getDb();
-    
+    const cleanEmail = email.toLowerCase().trim();
+
+    const deletedArchive = await db.collection('deletedUsers').findOne({
+      email: cleanEmail,
+      deletedEntityType: 'distributor'
+    });
+    if (deletedArchive) {
+      return NextResponse.json({
+        success: false,
+        message: 'This distributor account was removed by Super Admin. Contact HQ to restore access.'
+      }, { status: 403 });
+    }
+
     // 1. Try finding in distributors collection
     const distributorsCollection = db.collection('distributors');
     const matchedDistributor = await distributorsCollection.findOne({

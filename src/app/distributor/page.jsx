@@ -31,6 +31,12 @@ export default function DistributorPortal() {
         /* ignore */
       }
     }
+    const onRevoked = () => {
+      localStorage.removeItem('winning_heaven_distributor_session');
+      setDistSession(null);
+    };
+    window.addEventListener('winning-heaven-session-revoked', onRevoked);
+    return () => window.removeEventListener('winning-heaven-session-revoked', onRevoked);
   }, []);
 
   const handleLoginSubmit = async (e) => {

@@ -185,42 +185,66 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
     reader.readAsDataURL(file);
   };
 
+  const availableCommission = (() => {
+    const commWithdrawals = commTxData?.transactions || [];
+    const totalWithdrawn = commWithdrawals
+      .filter((tx) => tx.status === 'SUCCESS' || tx.status === 'PENDING')
+      .reduce((sum, tx) => sum + parseFloat(tx.amount || 0) - parseFloat(tx.payoutHold || 0), 0);
+    return Math.max(0, (stats.commissionEarned || 0) - totalWithdrawn);
+  })();
+
   return (
-    <section className="admin-section-card" style={{ animation: 'fade-in 0.2s ease-out', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div>
-        <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0 }}>
-          <i className="fa-solid fa-hand-holding-dollar gold-text" /> Commission &amp;{' '}
-          <span className="gold-gradient-text">{distType === 'B' ? 'Platform fees' : 'Cashouts'}</span>
-        </h2>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-          Track earnings, pay HQ website fees (Type B), or request commission withdrawals.
-        </p>
+    <section className="admin-section-card dist-finance-page">
+      <div className="dist-finance-hero">
+        <div>
+          <p className="dist-finance-hero__eyebrow">Earnings &amp; settlements</p>
+          <h2 className="dist-finance-hero__title">
+            <i className="fa-solid fa-hand-holding-dollar" aria-hidden />
+            Commission {distType === 'B' ? '& platform fees' : 'cashouts'}
+          </h2>
+          <p className="dist-finance-hero__lead">
+            Live stats, daily breakdown, and payout tools — optimized for mobile and desktop.
+          </p>
+        </div>
+        <div className="dist-finance-hero__badges">
+          <span className="dist-finance-pill is-gold">
+            Rate {stats.commissionRate || 0}%
+          </span>
+          {distType === 'B' && (
+            <span className="dist-finance-pill is-rose">
+              Web share {stats.websiteCommissionRate || 0}%
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="admin-stats-grid">
-        <div className="stat-card" style={{ borderLeft: '4px solid var(--gold-primary)' }}>
-          <div className="stat-icon-wrapper gold-bg">
-            <i className="fa-solid fa-coins" />
+      <div className="dist-finance-stat-grid">
+        <div className="dist-finance-stat-tile is-gold">
+          <div className="dist-finance-stat-tile__icon"><i className="fa-solid fa-coins" /></div>
+          <div>
+            <span className="dist-finance-stat-tile__label">Commission earned</span>
+            <strong className="dist-finance-stat-tile__value">${(stats.commissionEarned || 0).toFixed(2)}</strong>
           </div>
-          <div className="stat-info">
-            <h3>${(stats.commissionEarned || 0).toFixed(2)}</h3>
-            <p>Commission earned ({stats.commissionRate || 0}%)</p>
+        </div>
+        <div className="dist-finance-stat-tile is-green">
+          <div className="dist-finance-stat-tile__icon"><i className="fa-solid fa-wallet" /></div>
+          <div>
+            <span className="dist-finance-stat-tile__label">Available to withdraw</span>
+            <strong className="dist-finance-stat-tile__value">${availableCommission.toFixed(2)}</strong>
           </div>
         </div>
         {distType === 'B' && (
-          <div className="stat-card" style={{ borderLeft: '4px solid #ff4d6d' }}>
-            <div className="stat-icon-wrapper" style={{ background: 'rgba(255,77,109,0.15)', color: '#ff4d6d' }}>
-              <i className="fa-solid fa-globe" />
-            </div>
-            <div className="stat-info">
-              <h3>${dueWebsiteCommission.toFixed(2)}</h3>
-              <p>Website commission due ({stats.websiteCommissionRate || 0}%)</p>
+          <div className="dist-finance-stat-tile is-rose">
+            <div className="dist-finance-stat-tile__icon"><i className="fa-solid fa-globe" /></div>
+            <div>
+              <span className="dist-finance-stat-tile__label">HQ fee outstanding</span>
+              <strong className="dist-finance-stat-tile__value">${dueWebsiteCommission.toFixed(2)}</strong>
             </div>
           </div>
         )}
       </div>
 
-      <div className="stat-card" style={{ borderLeft: '4px solid var(--gold-primary)', maxWidth: 640 }}>
+      <div className="dist-finance-lookup-card">
         <div className="stat-icon-wrapper gold-bg">
           <i className="fa-solid fa-calendar-days" />
         </div>
@@ -240,7 +264,7 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
         </div>
       </div>
 
-      <div className="dist-staff-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.05fr) 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="dist-finance-main-grid">
         {distType === 'B' ? (
           <div className="dist-platform-fee-card">
             <div className="dist-platform-fee-card__header">
@@ -442,7 +466,7 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
           </form>
         )}
 
-        <div className="table-responsive" style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
+        <div className="dist-finance-history table-responsive">
           <table className="admin-table">
             <thead>
               <tr>
