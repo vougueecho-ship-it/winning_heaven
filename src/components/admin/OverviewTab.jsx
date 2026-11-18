@@ -52,7 +52,7 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool, portalBa
     POLL.STATS
   );
   const gamesListUrl = adminUser?.distributorId
-    ? `/api/games?distributorId=${encodeURIComponent(adminUser.distributorId)}`
+    ? `/api/games?distributorId=${encodeURIComponent(adminUser.distributorId)}&ownedOnly=1`
     : '/api/games';
   const { data: gamesData, error: gamesError, mutate: mutateGames } = useSWR(gamesListUrl, fetcher, { revalidateOnFocus: false, dedupingInterval: 60000 });
   const { data: activityData } = usePollingSWR(

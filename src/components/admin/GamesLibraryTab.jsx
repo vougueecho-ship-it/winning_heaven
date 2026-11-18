@@ -3,8 +3,8 @@ import useSWR from 'swr';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDeleteGame }) {
-  const { data: gamesData, error, mutate } = useSWR('/api/games?includeInactive=true', fetcher);
+export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDeleteGame, gamesListUrl = '/api/games?includeInactive=true', libraryTitle = 'Game Library Manager' }) {
+  const { data: gamesData, error, mutate } = useSWR(gamesListUrl, fetcher);
   const [gameSearch, setGameSearch] = useState('');
   const [togglingId, setTogglingId] = useState(null);
 
@@ -62,7 +62,7 @@ export default function GamesLibraryTab({ onAddGameClick, onEditGameClick, onDel
     <section className="admin-section-card" style={{ animation: 'fade-in 0.2s ease-out' }}>
       <div className="section-card-header" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3><i className="fa-solid fa-gamepad gold-text"></i> Game Library Manager</h3>
+          <h3><i className="fa-solid fa-gamepad gold-text"></i> {libraryTitle}</h3>
           <button className="submit-btn add-game-trigger" onClick={onAddGameClick} style={{ width: 'auto', marginTop: 0 }}>
             <i className="fa-solid fa-plus"></i> Add New Game
           </button>

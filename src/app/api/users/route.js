@@ -83,7 +83,16 @@ export async function GET(req) {
         type: 'DEPOSIT',
         status: 'SUCCESS'
       });
-      query.email = { $in: activeEmails.map((e) => e.toLowerCase().trim()) };
+      let emails = activeEmails.map((e) => e.toLowerCase().trim()).filter(Boolean);
+      if (adminDistributorId) {
+        const distEmails = await usersCollection
+          .find({ distributorId: adminDistributorId, role: 'user' })
+          .project({ email: 1 })
+          .toArray();
+        const allowed = new Set(distEmails.map((u) => (u.email || '').toLowerCase().trim()));
+        emails = emails.filter((e) => allowed.has(e));
+      }
+      query.email = { $in: emails };
     }
 
     if (search) {
@@ -127,7 +136,8 @@ export async function GET(req) {
 // PUT update user details (Admin adjustment of coins or role modifications)
 export async function PUT(req) {
   try {
-    const { email, coins, role, name, password, status, allowedGameIds, deviceId } = await req.json();
+    const body = await req.json();
+    const { email, coins, role, name, password, status, allowedGameIds, deviceId, adminDistributorId = '' } = body;
 
     if (!email) {
       return NextResponse.json({ success: false, message: 'User email is required.' }, { status: 400 });
@@ -140,6 +150,18 @@ export async function PUT(req) {
     const currentUser = await usersCollection.findOne({ email: cleanEmail });
     if (!currentUser) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
+    }
+
+    if (adminDistributorId) {
+      if ((currentUser.distributorId || '') !== String(adminDistributorId)) {
+        return NextResponse.json(
+          { success: false, message: 'This player does not belong to your distributor panel.' },
+          { status: 403 }
+        );
+      }
+      if (role !== undefined && role !== 'user') {
+        return NextResponse.json({ success: false, message: 'Cannot change staff roles from distributor panel.' }, { status: 403 });
+      }
     }
 
     const updateFields = {};

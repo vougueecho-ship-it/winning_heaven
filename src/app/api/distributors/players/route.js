@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
-import { collectPlayerGameTitles, purgeAccountAccess } from '../../../../lib/sessionRevoke';
+import {
+  collectPlayerGameTitles,
+  createHqPendingAccountRequests,
+  purgeAccountAccess,
+  wipePlayerGameAccess
+} from '../../../../lib/sessionRevoke';
 import { notifyUserAsync } from '../../../../lib/userAlertService';
 
 // GET players for a distributor (Fallback or direct list)
@@ -130,39 +135,71 @@ export async function PUT(req) {
   }
 }
 
-// DELETE player under distributor (Soft Delete / Archive)
+// DELETE: release to HQ (query) or permanent block (JSON body mode=block)
 export async function DELETE(req) {
   try {
-    const { searchParams } = new URL(req.url);
-    const email = searchParams.get('email');
-    const distributorId = searchParams.get('distributorId');
+    let email = null;
+    let distributorId = null;
+    let mode = 'release';
+
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      email = body.email;
+      distributorId = body.distributorId;
+      mode = (body.mode || 'block').toLowerCase();
+    } else {
+      const { searchParams } = new URL(req.url);
+      email = searchParams.get('email');
+      distributorId = searchParams.get('distributorId');
+      mode = 'release';
+    }
 
     if (!email || !distributorId) {
-      return NextResponse.json({ success: false, message: 'Email and distributorId parameters are required.' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Email and distributorId are required.' }, { status: 400 });
     }
 
     const cleanEmail = email.toLowerCase().trim();
     const db = await getDb();
 
-    // Verify player belongs to distributor
     const player = await db.collection('users').findOne({ email: cleanEmail, distributorId });
     if (!player) {
       return NextResponse.json({ success: false, message: 'Player not found or does not belong to your distributor panel.' }, { status: 404 });
     }
 
-    // Snapshot games BEFORE wipe — Super Admin Undo re-queues HQ PENDING requests.
-    const restoreGameTitles = await collectPlayerGameTitles(db, cleanEmail);
+  if (mode === 'block') {
+      const restoreGameTitles = await collectPlayerGameTitles(db, cleanEmail);
+      await db.collection('users').deleteOne({ email: cleanEmail });
+      await purgeAccountAccess(db, cleanEmail, player, {
+        deletedBy: 'distributor',
+        wipeGameAccess: true,
+        restoreGameTitles: []
+      });
+      cache.del('admin_stats');
+      return NextResponse.json({ success: true, message: 'Player blocked and removed from the system.' });
+    }
 
-    // Archive + revoke. Wipe credentials so Undo does not restore distributor accounts.
-    await db.collection('users').deleteOne({ email: cleanEmail });
-    await purgeAccountAccess(db, cleanEmail, player, {
-      deletedBy: 'distributor',
-      wipeGameAccess: true,
-      restoreGameTitles
-    });
+    const restoreGameTitles = await collectPlayerGameTitles(db, cleanEmail);
+    await wipePlayerGameAccess(db, cleanEmail);
+    await db.collection('users').updateOne(
+      { email: cleanEmail },
+      {
+        $set: {
+          distributorId: '',
+          releasedFromDistributorId: distributorId,
+          releasedToHqAt: new Date().toISOString()
+        }
+      }
+    );
+    if (restoreGameTitles.length > 0) {
+      await createHqPendingAccountRequests(db, cleanEmail, restoreGameTitles, player.name || '');
+    }
     cache.del('admin_stats');
 
-    return NextResponse.json({ success: true, message: 'Player account deleted successfully.' });
+    return NextResponse.json({
+      success: true,
+      message: 'Player released to Winning Heaven HQ. They now appear in Super Admin Player Accounts; new requests route to HQ.'
+    });
   } catch (err) {
     console.error('Delete Distributor Player Error:', err);
     return NextResponse.json({ success: false, message: 'Server error: ' + err.message }, { status: 500 });

@@ -35,6 +35,7 @@ const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequests
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
 const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
 const DistributorStaffTab = lazyWithRetry(() => import('./admin/DistributorStaffTab'));
+const DistributorFinanceTab = lazyWithRetry(() => import('./admin/DistributorFinanceTab'));
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -60,7 +61,8 @@ export default function AdminDashboard({
   onUpdateCoinsNotification,
   onUpdateGameCoinsPool,
   showToast,
-  gatewaysListUrl = '/api/gateways'
+  gatewaysListUrl = '/api/gateways',
+  distributorSession = null
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -362,7 +364,7 @@ export default function AdminDashboard({
 
   const distributorScopedDeny = (tabName) => {
     if (!adminUser?.distributorId) return false;
-    if (['games', 'staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)) {
+    if (['staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)) {
       return true;
     }
     if (tabName === 'gateways' && distributorType !== 'B') return true;
@@ -385,12 +387,20 @@ export default function AdminDashboard({
         return Boolean(adminUser?.distributorId && distributorType === 'B' && (role === 'distributor' || role === 'operation_admin'));
       }
 
+      if (tabName === 'dist_finance') {
+        return Boolean(adminUser?.distributorId && role === 'distributor');
+      }
+
+      if (tabName === 'games' && adminUser?.distributorId) {
+        return role === 'distributor' || role === 'operation_admin';
+      }
+
       if (tabName === 'promotions') return role === 'operation_admin' || role === 'distributor';
       // Frontend Settings tab is strictly reserved for main boss (Super Admin)
       if (tabName === 'frontend_settings') return false;
 
       if (role === 'distributor') {
-        return !['staff', 'settings', 'frontend_settings', 'games', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName);
+        return !['staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName);
       }
 
       if (role === 'operation_admin') return !['staff', 'settings'].includes(tabName); // Operational Manager has access to all EXCEPT staff and settings
@@ -574,6 +584,31 @@ export default function AdminDashboard({
             >
               <i className="fa-solid fa-bullhorn" style={{ width: '18px' }}></i>
               <span>Promotions & Segments</span>
+            </button>
+          )}
+
+          {hasAccess('dist_finance') && (
+            <button
+              onClick={() => { setActiveTab('dist_finance'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'dist_finance' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'dist_finance' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-solid fa-hand-holding-dollar" style={{ width: '18px' }}></i>
+              <span>Commission & Fees</span>
             </button>
           )}
 
@@ -1125,7 +1160,20 @@ export default function AdminDashboard({
                 <OverviewTab adminUser={adminUser} onUpdateGameCoinsPool={onUpdateGameCoinsPool} portalBasePath={portalBasePath} />
               )}
               {activeTab === 'games' && hasAccess('games') && (
-                <GamesLibraryTab onAddGameClick={onAddGameClick} onEditGameClick={onEditGameClick} onDeleteGame={onDeleteGame} />
+                <GamesLibraryTab
+                  onAddGameClick={onAddGameClick}
+                  onEditGameClick={onEditGameClick}
+                  onDeleteGame={onDeleteGame}
+                  gamesListUrl={
+                    adminUser?.distributorId
+                      ? `/api/games?distributorId=${encodeURIComponent(adminUser.distributorId)}&ownedOnly=1&includeInactive=true`
+                      : '/api/games?includeInactive=true'
+                  }
+                  libraryTitle={adminUser?.distributorId ? 'My Game Library' : 'Game Library Manager'}
+                />
+              )}
+              {activeTab === 'dist_finance' && hasAccess('dist_finance') && distributorSession && (
+                <DistributorFinanceTab distSession={distributorSession} onInspectProof={onInspectProof} />
               )}
               {activeTab === 'users' && hasAccess('users') && (
                 <PlayerAccountsTab adminUser={adminUser} onDeleteUser={onDeleteUser} />

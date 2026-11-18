@@ -24,9 +24,13 @@ export default function PromotionsTab({ adminUser }) {
     return () => clearTimeout(handler);
   }, [search]);
 
+  const distScope = adminUser?.distributorId
+    ? `&adminDistributorId=${encodeURIComponent(adminUser.distributorId)}`
+    : '';
+
   // Fetch segmented users
   const { data: userData, mutate: mutateUsers, error: userError } = useSWR(
-    `/api/users?segment=${segment}&search=${encodeURIComponent(debouncedSearch)}&page=${page}&limit=${limit}`,
+    `/api/users?segment=${segment}&search=${encodeURIComponent(debouncedSearch)}&page=${page}&limit=${limit}${distScope}`,
     fetcher
   );
 
@@ -113,7 +117,8 @@ export default function PromotionsTab({ adminUser }) {
           image: promoImage.trim(),
           promoType,
           freeplayAmount: promoType === 'freeplay' ? parseFloat(promoFreeplayAmount) || 0 : 0,
-          bonusPercent: promoType === 'deposit_bonus' ? parseFloat(promoBonusPercent) || 0 : 0
+          bonusPercent: promoType === 'deposit_bonus' ? parseFloat(promoBonusPercent) || 0 : 0,
+          adminDistributorId: adminUser?.distributorId || ''
         })
       });
       const data = await res.json();

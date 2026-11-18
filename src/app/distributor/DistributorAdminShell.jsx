@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { mutate } from 'swr';
 import AdminDashboard from '../../components/AdminDashboard';
-import { ApproveAccountModal, AdminGatewayModal, ViewProofModal } from '../../components/Modals';
+import { AdminGameModal, ApproveAccountModal, AdminGatewayModal, ViewProofModal } from '../../components/Modals';
 import { cleanErrorMessage } from '../../lib/safeFetch';
 
 export default function DistributorAdminShell({ distSession, onLogout }) {
@@ -35,6 +35,9 @@ export default function DistributorAdminShell({ distSession, onLogout }) {
 
   const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
   const [editGatewayData, setEditGatewayData] = useState(null);
+
+  const [gameModalOpen, setGameModalOpen] = useState(false);
+  const [editGameData, setEditGameData] = useState(null);
 
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
@@ -306,6 +309,46 @@ export default function DistributorAdminShell({ distSession, onLogout }) {
     }
   };
 
+  const handleSaveGame = async (gameItem) => {
+    try {
+      const method = gameItem.id ? 'PUT' : 'POST';
+      const body = { ...gameItem, ownerDistributorId: distId };
+      const response = await fetch('/api/games', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(gameItem.id ? 'Game updated.' : 'Game created.', 'success');
+        mutate((key) => typeof key === 'string' && key.includes('/api/games'));
+      } else {
+        showToast(data.message || 'Failed to save game.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error.', 'error');
+    }
+    setGameModalOpen(false);
+  };
+
+  const handleDeleteGame = async (id) => {
+    if (!window.confirm('Delete this game from your library?')) return;
+    try {
+      const response = await fetch(`/api/games?id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        showToast('Game deleted.', 'success');
+        mutate((key) => typeof key === 'string' && key.includes('/api/games'));
+      } else {
+        showToast(data.message || 'Failed to delete game.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error.', 'error');
+    }
+  };
+
   const noop = () => {};
 
   return (
@@ -333,11 +376,18 @@ export default function DistributorAdminShell({ distSession, onLogout }) {
         adminUser={adminUser}
         portalBasePath="/distributor"
         distributorType={distributorType}
+        distributorSession={distSession}
         completedActionIds={completedActionIds}
         onLogout={onLogout}
-        onAddGameClick={noop}
-        onEditGameClick={noop}
-        onDeleteGame={noop}
+        onAddGameClick={() => {
+          setEditGameData(null);
+          setGameModalOpen(true);
+        }}
+        onEditGameClick={(game) => {
+          setEditGameData(game);
+          setGameModalOpen(true);
+        }}
+        onDeleteGame={handleDeleteGame}
         onDeleteUser={noop}
         onApproveRequest={handleOpenApproveRequest}
         onApproveTransaction={handleApproveTransaction}
@@ -352,6 +402,13 @@ export default function DistributorAdminShell({ distSession, onLogout }) {
         onUpdateGameCoinsPool={handleUpdateGameCoinsPool}
         showToast={showToast}
         gatewaysListUrl={gatewaysListUrl || '/api/gateways'}
+      />
+
+      <AdminGameModal
+        isOpen={gameModalOpen}
+        onClose={() => setGameModalOpen(false)}
+        onSave={handleSaveGame}
+        editGame={editGameData}
       />
 
       <ApproveAccountModal

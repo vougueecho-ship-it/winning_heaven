@@ -13,7 +13,7 @@ export default function DistributorStaffTab({ distributorId }) {
     fetcher
   );
   const { data: gamesData } = useSWR(
-    distId ? `/api/games?distributorId=${distId}` : null,
+    distId ? `/api/games?distributorId=${distId}&ownedOnly=1` : null,
     fetcher
   );
 

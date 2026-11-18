@@ -28,11 +28,17 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] = useState(null);
 
+  const isDistributorPanel = Boolean(adminUser?.distributorId);
+
+  const scopedUserPayload = (payload) => (
+    isDistributorPanel ? { ...payload, adminDistributorId: adminUser.distributorId } : payload
+  );
+
   const handleAdjustBalanceSubmit = async (email, targetCoins) => {
     const response = await fetch('/api/users', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, coins: targetCoins })
+      body: JSON.stringify(scopedUserPayload({ email, coins: targetCoins }))
     });
     const resData = await response.json();
     if (resData.success) {
@@ -44,6 +50,25 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
   };
 
   const handleResetPasswordSubmit = async (email, newPassword) => {
+    if (isDistributorPanel) {
+      const response = await fetch('/api/distributors/players', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password: newPassword,
+          distributorId: adminUser.distributorId
+        })
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        alert('Player password updated successfully!');
+        mutate();
+      } else {
+        throw new Error(resData.message || 'Failed to reset password.');
+      }
+      return;
+    }
     const response = await fetch('/api/users', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -68,10 +93,10 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
       const response = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(scopedUserPayload({
           email: user.email,
           status: isSuspended ? 'ACTIVE' : 'SUSPENDED'
-        })
+        }))
       });
       const resData = await response.json();
       if (resData.success) {
@@ -94,10 +119,10 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
       const response = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(scopedUserPayload({
           email: user.email,
           deviceId: ''
-        })
+        }))
       });
       const resData = await response.json();
       if (resData.success) {
@@ -123,19 +148,35 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
     }
     setIsRegistering(true);
     try {
-      const response = await fetch('/api/users/manual-create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName,
-          email: newEmail,
-          password: newPassword,
-          referredBy: newReferredBy
-        })
-      });
+      const response = isDistributorPanel
+        ? await fetch('/api/distributors/players', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: newName,
+              email: newEmail,
+              password: newPassword || 'Player123',
+              distributorId: adminUser.distributorId
+            })
+          })
+        : await fetch('/api/users/manual-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: newName,
+              email: newEmail,
+              password: newPassword,
+              referredBy: newReferredBy
+            })
+          });
       const resData = await response.json();
       if (resData.success) {
-        setRegisterResult(resData.player);
+        const player = resData.player || {
+          email: newEmail,
+          password: newPassword || 'Player123',
+          referralCode: resData.player?.referralCode
+        };
+        setRegisterResult(player);
         mutate();
       } else {
         alert(resData.message || 'Failed to register player.');
@@ -174,10 +215,11 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
     return () => clearTimeout(handler);
   }, [search]);
 
-  const { data, error, mutate } = useSWR(
-    `/api/users?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}&includeDistributorPlayers=1`,
-    fetcher
-  );
+  const playerListUrl = adminUser?.distributorId
+    ? `/api/users?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${encodeURIComponent(adminUser?.role || '')}&adminDistributorId=${encodeURIComponent(adminUser.distributorId)}`
+    : `/api/users?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&adminRole=${encodeURIComponent(adminUser?.role || '')}&includeDistributorPlayers=1`;
+
+  const { data, error, mutate } = useSWR(playerListUrl, fetcher);
 
   const users = data?.users || [];
   const totalUsers = data?.totalUsers || 0;
@@ -219,9 +261,64 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
   }, [inspectedUser]);
 
   const handleDelete = async (email) => {
-    if (window.confirm(`Are you sure you want to delete user account "${email}"?`)) {
-      await onDeleteUser(email);
-      mutate();
+    const msg = isDistributorPanel
+      ? `Release player "${email}" to Winning Heaven HQ?\n\nThey will leave your panel; new game requests go to Super Admin.`
+      : `Are you sure you want to delete user account "${email}"?`;
+    if (!window.confirm(msg)) return;
+
+    if (isDistributorPanel) {
+      try {
+        const res = await fetch(
+          `/api/distributors/players?email=${encodeURIComponent(email)}&distributorId=${encodeURIComponent(adminUser.distributorId)}`,
+          { method: 'DELETE' }
+        );
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message || 'Player released to HQ.');
+          mutate();
+        } else {
+          alert(data.message || 'Failed to release player.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Connection error.');
+      }
+      return;
+    }
+
+    await onDeleteUser(email);
+    mutate();
+  };
+
+  const handleBlockPlayer = async (user) => {
+    if (!isDistributorPanel) return;
+    if (
+      !window.confirm(
+        `Block and remove "${user.email}" permanently?\n\nThey will NOT appear on HQ admin and cannot log in.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/distributors/players', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          distributorId: adminUser.distributorId,
+          mode: 'block'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Player blocked and removed.');
+        mutate();
+      } else {
+        alert(data.message || 'Failed to block player.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Connection error.');
     }
   };
 
@@ -267,6 +364,7 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
   // Check if current logged in admin user is super admin or operational manager
   const cleanAdminRoles = (adminUser?.role || '').toLowerCase().split(',').map(r => r.trim());
   const isManagerOrAdmin = cleanAdminRoles.some(r => r === 'admin' || r === 'operation_admin');
+  const canManagePlayers = isManagerOrAdmin || isDistributorPanel;
 
   // Sum calculations for financial summaries
   const successDepositsSum = userHistory.deposits.filter((t) => t.status === 'SUCCESS').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
@@ -280,7 +378,7 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
       <div className="section-card-header" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3><i className="fa-solid fa-users text-red"></i> Player Accounts ({totalUsers} Registered)</h3>
-          {isManagerOrAdmin && (
+          {canManagePlayers && (
             <button
               onClick={() => setRegisterModalOpen(true)}
               className="submit-btn"
@@ -392,7 +490,7 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                       </button>
 
                       {/* Reset Password */}
-                      {isManagerOrAdmin && (
+                      {canManagePlayers && (
                         <button
                           className="action-row-btn"
                           onClick={() => { setResetPasswordUser(user); setPasswordModalOpen(true); }}
@@ -404,7 +502,7 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                       )}
 
                       {/* Suspend / Reactivate */}
-                      {isManagerOrAdmin && (
+                      {canManagePlayers && (
                         <button
                           className="action-row-btn"
                           onClick={() => handleToggleSuspend(user)}
@@ -419,13 +517,24 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                         </button>
                       )}
 
-                      {/* Delete User */}
+                      {isDistributorPanel && (
+                        <button
+                          type="button"
+                          className="action-row-btn btn-delete"
+                          onClick={() => handleBlockPlayer(user)}
+                          title="Block permanently (will not appear on HQ)"
+                          style={{ background: 'rgba(127,29,29,0.35)', borderColor: 'rgba(239,68,68,0.5)' }}
+                        >
+                          <i className="fa-solid fa-ban" />
+                        </button>
+                      )}
+
                       <button
                         className="action-row-btn btn-delete"
                         onClick={() => handleDelete(user.email)}
-                        title="Delete User"
+                        title={isDistributorPanel ? 'Release player to HQ' : 'Delete User'}
                       >
-                        <i className="fa-solid fa-user-minus"></i>
+                        <i className={`fa-solid ${isDistributorPanel ? 'fa-arrow-up-right-from-square' : 'fa-user-minus'}`} />
                       </button>
                     </div>
                   </td>
@@ -516,6 +625,43 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     Own Referral Code: <strong style={{ color: 'var(--gold-primary)', fontFamily: 'monospace' }}>{inspectedUser.referralCode || '—'}</strong>
                   </div>
+                  {canManagePlayers && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className="action-row-btn"
+                        onClick={() => {
+                          setResetPasswordUser(inspectedUser);
+                          setPasswordModalOpen(true);
+                        }}
+                        title="Reset password"
+                        style={{ fontSize: '0.65rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        <i className="fa-solid fa-key" /> Reset PW
+                      </button>
+                      <button
+                        type="button"
+                        className="action-row-btn"
+                        onClick={() => handleToggleSuspend(inspectedUser)}
+                        title={inspectedUser.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                        style={{ fontSize: '0.65rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        <i className="fa-solid fa-ban" /> {inspectedUser.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-row-btn"
+                        onClick={() => {
+                          setAdjustBalanceUser(inspectedUser);
+                          setBalanceModalOpen(true);
+                        }}
+                        title="Adjust lobby balance"
+                        style={{ fontSize: '0.65rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        <i className="fa-solid fa-coins" /> Balance
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -663,7 +809,7 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                                 <td style={{ color: 'var(--gold-primary)', fontWeight: 'bold' }}>{noti.totalCoins}</td>
                                 <td style={{ color: '#ef4444' }}>{noti.holdNote || 'Unspecified'}</td>
                                 <td>
-                                  {isManagerOrAdmin ? (
+                                  {canManagePlayers ? (
                                     <button
                                       onClick={() => handleReleaseHold(noti.id)}
                                       style={{
@@ -776,19 +922,21 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
                     </div>
                   </div>
 
-                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                    <label htmlFor="reg-ref">Referred By Code (Optional)</label>
-                    <div className="input-wrapper">
-                      <i className="fa-solid fa-gift input-icon"></i>
-                      <input
-                        type="text"
-                        id="reg-ref"
-                        placeholder="e.g. JKP55"
-                        value={newReferredBy}
-                        onChange={(e) => setNewReferredBy(e.target.value)}
-                      />
+                  {!isDistributorPanel && (
+                    <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                      <label htmlFor="reg-ref">Referred By Code (Optional)</label>
+                      <div className="input-wrapper">
+                        <i className="fa-solid fa-gift input-icon"></i>
+                        <input
+                          type="text"
+                          id="reg-ref"
+                          placeholder="e.g. JKP55"
+                          value={newReferredBy}
+                          onChange={(e) => setNewReferredBy(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <button type="submit" className="submit-btn" style={{ background: 'var(--gold-primary)', color: '#000', fontWeight: 'bold' }} disabled={isRegistering}>
                     {isRegistering ? 'REGISTERING...' : 'REGISTER PLAYER ➔'}
@@ -807,6 +955,16 @@ export default function PlayerAccountsTab({ adminUser, onDeleteUser }) {
         onClose={() => { setPasswordModalOpen(false); setResetPasswordUser(null); }}
         onReset={handleResetPasswordSubmit}
         user={resetPasswordUser}
+      />
+
+      <AdjustBalanceModal
+        isOpen={balanceModalOpen}
+        onClose={() => {
+          setBalanceModalOpen(false);
+          setAdjustBalanceUser(null);
+        }}
+        onAdjust={handleAdjustBalanceSubmit}
+        user={adjustBalanceUser}
       />
     </section>
   );

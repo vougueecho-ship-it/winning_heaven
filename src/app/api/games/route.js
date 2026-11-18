@@ -9,6 +9,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const distributorId = searchParams.get('distributorId');
+    const ownedOnly = searchParams.get('ownedOnly') === '1';
     const includeInactive = searchParams.get('includeInactive') === 'true' || Boolean(searchParams.get('adminRole'));
 
     const cacheKey = distributorId
@@ -44,6 +45,7 @@ export async function GET(req) {
           isNew: 1,
           isMaintenance: 1,
           active: { $ifNull: ["$active", true] },
+          ownerDistributorId: { $ifNull: ["$ownerDistributorId", ""] },
           imagePrefix: { $substrCP: [{ $ifNull: ["$image", ""] }, 0, 30] },
           imageLength: { $strLenCP: [{ $ifNull: ["$image", ""] }] },
           staticImage: {
@@ -57,7 +59,13 @@ export async function GET(req) {
       }
     ]).toArray();
 
-    const filteredRawGames = includeInactive ? rawGames : rawGames.filter(g => g.active !== false);
+    let filteredRawGames = includeInactive ? rawGames : rawGames.filter(g => g.active !== false);
+
+    if (distributorId && ownedOnly) {
+      filteredRawGames = filteredRawGames.filter((g) => g.ownerDistributorId === distributorId);
+    } else if (!distributorId) {
+      filteredRawGames = filteredRawGames.filter((g) => !g.ownerDistributorId);
+    }
 
     const games = filteredRawGames.map((g) => {
       let img = g.staticImage || g.imagePrefix || '';
@@ -68,7 +76,7 @@ export async function GET(req) {
       return { ...rest, image: img };
     });
     
-    if (distributorId) {
+    if (distributorId && !ownedOnly) {
       const distGames = await db.collection('distributorGames').find({ distributorId }).toArray();
       const distGamesMap = {};
       distGames.forEach(dg => {
@@ -125,6 +133,10 @@ export async function POST(req) {
       active: game.active !== undefined ? Boolean(game.active) : true
     };
 
+    if (game.ownerDistributorId) {
+      newGame.ownerDistributorId = String(game.ownerDistributorId);
+    }
+
     await gamesCollection.insertOne(newGame);
     
     // Invalidate caches
@@ -132,6 +144,9 @@ export async function POST(req) {
     cache.del('games_all_public');
     cache.del('games_all_include_inactive');
     cache.del(`game_image_${newGame.id}`);
+    if (newGame.ownerDistributorId) {
+      cache.del(`games_${newGame.ownerDistributorId}`);
+    }
     
     return NextResponse.json({ success: true, game: { ...newGame, image: toPublicGameImage(newGame) }, message: 'Game added successfully!' });
   } catch (err) {

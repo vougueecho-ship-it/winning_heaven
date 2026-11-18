@@ -56,7 +56,7 @@ import nodemailer from 'nodemailer';
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { title, message, targetGroup, dispatchChannel = 'all', image, promoType, freeplayAmount, bonusPercent } = body;
+    const { title, message, targetGroup, dispatchChannel = 'all', image, promoType, freeplayAmount, bonusPercent, adminDistributorId = '' } = body;
 
     if (!title || !message || !targetGroup) {
       return NextResponse.json({ success: false, message: 'Title, message, and target group are required.' }, { status: 400 });
@@ -102,7 +102,11 @@ export async function POST(req) {
     // Get matching player emails based on the targetGroup
     // Exclude staff/admin roles — only these roles are excluded, everyone else gets the email
     const staffRoles = ['admin', 'operation_admin', 'financial_admin', 'coins_admin', 'support_admin', 'distributor_staff', 'distributor'];
-    let userQuery = { role: { $nin: staffRoles } }; // ALL players regardless of subscription or activity
+    let userQuery = { role: { $nin: staffRoles }, status: { $ne: 'SUSPENDED' } };
+
+    if (adminDistributorId) {
+      userQuery.distributorId = adminDistributorId;
+    }
 
     if (targetGroup === 'subscribed') {
       userQuery.isSubscribed = true;
