@@ -371,6 +371,16 @@
   margin-bottom: 1.5rem;
 }
 
+.dist-staff-grid {
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .dist-staff-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .stat-card {
   background: rgba(14, 18, 36, 0.75);
   border: 1px solid rgba(255, 215, 0, 0.15);

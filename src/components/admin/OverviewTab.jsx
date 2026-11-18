@@ -10,7 +10,7 @@ import { formatDeviceTime } from '../../lib/formatDateTime';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
+export default function OverviewTab({ adminUser, onUpdateGameCoinsPool, portalBasePath = '/admin' }) {
   const [shiftName, setShiftName] = React.useState('Morning Shift (5 AM - 1 PM)');
   const [notes, setNotes] = React.useState('');
   const [isSubmittingReport, setIsSubmittingReport] = React.useState(false);
@@ -51,7 +51,10 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
     `/api/admin/stats?adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}&adminEmail=${encodeURIComponent(adminUser?.email || '')}`,
     POLL.STATS
   );
-  const { data: gamesData, error: gamesError, mutate: mutateGames } = useSWR('/api/games', fetcher, { revalidateOnFocus: false, dedupingInterval: 60000 });
+  const gamesListUrl = adminUser?.distributorId
+    ? `/api/games?distributorId=${encodeURIComponent(adminUser.distributorId)}`
+    : '/api/games';
+  const { data: gamesData, error: gamesError, mutate: mutateGames } = useSWR(gamesListUrl, fetcher, { revalidateOnFocus: false, dedupingInterval: 60000 });
   const { data: activityData } = usePollingSWR(
     `/api/admin/activity?adminRole=${adminUser?.role || ''}&adminDistributorId=${adminUser?.distributorId || ''}`,
     POLL.LISTS
@@ -68,7 +71,7 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
         notifyStaffActivity({
           title: 'Requests waiting 5+ minutes',
           body: `${activityData?.pendingCount || 0} pending task(s) need a response.`,
-          url: '/admin/requests'
+          url: `${portalBasePath}/requests`
         });
       } catch {
         /* ignore */
@@ -88,7 +91,8 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
   const roles = parseRoles(adminUser?.role);
   const isFinancialAdmin = roles.includes('financial_admin');
   const isCoinsAdmin = roles.includes('coins_admin');
-  const isFullAdminView = roles.includes('admin') || roles.includes('operation_admin');
+  const isFullAdminView = roles.includes('admin') || roles.includes('operation_admin') || roles.includes('distributor');
+  const isDistributorScoped = Boolean(adminUser?.distributorId);
   const isPureFinancialAdminOnly = isFinancialAdmin && !isFullAdminView && !isCoinsAdmin && !roles.includes('support_admin');
 
   const [updateModalOpen, setUpdateModalOpen] = React.useState(false);
@@ -129,7 +133,8 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
   React.useEffect(() => {
     if (!lookupDate) return;
     setLookupLoading(true);
-    fetch(`/api/admin/stats/by-date?date=${lookupDate}`)
+    const distQ = adminUser?.distributorId ? `&adminDistributorId=${encodeURIComponent(adminUser.distributorId)}` : '';
+    fetch(`/api/admin/stats/by-date?date=${lookupDate}${distQ}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -138,7 +143,7 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
       })
       .catch(err => console.error('Failed to load stats for date:', err))
       .finally(() => setLookupLoading(false));
-  }, [lookupDate]);
+  }, [lookupDate, adminUser?.distributorId]);
 
   const triggerPoolUpdate = (game) => {
     setSelectedGame(game);
@@ -293,7 +298,7 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool }) {
       )}
 
       {/* End of Shift Coins Loading Report Card (Visible to all staff with coins/admin access) */}
-      {adminUser && !isPureFinancialAdminOnly && (
+      {adminUser && !isPureFinancialAdminOnly && !isDistributorScoped && (
         <section className="admin-section-card" style={{ borderLeft: '4px solid var(--gold-primary)', background: '#0a0d16' }}>
           <div className="section-card-header" style={{ marginBottom: '0.75rem' }}>
             <div>

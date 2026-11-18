@@ -658,9 +658,13 @@ export default function AdminPage({ portalName, forcedRole }) {
 
   return (
     <>
-      <ParticlesBackground />
-      <div className="ambient-glow glow-1"></div>
-      <div className="ambient-glow glow-2"></div>
+      {!authenticated && (
+        <>
+          <ParticlesBackground />
+          <div className="ambient-glow glow-1"></div>
+          <div className="ambient-glow glow-2"></div>
+        </>
+      )}
 
       {toast && (
         <div className={`notification-banner ${toast.type === 'error' ? 'error' : toast.type === 'success' ? 'success' : ''}`}>

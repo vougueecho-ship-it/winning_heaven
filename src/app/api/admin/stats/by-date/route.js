@@ -5,6 +5,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date'); // Expected format: YYYY-MM-DD
+    const adminDistributorId = searchParams.get('adminDistributorId') || '';
 
     if (!dateParam) {
       return NextResponse.json({ success: false, message: 'Date parameter is required.' }, { status: 400 });
@@ -27,9 +28,7 @@ export async function GET(req) {
 
     const db = await getDb();
 
-    const transactions = await db.collection('transactions')
-      .find(
-        {
+    const matchQuery = {
           status: 'SUCCESS',
           $or: [
             { createdAt: { $gte: looseStart.toISOString(), $lte: looseEnd.toISOString() } },
@@ -38,7 +37,14 @@ export async function GET(req) {
             { createdAt: null },
             { createdAt: '' }
           ]
-        },
+    };
+    if (adminDistributorId) {
+      matchQuery.distributorId = adminDistributorId;
+    }
+
+    const transactions = await db.collection('transactions')
+      .find(
+        matchQuery,
         { projection: { amount: 1, payoutSent: 1, type: 1, date: 1, isDepositFromCashout: 1 } }
       )
       .toArray();

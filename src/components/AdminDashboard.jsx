@@ -11,9 +11,10 @@ import { lazyWithRetry } from '../lib/lazyWithRetry';
 import TabErrorBoundary from './TabErrorBoundary';
 import { initAudioUnlock, playNotificationSound } from '../lib/notificationSound';
 import { initDesktopNotifications, notifyStaffActivity } from '../lib/desktopNotify';
-import { subscribeToStaffPush, initPushAudioListener } from '../lib/pushClient';
+import { subscribeToStaffPush, subscribeToDistributorPush, initPushAudioListener } from '../lib/pushClient';
 import { registerNativeBackHandler } from '../lib/nativeBack';
 import OfflineBanner from './OfflineBanner';
+import ParticlesBackground from './ParticlesBackground';
 
 // Lazy load tab components with automatic retry on chunk failures
 const OverviewTab = lazyWithRetry(() => import('./admin/OverviewTab'));
@@ -33,11 +34,14 @@ const DeletedPlayersTab = lazyWithRetry(() => import('./admin/DeletedPlayersTab'
 const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequestsTab'));
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
 const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
+const DistributorStaffTab = lazyWithRetry(() => import('./admin/DistributorStaffTab'));
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
 export default function AdminDashboard({
   adminUser,
+  portalBasePath = '/admin',
+  distributorType = '',
   completedActionIds = {},
   onLogout,
   onAddGameClick,
@@ -55,25 +59,32 @@ export default function AdminDashboard({
   onUpdateSettings,
   onUpdateCoinsNotification,
   onUpdateGameCoinsPool,
-  showToast
+  showToast,
+  gatewaysListUrl = '/api/gateways'
 }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const suppressUrlSyncRef = React.useRef(true);
 
+  const portalSegment = portalBasePath.replace(/^\//, '') || 'admin';
+  const isDistributorPortal = portalSegment === 'distributor';
+
   // Sync tab from URL on mount and browser back/forward
   useEffect(() => {
     const syncFromPath = () => {
       const parts = window.location.pathname.split('/').filter(Boolean);
-      if (parts[0] === 'admin' && parts[1]) {
+      if (parts[0] === portalSegment && parts[1]) {
         let tab = parts[1];
+        if (tab === 'overview') tab = 'dashboard';
+        if (tab === 'operations') tab = 'coins';
+        if (tab === 'tx_logs') tab = 'tx_search';
         if (['ledger', 'payouts', 'payout', 'deposit', 'deposits', 'withdraw', 'withdrawals', 'financial_ledger'].includes(tab)) {
           tab = 'ledger';
         } else if (['requests', 'account_requests', 'account-requests'].includes(tab)) {
           tab = 'requests';
         }
         setActiveTab(tab);
-      } else if (parts[0] === 'admin') {
+      } else if (parts[0] === portalSegment) {
         setActiveTab('dashboard');
       }
       suppressUrlSyncRef.current = false;
@@ -85,11 +96,11 @@ export default function AdminDashboard({
       window.removeEventListener('popstate', syncFromPath);
       window.removeEventListener('focus', syncFromPath);
     };
-  }, []);
+  }, [portalSegment]);
 
   useEffect(() => {
     if (suppressUrlSyncRef.current) return;
-    const targetPath = `/admin/${activeTab}`;
+    const targetPath = `${portalBasePath}/${activeTab}`;
     if (window.location.pathname !== targetPath) {
       window.history.pushState({ adminTab: activeTab }, '', targetPath);
     }
@@ -158,7 +169,7 @@ export default function AdminDashboard({
         /WinningHeavenNative|WinningHeavenPortalNative/i.test(navigator.userAgent || '') ||
         window.Capacitor?.isNativePlatform?.() === true ||
         // Portal APK always opens /admin — treat Capacitor WebView on admin as native shell
-        (window.Capacitor != null && window.location.pathname.startsWith('/admin')) ||
+        (window.Capacitor != null && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/distributor'))) ||
         /WinningHeavenDistributorNative/i.test(navigator.userAgent || '');
 
       if (isNative) {
@@ -189,7 +200,11 @@ export default function AdminDashboard({
     let cancelled = false;
     (async () => {
       try {
-        await subscribeToStaffPush(email);
+        if (isDistributorPortal && adminUser?.distributorId) {
+          await subscribeToDistributorPush(email, adminUser.distributorId);
+        } else {
+          await subscribeToStaffPush(email);
+        }
       } catch (err) {
         if (!cancelled) {
           console.warn('Staff push registration:', err?.message || err);
@@ -199,7 +214,7 @@ export default function AdminDashboard({
     return () => {
       cancelled = true;
     };
-  }, [adminUser?.email]);
+  }, [adminUser?.email, adminUser?.distributorId, isDistributorPortal]);
 
   useEffect(() => {
     soundUrlRef.current = settingsData?.settings?.notificationSoundUrl || '';
@@ -236,7 +251,7 @@ export default function AdminDashboard({
       .split(',')
       .map((r) => r.trim())
       .filter(Boolean);
-    const isFull = roles.includes('admin') || roles.includes('operation_admin');
+    const isFull = roles.includes('admin') || roles.includes('operation_admin') || roles.includes('distributor');
     const canRequests = isFull || roles.includes('coins_admin');
     const canTx = isFull || roles.includes('financial_admin');
     const canCoins = isFull || roles.includes('coins_admin');
@@ -263,12 +278,12 @@ export default function AdminDashboard({
         if (hasNewCoin) parts.push('coins request');
         if (hasNewChat) parts.push('support message');
         if (hasNewCampaign) parts.push('campaign request');
-        let targetUrl = '/admin';
-        if (hasNewCoin) targetUrl = '/admin/coins';
-        else if (hasNewChat) targetUrl = '/admin/support';
-        else if (hasNewCampaign) targetUrl = '/admin/campaign_requests';
-        else if (hasNewTx) targetUrl = '/admin/ledger';
-        else if (hasNewRequest) targetUrl = '/admin/requests';
+        let targetUrl = portalBasePath;
+        if (hasNewCoin) targetUrl = `${portalBasePath}/coins`;
+        else if (hasNewChat) targetUrl = `${portalBasePath}/support`;
+        else if (hasNewCampaign) targetUrl = `${portalBasePath}/campaign_requests`;
+        else if (hasNewTx) targetUrl = `${portalBasePath}/ledger`;
+        else if (hasNewRequest) targetUrl = `${portalBasePath}/requests`;
 
         notifyStaffActivity({
           title: 'Winning Heaven — New activity',
@@ -290,7 +305,7 @@ export default function AdminDashboard({
     }
 
     prevCountsRef.current = counts;
-  }, [statsData, adminUser?.role, adminUser?.distributorId]);
+  }, [statsData, adminUser?.role, adminUser?.distributorId, portalBasePath]);
 
   useEffect(() => {
     if (!adminUser?.email) return;
@@ -345,24 +360,43 @@ export default function AdminDashboard({
     return adminUser.role.toLowerCase().split(',').map((r) => r.trim()).includes('admin');
   };
 
+  const distributorScopedDeny = (tabName) => {
+    if (!adminUser?.distributorId) return false;
+    if (['games', 'staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)) {
+      return true;
+    }
+    if (tabName === 'gateways' && distributorType !== 'B') return true;
+    return false;
+  };
+
   const hasAccess = (tabName) => {
     if (!adminUser?.role) return false;
+    if (distributorScopedDeny(tabName)) return false;
+
     const roleString = adminUser.role.toLowerCase();
     
     // Split roles by comma for multi-role access checks
     const roles = roleString.split(',').map(r => r.trim());
     
     return roles.some((role) => {
-      if (role === 'admin') return true; // Super Admin has full access
+      if (role === 'admin' && !adminUser?.distributorId) return true; // HQ Super Admin only
       
-      if (tabName === 'promotions') return role === 'operation_admin';
+      if (tabName === 'dist_staff') {
+        return Boolean(adminUser?.distributorId && distributorType === 'B' && (role === 'distributor' || role === 'operation_admin'));
+      }
+
+      if (tabName === 'promotions') return role === 'operation_admin' || role === 'distributor';
       // Frontend Settings tab is strictly reserved for main boss (Super Admin)
       if (tabName === 'frontend_settings') return false;
 
+      if (role === 'distributor') {
+        return !['staff', 'settings', 'frontend_settings', 'games', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName);
+      }
+
       if (role === 'operation_admin') return !['staff', 'settings'].includes(tabName); // Operational Manager has access to all EXCEPT staff and settings
-      if (role === 'financial_admin') return ['dashboard', 'ledger', 'gateways', 'tx_search'].includes(tabName);
-      if (role === 'support_admin') return ['dashboard', 'support'].includes(tabName);
-      if (role === 'coins_admin') return ['dashboard', 'requests', 'coins', 'tx_search'].includes(tabName);
+      if (role === 'financial_admin') return ['dashboard', 'ledger', 'gateways', 'tx_search', 'users'].includes(tabName);
+      if (role === 'support_admin') return ['dashboard', 'support', 'users'].includes(tabName);
+      if (role === 'coins_admin') return ['dashboard', 'requests', 'coins', 'tx_search', 'users'].includes(tabName);
       return false;
     });
   };
@@ -415,6 +449,10 @@ export default function AdminDashboard({
   }, []);
 
   return (
+    <>
+      <ParticlesBackground />
+      <div className="ambient-glow glow-1" aria-hidden="true" />
+      <div className="ambient-glow glow-2" aria-hidden="true" />
     <div id="view-admin-dashboard" className="admin-dashboard-layout">
       <OfflineBanner />
       {/* Mobile Top Header Bar */}
@@ -673,6 +711,31 @@ export default function AdminDashboard({
             >
               <i className="fa-solid fa-sliders" style={{ width: '18px' }}></i>
               <span>Payment Gateways</span>
+            </button>
+          )}
+
+          {hasAccess('dist_staff') && (
+            <button
+              onClick={() => { setActiveTab('dist_staff'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'dist_staff' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'dist_staff' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-solid fa-user-shield" style={{ width: '18px' }}></i>
+              <span>Staff Management</span>
             </button>
           )}
 
@@ -989,7 +1052,7 @@ export default function AdminDashboard({
             </span>
           </div>
           <a
-            href="/downloads/winning-heaven-portal.apk"
+            href={isDistributorPortal ? '/downloads/winning-heaven-distributor.apk' : '/downloads/winning-heaven-portal.apk'}
             download
             style={{
               width: '100%',
@@ -1008,7 +1071,7 @@ export default function AdminDashboard({
             }}
           >
             <i className="fa-solid fa-mobile-screen-button" aria-hidden="true" />
-            <span>Download Portal App</span>
+            <span>{isDistributorPortal ? 'Download Distributor App' : 'Download Portal App'}</span>
           </a>
           <button className="lobby-nav-btn logout-btn" onClick={onLogout} style={{ width: '100%', padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: 0 }}>
             <i className="fa-solid fa-right-from-bracket"></i> <span>Logout</span>
@@ -1059,7 +1122,7 @@ export default function AdminDashboard({
               style={{ width: '100%', height: '100%' }}
             >
               {activeTab === 'dashboard' && hasAccess('dashboard') && (
-                <OverviewTab adminUser={adminUser} onUpdateGameCoinsPool={onUpdateGameCoinsPool} />
+                <OverviewTab adminUser={adminUser} onUpdateGameCoinsPool={onUpdateGameCoinsPool} portalBasePath={portalBasePath} />
               )}
               {activeTab === 'games' && hasAccess('games') && (
                 <GamesLibraryTab onAddGameClick={onAddGameClick} onEditGameClick={onEditGameClick} onDeleteGame={onDeleteGame} />
@@ -1087,7 +1150,11 @@ export default function AdminDashboard({
                   onEditGatewayClick={onEditGatewayClick}
                   onDeleteGateway={onDeleteGateway}
                   showToast={showToast}
+                  gatewaysListUrl={gatewaysListUrl}
                 />
+              )}
+              {activeTab === 'dist_staff' && hasAccess('dist_staff') && (
+                <DistributorStaffTab distributorId={adminUser?.distributorId || ''} />
               )}
               {activeTab === 'coins' && hasAccess('coins') && (
                 <CoinsAllotmentTab
@@ -1139,5 +1206,6 @@ export default function AdminDashboard({
         </PullToRefresh>
       </main>
     </div>
+    </>
   );
 }

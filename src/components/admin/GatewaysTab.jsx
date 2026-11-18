@@ -3,8 +3,8 @@ import useSWR from 'swr';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onDeleteGateway, showToast }) {
-  const { data: gatewaysData, error, mutate } = useSWR('/api/gateways', fetcher);
+export default function GatewaysTab({ onAddGatewayClick, onEditGatewayClick, onDeleteGateway, showToast, gatewaysListUrl = '/api/gateways' }) {
+  const { data: gatewaysData, error, mutate } = useSWR(gatewaysListUrl, fetcher);
   const { data: frontendData, mutate: mutateFrontend } = useSWR('/api/settings/frontend', fetcher);
   const [gatewaySearch, setGatewaySearch] = useState('');
   const frontend = frontendData?.settings || {};
