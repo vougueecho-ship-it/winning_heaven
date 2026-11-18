@@ -107,13 +107,6 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-    const isLinkPay =
-      Boolean(redirectUrl) ||
-      ['cashapp', 'paypal', 'venmo', 'stripe', 'applepay', 'googlepay'].includes(theme);
-    const savedTag =
-      tag ||
-      (depositMode === 'support_request' || isLinkPay ? `${theme}-pay` : '');
-
     const db = await getDb();
     const gatewaysCollection = db.collection('gateways');
 
@@ -121,14 +114,14 @@ export async function POST(req) {
       id: gateway.id || Date.now().toString(),
       name: gateway.name,
       subtitle: gateway.subtitle || '',
-      tag: savedTag,
+      tag,
       phone: gateway.phone || '',
       theme,
       qrImage:
         gateway.qrImage && !String(gateway.qrImage).includes('/api/gateways/image')
           ? gateway.qrImage
-          : !redirectUrl
-            ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(savedTag || gateway.name)}`
+          : !redirectUrl && tag
+            ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(tag)}`
             : '',
       redirectUrl,
       isWithdrawActive: Boolean(gateway.isWithdrawActive),
@@ -178,7 +171,7 @@ export async function PUT(req) {
     const updateFields = {
       name: gateway.name,
       subtitle: gateway.subtitle,
-      tag: gateway.tag,
+      tag: gateway.tag !== undefined ? tag : undefined,
       phone: gateway.phone,
       theme: gateway.theme,
       qrImage: gateway.qrImage,

@@ -12,8 +12,25 @@ export function normalizePayTag(raw) {
 export function isGenericPayTag(tag) {
   const t = normalizePayTag(tag).toLowerCase();
   if (!t) return true;
-  if (t.startsWith('http://') || t.startsWith('https://')) return false;
-  return GENERIC_TAGS.has(t);
+  if (GENERIC_TAGS.has(t)) return true;
+  // Auto placeholders saved when admin leaves tag empty (any theme)
+  if (/^[a-z0-9_-]+-pay$/.test(t)) return true;
+  if (/^[a-z0-9_-]+-checkout$/.test(t)) return true;
+  return false;
+}
+
+/** Cashtag / handle row on player deposit — only when admin entered a real tag */
+export function getPlayerDisplayTag(gateway) {
+  const raw = normalizePayTag(
+    gateway?.accountNumber ||
+      gateway?.recipientTag ||
+      gateway?.tag ||
+      gateway?.handle ||
+      gateway?.accountName ||
+      ''
+  );
+  if (!raw || isGenericPayTag(raw)) return '';
+  return raw;
 }
 
 /** Admin save: template URL with {amount} / {code} when redirect is empty */

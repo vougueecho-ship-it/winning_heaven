@@ -17,8 +17,7 @@ import { cleanErrorMessage } from '../../lib/safeFetch';
 import {
   resolveGatewayPayUrl,
   getGatewayPayButtonStyle,
-  normalizePayTag,
-  isGenericPayTag
+  getPlayerDisplayTag
 } from '../../lib/gatewayPayLink';
 import { isSupportRequestGateway } from '../../lib/depositGateways';
 import { submitPaymentActivationRequest } from '../../lib/paymentActivationClient';
@@ -351,14 +350,7 @@ export default function PlayerDepositPage({
   const minutes = Math.floor(timeLeft / 60);
   const seconds = String(timeLeft % 60).padStart(2, '0');
 
-  const rawTag = normalizePayTag(
-    selectedGateway?.accountNumber ||
-      selectedGateway?.recipientTag ||
-      selectedGateway?.tag ||
-      selectedGateway?.handle ||
-      selectedGateway?.accountName
-  );
-  const isGenericPlaceholder = isGenericPayTag(rawTag);
+  const rawTag = getPlayerDisplayTag(selectedGateway);
   const themeLower = String(selectedGateway?.theme || '').toLowerCase();
   const payUrl = resolveGatewayPayUrl(selectedGateway, { amount, noteCode });
   const payBtnStyle = getGatewayPayButtonStyle(selectedGateway);
@@ -707,7 +699,7 @@ export default function PlayerDepositPage({
               {!supportOnlyGateway && (
               <>
               {/* Recipient Handle Row */}
-              {rawTag && !isGenericPlaceholder && (
+              {rawTag && (
                 <div className="clean-info-row">
                   <div className="info-text-col">
                     <span className="row-label">{tagLabel}</span>

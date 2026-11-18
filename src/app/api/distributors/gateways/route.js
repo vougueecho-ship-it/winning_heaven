@@ -55,7 +55,7 @@ export async function POST(req) {
 
     const resolvedTheme = theme || 'cashapp';
     const isLinkPay = resolvedTheme === 'cashapp' || resolvedTheme === 'stripe' || Boolean(String(redirectUrl || '').trim());
-    const resolvedTag = String(tag || '').trim() || (isLinkPay ? `${resolvedTheme}-pay` : '');
+    const resolvedTag = String(tag || '').trim();
     const resolvedRedirect = sanitizeStoredRedirectUrl(redirectUrl);
 
     if (!isLinkPay && !resolvedTag) {
@@ -76,11 +76,15 @@ export async function POST(req) {
       phone: isLinkPay ? '' : (phone || ''),
       theme: resolvedTheme,
       qrImage: isLinkPay
-        ? ''
+        ? String(qrImage || '').trim() && !String(qrImage || '').includes('/api/gateways/image')
+          ? qrImage
+          : ''
         : (
             (qrImage && !qrImage.includes('/api/gateways/image'))
               ? qrImage
-              : `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(name + '-' + resolvedTag)}`
+              : resolvedTag
+                ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(name + '-' + resolvedTag)}`
+                : ''
           ),
       redirectUrl: resolvedRedirect,
       isWithdrawActive: Boolean(isWithdrawActive),

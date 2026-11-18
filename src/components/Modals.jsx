@@ -659,10 +659,10 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
       setIsSubmitting(true);
       try {
         const safeName = name.trim();
-        const safeTag = tag.trim() || (['cashapp', 'stripe', 'paypal', 'venmo'].includes(theme) ? `${theme}-pay` : '');
+        const enteredTag = tag.trim();
         let safeRedirect = redirectUrl.trim();
-        if (!safeRedirect && safeTag) {
-          const auto = buildGatewayRedirectTemplate(theme, safeTag);
+        if (!safeRedirect && enteredTag) {
+          const auto = buildGatewayRedirectTemplate(theme, enteredTag);
           if (auto) safeRedirect = auto;
         }
 
@@ -670,7 +670,7 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
           id: editGateway ? editGateway.id : null,
           name: safeName,
           subtitle: subtitle.trim(),
-          tag: safeTag,
+          tag: enteredTag,
           phone: phone.trim(),
           theme,
           qrImage: qrImage.trim(),

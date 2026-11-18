@@ -19,8 +19,7 @@ import { cleanErrorMessage } from '../../lib/safeFetch';
 import {
   resolveGatewayPayUrl,
   getGatewayPayButtonStyle,
-  normalizePayTag,
-  isGenericPayTag
+  getPlayerDisplayTag
 } from '../../lib/gatewayPayLink';
 import { isSupportRequestGateway } from '../../lib/depositGateways';
 import { submitPaymentActivationRequest } from '../../lib/paymentActivationClient';
@@ -534,14 +533,7 @@ export function PlayerDepositModal({
               );
             }
 
-            const rawTag = normalizePayTag(
-              selectedGateway?.accountNumber ||
-                selectedGateway?.recipientTag ||
-                selectedGateway?.tag ||
-                selectedGateway?.handle ||
-                selectedGateway?.accountName
-            );
-            const isGenericPlaceholder = isGenericPayTag(rawTag);
+            const rawTag = getPlayerDisplayTag(selectedGateway);
             const themeLower = String(selectedGateway?.theme || '').toLowerCase();
             const payUrl = resolveGatewayPayUrl(selectedGateway, { amount, noteCode });
             const payBtnStyle = getGatewayPayButtonStyle(selectedGateway);
@@ -658,7 +650,7 @@ export function PlayerDepositModal({
                     )}
 
                     {/* Account Tag / Cashtag / Handle (Only shown if not a generic placeholder like 'stripe-checkout') */}
-                    {rawTag && !isGenericPlaceholder && (
+                    {rawTag && (
                       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                         <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
                           {tagLabel}
