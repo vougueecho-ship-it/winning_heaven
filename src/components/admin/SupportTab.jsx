@@ -851,7 +851,8 @@ export default function SupportTab({ adminUser }) {
           attachment: replyAttachment,
           senderType: 'admin',
           senderEmail: adminUser.email,
-          replyTo: currentReplyTo
+          replyTo: currentReplyTo,
+          adminDistributorId: adminUser?.distributorId || ''
         })
       });
       const data = await response.json();
@@ -2217,14 +2218,16 @@ export default function SupportTab({ adminUser }) {
               </div>
 
               {(() => {
-                const isTypeBSupportChat = activeChatMessages.some(m => m.distributorType === 'B');
+                const isDistributorPlayerChat = activeChatMessages.some((m) =>
+                  String(m.distributorId || '').trim()
+                );
                 const isGlobalAdminView = !adminUser?.distributorId;
-                const isReadOnlyChat = isTypeBSupportChat && isGlobalAdminView;
+                const isReadOnlyChat = isDistributorPlayerChat && isGlobalAdminView;
 
                 if (isReadOnlyChat) {
                   return (
                     <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', borderRadius: '8px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold', margin: '0.5rem 0' }}>
-                      <i className="fa-solid fa-lock" style={{ marginRight: '5px' }}></i> Live chat is managed by distributor staff.
+                      <i className="fa-solid fa-lock" style={{ marginRight: '5px' }}></i> This player belongs to a distributor — chat is in the distributor portal only.
                     </div>
                   );
                 }

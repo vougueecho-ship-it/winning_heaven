@@ -3,6 +3,7 @@ import { getDb, resetMongoConnection } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { applyStaffGameFilter } from '../../../../lib/staffGameAccess';
 import { typeBExclusionFilter } from '../../../../lib/typeBDistributors';
+import { hqSupportListMatch } from '../../../../lib/supportDistributor';
 import { jsonOk } from '../../../../lib/apiResponse';
 
 async function aggregateFinancialTotals(db, baseQuery) {
@@ -131,16 +132,7 @@ export async function GET(req) {
         'userEmail',
         adminDistributorId
           ? { distributorId: adminDistributorId, senderType: 'player', read: false }
-          : {
-              senderType: 'player',
-              read: false,
-              $or: [
-                { distributorType: { $exists: false } },
-                { distributorType: null },
-                { distributorType: '' },
-                { distributorType: { $nin: ['B'] } }
-              ]
-            }
+          : { senderType: 'player', read: false, ...hqSupportListMatch() }
       ),
       adminDistributorId
         ? db.collection('transactions').countDocuments({

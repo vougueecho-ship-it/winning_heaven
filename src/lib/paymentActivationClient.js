@@ -1,3 +1,22 @@
+function readPlayerDistributorHint() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const raw = localStorage.getItem('winning_heaven_session');
+    if (raw) {
+      const s = JSON.parse(raw);
+      const id = String(s?.distributorId || '').trim();
+      if (id) return id;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    return String(localStorage.getItem('winning_heaven_distributor_id') || '').trim();
+  } catch {
+    return '';
+  }
+}
+
 /** POST payment activation request + optional device fields from sessionStorage */
 export async function submitPaymentActivationRequest({
   userEmail,
@@ -30,7 +49,8 @@ export async function submitPaymentActivationRequest({
       gameTitle,
       deviceId,
       deviceFingerprint,
-      hardwareFingerprint
+      hardwareFingerprint,
+      distributorId: readPlayerDistributorHint()
     })
   });
   return res.json();

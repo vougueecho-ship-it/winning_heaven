@@ -194,6 +194,26 @@ export default function PlayerSupportModal({
 
   const identity = useMemo(() => getChatIdentity(), [currentUser]);
 
+  const playerDistributorHint = useMemo(() => {
+    if (currentUser?.distributorId) return String(currentUser.distributorId).trim();
+    if (typeof window === 'undefined') return '';
+    try {
+      const raw = localStorage.getItem('winning_heaven_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        const id = String(s?.distributorId || '').trim();
+        if (id) return id;
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      return String(localStorage.getItem('winning_heaven_distributor_id') || '').trim();
+    } catch {
+      return '';
+    }
+  }, [currentUser]);
+
   // Persist settings
   const toggleSound = () => {
     setSoundEnabled((prev) => {
@@ -449,7 +469,8 @@ export default function PlayerSupportModal({
           attachment: currentAttachment,
           senderType: 'player',
           senderEmail: identity.email,
-          replyTo: currentReplyTo
+          replyTo: currentReplyTo,
+          distributorId: playerDistributorHint
         })
       });
       const data = await response.json();

@@ -4,7 +4,7 @@ import { cache } from '../../../lib/cache';
 import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
 import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
-import { typeBExclusionFilter } from '../../../lib/typeBDistributors';
+import { hqSupportListMatch, resolveSupportDistributor } from '../../../lib/supportDistributor';
 import { isDeviceBlocked, trackDeviceSession } from '../../../lib/deviceBlock';
 
 // GET support chat messages
@@ -47,9 +47,8 @@ export async function GET(req) {
     if (adminDistributorId) {
       baseQuery.distributorId = adminDistributorId;
     } else if (!email) {
-      // Exclude chats belonging to Type B distributors ONLY for generic admin views
-      // If email is present, player is querying their own chat, so don't exclude!
-      baseQuery = await typeBExclusionFilter(db);
+      // HQ inbox: only platform players (no distributor office on account)
+      baseQuery = hqSupportListMatch();
     }
 
     if (email) {
@@ -231,14 +230,7 @@ export async function GET(req) {
     // Treat missing/empty distributorType as non-B (guest + normal players)
     const listMatch = adminDistributorId
       ? { distributorId: adminDistributorId }
-      : {
-          $or: [
-            { distributorType: { $exists: false } },
-            { distributorType: null },
-            { distributorType: '' },
-            { distributorType: { $nin: ['B'] } }
-          ]
-        };
+      : hqSupportListMatch();
 
     const unreadMatch = {
       ...listMatch,
@@ -435,7 +427,20 @@ export async function GET(req) {
 // POST new support message (Player or Admin reply)
 export async function POST(req) {
   try {
-    const { userEmail, userName, message, attachment, senderType, senderEmail, replyTo, deviceId, deviceFingerprint, hardwareFingerprint } = await req.json();
+    const {
+      userEmail,
+      userName,
+      message,
+      attachment,
+      senderType,
+      senderEmail,
+      replyTo,
+      deviceId,
+      deviceFingerprint,
+      hardwareFingerprint,
+      distributorId: clientDistributorId,
+      adminDistributorId: clientAdminDistributorId
+    } = await req.json();
 
     if (!userEmail || !senderType) {
       return NextResponse.json({ success: false, message: 'User email and sender type are required.' }, { status: 400 });
@@ -459,18 +464,21 @@ export async function POST(req) {
       }
     }
 
-    // Look up the player to tag their distributor settings
-    const userDoc = await db.collection('users').findOne({ email: userEmail.toLowerCase().trim() });
-    const distId = userDoc ? (userDoc.distributorId || '') : '';
-    let distType = '';
-    let distName = '';
+    const { distId, distType, distName, userDoc } = await resolveSupportDistributor(
+      db,
+      userEmail,
+      { hintDistributorId: clientDistributorId }
+    );
 
-    if (distId) {
-      const distributor = await db.collection('distributors').findOne({ id: distId });
-      if (distributor) {
-        distType = distributor.type || 'A';
-        distName = distributor.name || '';
-      }
+    const adminScopeId = String(clientAdminDistributorId || '').trim();
+    if (senderType === 'admin' && distId && adminScopeId !== distId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This player is managed by a distributor office. Open Live Chat from the distributor portal.'
+        },
+        { status: 403 }
+      );
     }
 
     const newMsg = {

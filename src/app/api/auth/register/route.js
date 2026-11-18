@@ -165,6 +165,15 @@ export async function POST(req) {
     const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '';
     const registrationIp = forwarded.split(',')[0].trim();
 
+    let resolvedDistributorId = String(distributorId || inheritedDistributorId || '').trim();
+    if (resolvedDistributorId) {
+      const distRow = await db.collection('distributors').findOne(
+        { id: resolvedDistributorId },
+        { projection: { id: 1 } }
+      );
+      if (!distRow) resolvedDistributorId = '';
+    }
+
     const newUser = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -173,7 +182,7 @@ export async function POST(req) {
       coins: 100,
       referralCode,
       referredBy: resolvedReferrer,
-      distributorId: distributorId || inheritedDistributorId || '',
+      distributorId: resolvedDistributorId,
       agentCode: agentCode || inheritedAgentCode || '',
       campaign: campaign || 'organic',
       deviceId: cleanDeviceId || '',

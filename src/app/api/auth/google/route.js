@@ -106,6 +106,16 @@ export async function POST(req) {
       const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '';
       const registrationIp = forwarded.split(',')[0].trim();
 
+      let resolvedDistributorId = '';
+      const rawDist =
+        distributorId && distributorId !== 'null' && distributorId !== 'undefined'
+          ? String(distributorId).trim()
+          : String(inheritedDistributorId || '').trim();
+      if (rawDist) {
+        const distRow = await db.collection('distributors').findOne({ id: rawDist }, { projection: { id: 1 } });
+        if (distRow) resolvedDistributorId = rawDist;
+      }
+
       // Automatically register brand-new Google users
       matchedUser = {
         name: name.trim(),
@@ -115,7 +125,7 @@ export async function POST(req) {
         coins: 100,
         referralCode,
         referredBy: resolvedReferrer,
-        distributorId: (distributorId && distributorId !== 'null' && distributorId !== 'undefined') ? distributorId : (inheritedDistributorId || ''),
+        distributorId: resolvedDistributorId,
         agentCode: (agentCode && agentCode !== 'null' && agentCode !== 'undefined') ? agentCode : (inheritedAgentCode || ''),
         campaign: campaign || 'organic',
         deviceId: cleanDeviceId || '',

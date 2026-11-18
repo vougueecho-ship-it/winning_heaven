@@ -5,6 +5,7 @@ import { publishAdminEvent } from '../../../../lib/adminEvents';
 import { notifyStaffAndDistributorAsync } from '../../../../lib/pushNotifications';
 import { isDeviceBlocked, trackDeviceSession } from '../../../../lib/deviceBlock';
 import { paymentMethodDisplayName } from '../../../../lib/depositGateways';
+import { resolveSupportDistributor } from '../../../../lib/supportDistributor';
 
 const DEDUPE_MS = 15 * 60 * 1000;
 
@@ -26,7 +27,7 @@ export async function POST(req) {
     const amount = parseFloat(body.amount) || 0;
     const gameTitle = String(body.gameTitle || '').trim();
     const userName = String(body.userName || '').trim();
-    const { deviceId, deviceFingerprint, hardwareFingerprint } = body;
+    const { deviceId, deviceFingerprint, hardwareFingerprint, distributorId: clientDistributorId } = body;
 
     if (!userEmail) {
       return NextResponse.json({ success: false, message: 'User email is required.' }, { status: 400 });
@@ -59,18 +60,9 @@ export async function POST(req) {
       );
     }
 
-    const userDoc = await db.collection('users').findOne({ email: userEmail });
-    const distId = userDoc ? String(userDoc.distributorId || '').trim() : '';
-    let distType = '';
-    let distName = '';
-
-    if (distId) {
-      const distributor = await db.collection('distributors').findOne({ id: distId });
-      if (distributor) {
-        distType = distributor.type || 'A';
-        distName = distributor.name || '';
-      }
-    }
+    const { distId, distType, distName, userDoc } = await resolveSupportDistributor(db, userEmail, {
+      hintDistributorId: clientDistributorId
+    });
 
     const supportCollection = db.collection('supportMessages');
     const sinceIso = new Date(Date.now() - DEDUPE_MS).toISOString();
