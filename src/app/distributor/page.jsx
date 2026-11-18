@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import useSessionGuard from '../../hooks/useSessionGuard';
 import DistributorAdminShell from './DistributorAdminShell';
 import ParticlesBackground from '../../components/ParticlesBackground';
-import PortalLoginCard from '../../components/PortalLoginCard';
+import DistributorLoginPage from '../../components/DistributorLoginPage';
 
 export default function DistributorPortal() {
   const [mounted, setMounted] = useState(false);
@@ -86,10 +86,7 @@ export default function DistributorPortal() {
       <ParticlesBackground />
         <div className="ambient-glow glow-1" aria-hidden="true" />
         <div className="ambient-glow glow-2" aria-hidden="true" />
-        <PortalLoginCard
-          portalTitle="Live operations workspace — your players only"
-          portalBadge="DISTRIBUTOR ACCESS GATEWAY"
-          portalIcon="fa-handshake"
+        <DistributorLoginPage
           loginError={loginError}
           onClearError={() => setLoginError('')}
           email={email}

@@ -3,6 +3,7 @@
 import PanelModalBackdrop from '../PanelModalBackdrop';
 import React, { useState } from 'react';
 import useSWR from 'swr';
+import DistributorOnboardKitModal from './DistributorOnboardKitModal';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -32,6 +33,8 @@ export default function DistributorsTab() {
   const [viewingPlayersDist, setViewingPlayersDist] = useState(null);
   const [referredPlayersList, setReferredPlayersList] = useState([]);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
+
+  const [onboardKit, setOnboardKit] = useState(null);
 
   const distributors = data?.distributors || [];
 
@@ -67,6 +70,15 @@ export default function DistributorsTab() {
       });
       const resData = await response.json();
       if (resData.success) {
+        const created = resData.distributor;
+        const savedPassword = password.trim();
+        setOnboardKit({
+          id: created?.id || '',
+          name: created?.name || name.trim(),
+          email: created?.email || email.toLowerCase().trim(),
+          password: savedPassword,
+          type: created?.type || type
+        });
         setName('');
         setEmail('');
         setPassword('');
@@ -74,7 +86,6 @@ export default function DistributorsTab() {
         setCommissionRate(10);
         setWebsiteCommissionRate(5);
         mutate();
-        alert('Distributor created successfully!');
       } else {
         alert(resData.message || 'Failed to create distributor.');
       }
@@ -683,6 +694,30 @@ export default function DistributorsTab() {
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                             <button
+                              onClick={() =>
+                                setOnboardKit({
+                                  id: dist.id,
+                                  name: dist.name,
+                                  email: dist.email,
+                                  password: '',
+                                  type: dist.type || 'A'
+                                })
+                              }
+                              title="Copy WhatsApp welcome kit"
+                              style={{
+                                background: 'rgba(37, 211, 102, 0.12)',
+                                border: '1px solid rgba(37, 211, 102, 0.35)',
+                                color: '#4ade80',
+                                padding: '0.35rem 0.65rem',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '0.78rem',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <i className="fa-brands fa-whatsapp" />
+                            </button>
+                            <button
                               onClick={() => handleViewPlayers(dist)}
                               title="View Referred Players"
                               style={{
@@ -1057,6 +1092,10 @@ export default function DistributorsTab() {
             </div>
           </div>
         </PanelModalBackdrop>
+      )}
+
+      {onboardKit && (
+        <DistributorOnboardKitModal kit={onboardKit} onClose={() => setOnboardKit(null)} />
       )}
 
     </div>
