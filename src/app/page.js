@@ -221,7 +221,10 @@ export default function Home({ initialAuthTab = '', initialTab = 'main' }) {
       ? `/api/gateways?email=${encodeURIComponent(session.email)}`
       : '/api/gateways';
   const { data: gatewaysData } = useSWR(gatewaysQuery, fetcher, { revalidateOnFocus: false, dedupingInterval: 60000 });
-  const { data: frontendSettingsData } = useSWR('/api/settings/frontend', fetcher, {
+  const frontendSettingsUrl = session?.distributorId
+    ? `/api/settings/frontend?distributorId=${encodeURIComponent(session.distributorId)}`
+    : '/api/settings/frontend';
+  const { data: frontendSettingsData } = useSWR(frontendSettingsUrl, fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
     fallbackData: cachedFrontendSettings ? { success: true, settings: cachedFrontendSettings } : undefined

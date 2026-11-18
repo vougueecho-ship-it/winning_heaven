@@ -17,6 +17,7 @@ import {
   upsertAwaitingCredentialsRequest,
   playerNeedsGameCredentials
 } from '../../../lib/credentialsAccountRequest';
+import { loadMergedFrontendSettingsForEmail } from '../../../lib/playerFrontendSettings';
 
 // GET transactions (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -522,6 +523,9 @@ export async function POST(req) {
         frontendSettings = frontendFresh;
         cache.set('frontend_settings_all', frontendFresh, 60);
       }
+      if (userEmail) {
+        frontendSettings = await loadMergedFrontendSettingsForEmail(db, userEmail);
+      }
 
       const isFirstDeposit = !priorSuccessDeposit;
 
@@ -801,10 +805,7 @@ export async function POST(req) {
         ]).toArray();
         const depositTotal = depositAgg[0]?.total || 0;
 
-        let frontendSettings = cache.get('frontend_settings_all');
-        if (!frontendSettings) {
-          frontendSettings = await db.collection('settings').findOne({ id: 'frontend_settings' }) || {};
-        }
+        const frontendSettings = await loadMergedFrontendSettingsForEmail(db, userEmail);
         const minDepositRequired = frontendSettings.freeplayUnlockDeposit !== undefined
           ? Number(frontendSettings.freeplayUnlockDeposit)
           : 10;

@@ -149,7 +149,10 @@ export async function POST(req) {
     let inheritedDistributorId = '';
     let inheritedAgentCode = '';
     if (referredBy) {
-      const referrer = await usersCollection.findOne({ referralCode: referredBy.trim() });
+      const trimmedRef = referredBy.trim();
+      const referrer = await usersCollection.findOne({
+        $or: [{ referralCode: trimmedRef }, { email: trimmedRef.toLowerCase() }]
+      });
       if (referrer) {
         resolvedReferrer = referrer.email;
         if (referrer.distributorId) {

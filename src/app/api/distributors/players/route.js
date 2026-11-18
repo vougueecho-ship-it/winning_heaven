@@ -71,6 +71,20 @@ export async function POST(req) {
     await db.collection('users').insertOne(newUser);
     cache.del('admin_stats');
 
+    await db.collection('supportMessages').updateMany(
+      {
+        userEmail: cleanEmail,
+        $or: [{ distributorId: { $exists: false } }, { distributorId: null }, { distributorId: '' }]
+      },
+      {
+        $set: {
+          distributorId,
+          distributorType: distributor.type || 'A',
+          distributorName: distributor.name || ''
+        }
+      }
+    );
+
     notifyUserAsync(db, {
       userEmail: cleanEmail,
       title: 'Welcome to Winning Heaven! 🎰',

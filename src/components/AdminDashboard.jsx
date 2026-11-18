@@ -33,6 +33,7 @@ const TxSearchTab = lazyWithRetry(() => import('./admin/TxSearchTab'));
 const DeletedPlayersTab = lazyWithRetry(() => import('./admin/DeletedPlayersTab'));
 const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequestsTab'));
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
+const DistributorPlayerSettingsTab = lazyWithRetry(() => import('./admin/DistributorPlayerSettingsTab'));
 const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
 const DistributorFinanceTab = lazyWithRetry(() => import('./admin/DistributorFinanceTab'));
 const DistributorEmailTab = lazyWithRetry(() => import('./admin/DistributorEmailTab'));
@@ -401,6 +402,10 @@ export default function AdminDashboard({
       return Boolean(adminUser?.distributorId && roles.includes('distributor'));
     }
 
+    if (tabName === 'dist_player_rules') {
+      return Boolean(adminUser?.distributorId && roles.includes('distributor'));
+    }
+
     if (tabName === 'platform_fees') {
       return (
         !adminUser?.distributorId &&
@@ -610,6 +615,31 @@ export default function AdminDashboard({
             >
               <i className="fa-solid fa-bullhorn" style={{ width: '18px' }}></i>
               <span>Promotions & Segments</span>
+            </button>
+          )}
+
+          {hasAccess('dist_player_rules') && (
+            <button
+              onClick={() => { setActiveTab('dist_player_rules'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'dist_player_rules' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'dist_player_rules' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-solid fa-gift" style={{ width: '18px' }}></i>
+              <span>Player Rules &amp; Bonuses</span>
             </button>
           )}
 
@@ -1234,6 +1264,12 @@ export default function AdminDashboard({
               )}
               {activeTab === 'dist_email' && hasAccess('dist_email') && adminUser?.distributorId && (
                 <DistributorEmailTab
+                  distributorId={adminUser.distributorId}
+                  distributorName={distributorSession?.name || adminUser?.name || ''}
+                />
+              )}
+              {activeTab === 'dist_player_rules' && hasAccess('dist_player_rules') && adminUser?.distributorId && (
+                <DistributorPlayerSettingsTab
                   distributorId={adminUser.distributorId}
                   distributorName={distributorSession?.name || adminUser?.name || ''}
                 />

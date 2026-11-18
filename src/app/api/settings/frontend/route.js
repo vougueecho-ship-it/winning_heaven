@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { compressDataUrlIfNeeded } from '../../../../lib/serverImageCompress';
+import { loadMergedFrontendSettings } from '../../../../lib/playerFrontendSettings';
 
 const DEFAULT_SETTINGS = {
   id: 'frontend_settings',
@@ -150,16 +151,21 @@ const DEFAULT_SETTINGS = {
   infoEmailUrl: 'mailto:support@winningheaven.com'
 };
 
-// GET Frontend Settings
-export async function GET() {
+// GET Frontend Settings (optional ?distributorId= for distributor player overrides)
+export async function GET(req) {
   try {
-    const cachedSettings = cache.get('frontend_settings_all');
-    if (cachedSettings) {
-      return NextResponse.json({ success: true, settings: cachedSettings });
-    }
+  const { searchParams } = new URL(req.url);
+  const distributorId = String(searchParams.get('distributorId') || '').trim();
 
     const db = await getDb();
     const settingsCollection = db.collection('settings');
+
+    if (!distributorId) {
+      const cachedSettings = cache.get('frontend_settings_all');
+      if (cachedSettings) {
+        return NextResponse.json({ success: true, settings: cachedSettings });
+      }
+    }
 
     let settings = await settingsCollection.findOne({ id: 'frontend_settings' });
 
@@ -181,14 +187,20 @@ export async function GET() {
       }
     }
 
+    const merged = distributorId
+      ? await loadMergedFrontendSettings(db, distributorId)
+      : { ...settings };
+
     const publicSettings = {
-      ...settings,
-      notificationSoundUrl: typeof settings.notificationSoundUrl === 'string' && settings.notificationSoundUrl.startsWith('data:')
-        ? `/api/settings/audio?v=${settings.notificationSoundUrl.length}`
-        : (settings.notificationSoundUrl || DEFAULT_SETTINGS.notificationSoundUrl)
+      ...merged,
+      notificationSoundUrl: typeof merged.notificationSoundUrl === 'string' && merged.notificationSoundUrl.startsWith('data:')
+        ? `/api/settings/audio?v=${merged.notificationSoundUrl.length}`
+        : (merged.notificationSoundUrl || DEFAULT_SETTINGS.notificationSoundUrl)
     };
 
-    cache.set('frontend_settings_all', publicSettings, 60);
+    if (!distributorId) {
+      cache.set('frontend_settings_all', publicSettings, 60);
+    }
     return NextResponse.json({ success: true, settings: publicSettings });
   } catch (err) {
     console.error('Fetch Frontend Settings API Error:', err);

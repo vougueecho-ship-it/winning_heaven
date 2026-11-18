@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
 import { isCoinsAdminRole } from '../../../lib/staffGameAccess';
-import { getTypeBDistributorIds } from '../../../lib/typeBDistributors';
 import { purgeAccountAccess } from '../../../lib/sessionRevoke';
 import { notifyUserAsync } from '../../../lib/userAlertService';
 
@@ -64,12 +63,17 @@ export async function GET(req) {
       query.distributorId = adminDistributorId;
       query.role = 'user';
     } else if (segment !== 'staff' && !includeDistributorPlayers) {
-      const typeBDistIds = await getTypeBDistributorIds(db);
-      if (typeBDistIds.length > 0) {
-        query.$or = [
-          { distributorId: { $nin: typeBDistIds } },
-          { distributorId: { $in: typeBDistIds }, role: { $ne: 'user' } }
-        ];
+      const hqPlayersOnly = {
+        $or: [
+          { distributorId: { $exists: false } },
+          { distributorId: null },
+          { distributorId: '' }
+        ]
+      };
+      if (Object.keys(query).length > 0) {
+        query = { $and: [query, hqPlayersOnly] };
+      } else {
+        Object.assign(query, hqPlayersOnly);
       }
     }
     if (segment === 'subscribed') {

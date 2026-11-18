@@ -5,6 +5,7 @@ import { notifyStaffAndDistributorAsync } from '../../../lib/pushNotifications';
 import { notifyUserAsync } from '../../../lib/userAlertService';
 import { publishAdminEvent } from '../../../lib/adminEvents';
 import { hqSupportListMatch, resolveSupportDistributor } from '../../../lib/supportDistributor';
+import { emailsBelongingToDistributors } from '../../../lib/resolvePlayerDistributor';
 import { isDeviceBlocked, trackDeviceSession } from '../../../lib/deviceBlock';
 
 // GET support chat messages
@@ -228,9 +229,19 @@ export async function GET(req) {
     const skip = (page - 1) * limit;
 
     // Treat missing/empty distributorType as non-B (guest + normal players)
-    const listMatch = adminDistributorId
-      ? { distributorId: adminDistributorId }
-      : hqSupportListMatch();
+    let listMatch = hqSupportListMatch();
+    if (adminDistributorId) {
+      const playerEmails = await db
+        .collection('users')
+        .distinct('email', { distributorId: adminDistributorId, role: 'user' });
+      const emailList = playerEmails.map((e) => String(e || '').toLowerCase().trim()).filter(Boolean);
+      listMatch = {
+        $or: [
+          { distributorId: adminDistributorId },
+          ...(emailList.length ? [{ userEmail: { $in: emailList } }] : [])
+        ]
+      };
+    }
 
     const unreadMatch = {
       ...listMatch,
@@ -380,7 +391,7 @@ export async function GET(req) {
       return emailKey.split('@')[0] || 'Guest';
     };
 
-    const conversations = grouped.map((g) => {
+    let conversations = grouped.map((g) => {
       const emailKey = String(g.userEmail || '').toLowerCase().trim();
       const playerName = resolvePlayerName(emailKey, g.playerMsgName || g.userName);
       const preview =
@@ -398,6 +409,13 @@ export async function GET(req) {
         isBlocked
       };
     });
+
+    if (!adminDistributorId) {
+      const distOwned = await emailsBelongingToDistributors(db, conversations.map((c) => c.email));
+      if (distOwned.size > 0) {
+        conversations = conversations.filter((c) => !distOwned.has(c.email));
+      }
+    }
 
     // Keep legacy `messages` shape so older clients still group something
     const messages = conversations.map((c) => ({
