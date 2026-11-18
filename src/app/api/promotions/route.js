@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { sendPromotionPush } from '../../../lib/pushNotifications';
+import {
+  distributorPromotionQuery,
+  hqPromotionQuery,
+  mergeUserScopeWithDistributor
+} from '../../../lib/promotionScope';
+import { resolvePlayerDistributor } from '../../../lib/resolvePlayerDistributor';
 
 // GET active promotions for user or all promotions for admin
 export async function GET(req) {
@@ -15,17 +21,9 @@ export async function GET(req) {
 
     if (!email) {
       let adminQuery = {};
-      if (adminDistributorId) {
-        adminQuery = { distributorId: adminDistributorId };
-      } else {
-        adminQuery = {
-          $or: [
-            { distributorId: { $exists: false } },
-            { distributorId: null },
-            { distributorId: '' }
-          ]
-        };
-      }
+      adminQuery = adminDistributorId
+        ? distributorPromotionQuery(adminDistributorId)
+        : hqPromotionQuery();
       const promos = await promotionsCollection.find(adminQuery).sort({ timestamp: -1 }).toArray();
       return NextResponse.json({ success: true, promotions: promos });
     }
@@ -37,19 +35,15 @@ export async function GET(req) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
     }
 
-    const playerDistId = String(user.distributorId || '').trim();
-    let promoQuery = {};
-    if (playerDistId) {
-      promoQuery = { distributorId: playerDistId };
-    } else {
-      promoQuery = {
-        $or: [
-          { distributorId: { $exists: false } },
-          { distributorId: null },
-          { distributorId: '' }
-        ]
-      };
-    }
+    const hintDist = String(searchParams.get('distributorId') || '').trim();
+    const { distId, userDoc } = await resolvePlayerDistributor(db, cleanEmail, {
+      hintDistributorId: hintDist,
+      userDoc: user
+    });
+    const playerDistId = String(userDoc?.distributorId || distId || '').trim();
+    const promoQuery = playerDistId
+      ? distributorPromotionQuery(playerDistId)
+      : hqPromotionQuery();
 
     const allPromos = await promotionsCollection.find(promoQuery).sort({ timestamp: -1 }).toArray();
 
@@ -131,10 +125,7 @@ export async function POST(req) {
     // Exclude staff/admin roles — only these roles are excluded, everyone else gets the email
     const staffRoles = ['admin', 'operation_admin', 'financial_admin', 'coins_admin', 'support_admin', 'distributor_staff', 'distributor'];
     let userQuery = { role: { $nin: staffRoles }, status: { $ne: 'SUSPENDED' } };
-
-    if (adminDistributorId) {
-      userQuery.distributorId = adminDistributorId;
-    }
+    userQuery = mergeUserScopeWithDistributor(userQuery, adminDistributorId);
 
     if (targetGroup === 'subscribed') {
       userQuery.isSubscribed = true;

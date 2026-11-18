@@ -108,6 +108,11 @@ export async function POST(req) {
       }
     }
 
+    const playerOfficeId =
+      audience === 'player'
+        ? String(user?.distributorId || requestedDistributorId || '').trim()
+        : '';
+
     const now = new Date().toISOString();
     // Upsert by endpoint + audience so Portal / Distributor / Player tokens
     // never overwrite each other when the same browser or device is reused.
@@ -119,6 +124,7 @@ export async function POST(req) {
           userEmail,
           audience,
           distributorId: audience === 'distributor' ? distributorId : '',
+          playerDistributorId: playerOfficeId,
           type: hasNativeSubscription ? 'native' : 'web',
           platform: hasNativeSubscription ? platform : 'web',
           subscription: hasWebSubscription ? subscription : null,

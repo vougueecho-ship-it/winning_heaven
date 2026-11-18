@@ -94,7 +94,7 @@ export default function PlayerLiveAlertManager() {
 
       // CRITICAL FIX: Ensure push subscription is ALWAYS actively synced for the logged-in player
       if ((alreadyAllowed || isWebGranted || isNative) && session?.email) {
-        subscribeToPromoPush(session.email).catch((e) => {
+        subscribeToPromoPush(session.email, session.distributorId || '').catch((e) => {
           console.warn('[PlayerLiveAlertManager] Push sync error:', e?.message || e);
         });
       }
@@ -115,7 +115,7 @@ export default function PlayerLiveAlertManager() {
             console.warn('Web notification request error:', pErr);
           }
         }
-        await subscribeToPromoPush(session.email);
+        await subscribeToPromoPush(session.email, session.distributorId || '');
       }
     } catch (err) {
       console.warn('Notification subscription error:', err);

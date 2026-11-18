@@ -6,12 +6,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
+function playerDistQueryParam(currentUser) {
+  const fromSession = String(currentUser?.distributorId || '').trim();
+  if (fromSession) return `&distributorId=${encodeURIComponent(fromSession)}`;
+  try {
+    const raw = localStorage.getItem('winning_heaven_session');
+    if (raw) {
+      const id = String(JSON.parse(raw)?.distributorId || '').trim();
+      if (id) return `&distributorId=${encodeURIComponent(id)}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const id = String(localStorage.getItem('winning_heaven_distributor_id') || '').trim();
+    if (id) return `&distributorId=${encodeURIComponent(id)}`;
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
 export default function PlayerPromoModal({ currentUser, onOpenDeposit, showToast }) {
-  const { data } = useSWR(
-    currentUser?.email ? `/api/promotions?email=${encodeURIComponent(currentUser.email)}` : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
-  );
+  const promoUrl =
+    currentUser?.email
+      ? `/api/promotions?email=${encodeURIComponent(currentUser.email)}${playerDistQueryParam(currentUser)}`
+      : null;
+  const { data } = useSWR(promoUrl, fetcher, { revalidateOnFocus: false, dedupingInterval: 30000 });
 
   const [activePromo, setActivePromo] = useState(null);
   const [claimLoading, setClaimLoading] = useState(false);

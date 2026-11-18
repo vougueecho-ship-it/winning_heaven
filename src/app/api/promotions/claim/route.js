@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { isDeviceBlocked } from '../../../../lib/deviceBlock';
+import { promotionMatchesPlayer } from '../../../../lib/promotionScope';
 
 // POST — a player claims a promotion offer.
 //   - 'deposit_bonus' promos arm a pending bonus on the user so their NEXT
@@ -39,6 +40,9 @@ export async function POST(req) {
     const user = await db.collection('users').findOne({ email: cleanEmail });
     if (!user) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
+    }
+    if (!promotionMatchesPlayer(promo, user.distributorId)) {
+      return NextResponse.json({ success: false, message: 'This promotion is not available for your account.' }, { status: 403 });
     }
 
     if (user.isDeviceBlocked) {

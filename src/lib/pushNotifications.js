@@ -89,12 +89,29 @@ export async function sendPromotionPush(db, promotion, targetEmails) {
     ? { audience: { $ne: 'distributor' } }
     : { userEmail: { $in: normalizedEmails }, audience: { $ne: 'distributor' } };
 
-  const subscriptions = await db.collection('pushSubscriptions')
-    .find(query)
-    .toArray();
+  let subscriptions = await db.collection('pushSubscriptions').find(query).toArray();
+
+  const promoDistId = String(promotion.distributorId || '').trim();
+  if (subscriptions.length > 0) {
+    const subEmails = [...new Set(subscriptions.map((s) => String(s.userEmail || '').toLowerCase().trim()).filter(Boolean))];
+    const users = await db
+      .collection('users')
+      .find({ email: { $in: subEmails } }, { projection: { email: 1, distributorId: 1 } })
+      .toArray();
+    const distByEmail = new Map(
+      users.map((u) => [String(u.email || '').toLowerCase().trim(), String(u.distributorId || '').trim()])
+    );
+
+    subscriptions = subscriptions.filter((sub) => {
+      const email = String(sub.userEmail || '').toLowerCase().trim();
+      const playerDist = distByEmail.get(email) || String(sub.playerDistributorId || sub.distributorId || '').trim();
+      if (promoDistId) return playerDist === promoDistId;
+      return !playerDist;
+    });
+  }
 
   if (subscriptions.length === 0) {
-    return { sent: 0, failed: 0, skipped: false };
+    return { sent: 0, failed: 0, skipped: true };
   }
   const webSubscriptions = subscriptions.filter(
     (record) => record.type !== 'native' && record.subscription

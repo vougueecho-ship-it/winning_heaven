@@ -196,7 +196,12 @@ async function subscribeToNativePush(userEmail, { audience = 'player', distribut
       nativeToken: token,
       platform: Capacitor?.getPlatform?.() || 'android',
       audience: resolvedAudience,
-      distributorId: resolvedAudience === 'distributor' ? String(distributorId || '').trim() : '',
+      distributorId:
+        resolvedAudience === 'distributor'
+          ? String(distributorId || '').trim()
+          : resolvedAudience === 'player'
+            ? String(distributorId || '').trim()
+            : '',
       userAgent: navigator.userAgent,
       clientKind: 'native',
       standalone: true
@@ -289,7 +294,10 @@ async function subscribeToWebPush(userEmail, { audience = 'player', distributorI
     email: String(userEmail || '').trim().toLowerCase(),
     subscription: subscription.toJSON(),
     audience: resolvedAudience,
-    distributorId: resolvedAudience === 'distributor' ? String(distributorId || '').trim() : '',
+    distributorId:
+      resolvedAudience === 'distributor' || resolvedAudience === 'player'
+        ? String(distributorId || '').trim()
+        : '',
     userAgent: navigator.userAgent,
     clientKind: detectClientKind(),
     standalone: isStandaloneDisplay()
@@ -344,7 +352,25 @@ async function subscribeToWebPush(userEmail, { audience = 'player', distributorI
   return subscription;
 }
 
-export async function subscribeToPromoPush(userEmail) {
+export function readPlayerDistributorIdForPush() {
+  try {
+    const raw = localStorage.getItem('winning_heaven_session');
+    if (raw) {
+      const id = String(JSON.parse(raw)?.distributorId || '').trim();
+      if (id) return id;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    return String(localStorage.getItem('winning_heaven_distributor_id') || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+export async function subscribeToPromoPush(userEmail, distributorId = '') {
+  const officeId = String(distributorId || readPlayerDistributorIdForPush() || '').trim();
   let nativeResult = null;
   if (isNativePlatform()) {
     try {
@@ -353,7 +379,7 @@ export async function subscribeToPromoPush(userEmail) {
         : isPortalNative()
           ? 'staff'
           : 'player';
-      nativeResult = await subscribeToNativePush(userEmail, { audience });
+      nativeResult = await subscribeToNativePush(userEmail, { audience, distributorId: officeId });
     } catch (error) {
       console.warn('Native push registration error:', error?.message || error);
     }
@@ -362,7 +388,7 @@ export async function subscribeToPromoPush(userEmail) {
   // Dual-subscribe: also ensure Web Push (VAPID) is subscribed if supported
   try {
     if (supportsWebPush()) {
-      await subscribeToWebPush(userEmail, { audience: 'player' });
+      await subscribeToWebPush(userEmail, { audience: 'player', distributorId: officeId });
     }
   } catch (webErr) {
     if (!nativeResult) {
