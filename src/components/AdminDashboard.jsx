@@ -32,6 +32,7 @@ const TxSearchTab = lazyWithRetry(() => import('./admin/TxSearchTab'));
 const DeletedPlayersTab = lazyWithRetry(() => import('./admin/DeletedPlayersTab'));
 const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequestsTab'));
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
+const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -764,6 +765,31 @@ export default function AdminDashboard({
             </button>
           )}
 
+          {hasAccess('distributors') && !adminUser?.distributorId && (
+            <button
+              onClick={() => { setActiveTab('distributors'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'distributors' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'distributors' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-solid fa-users-gear" style={{ width: '18px' }}></i>
+              <span>Distributors</span>
+            </button>
+          )}
+
           {hasAccess('staff') && (
             <button
               onClick={() => { setActiveTab('staff'); setSidebarOpen(false); }}
@@ -1078,6 +1104,9 @@ export default function AdminDashboard({
               )}
               {activeTab === 'staff' && hasAccess('staff') && (
                 <StaffTab adminUser={adminUser} onCreateAdmin={onCreateAdmin} onDeleteUser={onDeleteUser} />
+              )}
+              {activeTab === 'distributors' && hasAccess('distributors') && !adminUser?.distributorId && (
+                <DistributorsTab />
               )}
               {activeTab === 'deleted_accounts' && !adminUser?.distributorId && isSuperAdmin() && (
                 <DeletedPlayersTab />
