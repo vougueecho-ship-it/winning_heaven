@@ -22,10 +22,12 @@ export async function GET(req) {
       return NextResponse.json({ success: false, message: 'Distributor not found.' }, { status: 404 });
     }
 
+    const siteBase = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://winningheaven.com').replace(/\/$/, '');
     return NextResponse.json({
       success: true,
       emailSettings: publicEmailSettings(dist.emailSettings || {}),
-      distributorName: dist.name || ''
+      distributorName: dist.name || '',
+      signupLink: `${siteBase}/?distributor=${encodeURIComponent(distributorId)}`
     });
   } catch (err) {
     console.error('GET distributor email-settings:', err);
@@ -53,16 +55,21 @@ export async function PUT(req) {
         ? String(emailSettings.smtpPass).trim()
         : prev.smtpPass || '';
 
+    const siteBase = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://winningheaven.com').replace(/\/$/, '');
+    const defaultPlayerLink = `${siteBase}/?distributor=${encodeURIComponent(distributorId)}`;
+    const smtpUserVal = String(emailSettings.smtpUser || prev.smtpUser || '').trim();
+    const officeName = String(existing.name || '').trim() || 'Your Casino';
+
     const merged = {
-      fromName: String(emailSettings.fromName || prev.fromName || existing.name || '').trim(),
-      brandName: String(emailSettings.brandName || prev.brandName || emailSettings.fromName || existing.name || '').trim(),
+      fromName: String(emailSettings.fromName || prev.fromName || officeName).trim(),
+      brandName: String(emailSettings.brandName || prev.brandName || officeName).trim(),
       tagline: String(emailSettings.tagline || prev.tagline || '').trim(),
-      siteUrl: String(emailSettings.siteUrl || prev.siteUrl || '').trim(),
+      siteUrl: defaultPlayerLink,
       smtpHost: String(emailSettings.smtpHost || prev.smtpHost || '').trim(),
       smtpPort: Number(emailSettings.smtpPort || prev.smtpPort || 465),
-      smtpUser: String(emailSettings.smtpUser || prev.smtpUser || '').trim(),
+      smtpUser: smtpUserVal,
       smtpPass: nextPass,
-      replyTo: String(emailSettings.replyTo || prev.replyTo || emailSettings.smtpUser || prev.smtpUser || '').trim(),
+      replyTo: smtpUserVal || String(prev.replyTo || '').trim(),
       updatedAt: new Date().toISOString()
     };
 

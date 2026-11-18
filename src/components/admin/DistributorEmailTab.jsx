@@ -5,46 +5,47 @@ import useSWR from 'swr';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
-const emptyForm = {
-  fromName: '',
-  brandName: '',
-  tagline: '',
-  siteUrl: '',
-  smtpHost: '',
-  smtpPort: 465,
-  smtpUser: '',
-  smtpPass: '',
-  replyTo: ''
-};
-
 export default function DistributorEmailTab({ distributorId, distributorName = '' }) {
   const { data, mutate, isLoading } = useSWR(
     distributorId ? `/api/distributors/email-settings?distributorId=${encodeURIComponent(distributorId)}` : null,
     fetcher
   );
-  const [form, setForm] = useState(emptyForm);
+
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState(465);
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const signupLink =
+    data?.signupLink ||
+    (typeof window !== 'undefined' && distributorId
+      ? `${window.location.origin}/?distributor=${encodeURIComponent(distributorId)}`
+      : '');
 
   useEffect(() => {
     if (!data?.success) return;
     const es = data.emailSettings || {};
-    setForm({
-      fromName: es.fromName || distributorName || '',
-      brandName: es.brandName || es.fromName || distributorName || '',
-      tagline: es.tagline || '',
-      siteUrl: es.siteUrl || '',
-      smtpHost: es.smtpHost || '',
-      smtpPort: es.smtpPort || 465,
-      smtpUser: es.smtpUser || '',
-      smtpPass: es.hasPassword ? '********' : '',
-      replyTo: es.replyTo || es.smtpUser || ''
-    });
-  }, [data, distributorName]);
+    setSmtpHost(es.smtpHost || '');
+    setSmtpPort(es.smtpPort || 465);
+    setSmtpUser(es.smtpUser || '');
+    setSmtpPass(es.hasPassword ? '********' : '');
+  }, [data]);
 
-  const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const copyLink = async () => {
+    if (!signupLink) return;
+    try {
+      await navigator.clipboard.writeText(signupLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert(signupLink);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -52,12 +53,16 @@ export default function DistributorEmailTab({ distributorId, distributorName = '
     setSaving(true);
     setMsg('');
     try {
-      const payload = { ...form };
-      if (payload.smtpPass === '********') delete payload.smtpPass;
+      const emailSettings = {
+        smtpHost: smtpHost.trim(),
+        smtpPort: Number(smtpPort) || 465,
+        smtpUser: smtpUser.trim(),
+        ...(smtpPass && smtpPass !== '********' ? { smtpPass } : {})
+      };
       const res = await fetch('/api/distributors/email-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ distributorId, emailSettings: payload })
+        body: JSON.stringify({ distributorId, emailSettings })
       });
       const json = await res.json();
       setMsgOk(json.success);
@@ -81,7 +86,7 @@ export default function DistributorEmailTab({ distributorId, distributorName = '
         body: JSON.stringify({
           distributorId,
           action: sendTest ? 'send_test' : 'verify',
-          testEmail: sendTest ? form.smtpUser || undefined : undefined
+          testEmail: sendTest ? smtpUser || undefined : undefined
         })
       });
       const json = await res.json();
@@ -96,84 +101,90 @@ export default function DistributorEmailTab({ distributorId, distributorName = '
   };
 
   return (
-    <section className="admin-section-card" style={{ animation: 'fade-in 0.2s ease-out', maxWidth: 820 }}>
+    <section className="admin-section-card" style={{ animation: 'fade-in 0.2s ease-out', maxWidth: 640 }}>
       <div style={{ marginBottom: '1.25rem' }}>
         <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0 }}>
-          <i className="fa-solid fa-envelope-circle-check gold-text" /> Player email &amp; SMTP
+          <i className="fa-solid fa-envelope-circle-check gold-text" /> Player email (SMTP)
         </h2>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: 1.55 }}>
-          Aapke players ko jitni bhi emails jati hain (OTP, promos, alerts) <strong>sirf is SMTP se</strong> jayengi — Winning Heaven HQ sender use nahi hota.
-          Neeche apna business email setup karein aur save karein.
+          OTP, promos, aur alerts aapke players ko <strong>is Gmail / SMTP se</strong> jayengi — HQ sender use nahi hoga.
         </p>
       </div>
 
-      {isLoading ? (
-        <p style={{ opacity: 0.7 }}>Loading settings…</p>
-      ) : (
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label className="admin-field-label">Sender display name</label>
-              <input className="admin-input" value={form.fromName} onChange={(e) => update('fromName', e.target.value)} placeholder="e.g. Lucky Slots VIP" />
-            </div>
-            <div>
-              <label className="admin-field-label">Brand name in email header</label>
-              <input className="admin-input" value={form.brandName} onChange={(e) => update('brandName', e.target.value)} placeholder="Same as sender or your portal name" />
-            </div>
-            <div>
-              <label className="admin-field-label">Player site URL (optional)</label>
-              <input className="admin-input" value={form.siteUrl} onChange={(e) => update('siteUrl', e.target.value)} placeholder="https://your-domain.com" />
-            </div>
-            <div>
-              <label className="admin-field-label">Footer tagline (optional)</label>
-              <input className="admin-input" value={form.tagline} onChange={(e) => update('tagline', e.target.value)} placeholder="24/7 support · Fast payouts" />
-            </div>
+      {signupLink ? (
+        <div
+          style={{
+            marginBottom: '1.15rem',
+            padding: '0.85rem',
+            borderRadius: '12px',
+            border: '1px solid rgba(0,240,255,0.25)',
+            background: 'rgba(0,240,255,0.06)'
+          }}
+        >
+          <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--cyan-primary)', marginBottom: '0.35rem' }}>
+            AAPKA PLAYER SITE LINK
           </div>
+          <SignupLinkRow link={signupLink} onCopy={copyLink} copied={copied} />
+        </div>
+      ) : null}
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem' }}>
-            <h3 style={{ fontSize: '0.95rem', margin: '0 0 0.75rem' }}>
-              <i className="fa-solid fa-server gold-text" /> SMTP credentials
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div>
-                <label className="admin-field-label">SMTP host</label>
-                <input className="admin-input" value={form.smtpHost} onChange={(e) => update('smtpHost', e.target.value)} placeholder="smtp.hostinger.com" required />
-              </div>
-              <div>
-                <label className="admin-field-label">Port</label>
-                <input type="number" className="admin-input" value={form.smtpPort} onChange={(e) => update('smtpPort', Number(e.target.value))} />
-              </div>
-              <div>
-                <label className="admin-field-label">SMTP username / email</label>
-                <input className="admin-input" value={form.smtpUser} onChange={(e) => update('smtpUser', e.target.value)} placeholder="you@yourdomain.com" required />
-              </div>
-              <div>
-                <label className="admin-field-label">App password</label>
-                <input
-                  type="password"
-                  className="admin-input"
-                  value={form.smtpPass}
-                  onChange={(e) => update('smtpPass', e.target.value)}
-                  placeholder={data?.emailSettings?.hasPassword ? 'Leave ******** to keep current' : 'Gmail App Password'}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div>
-                <label className="admin-field-label">Reply-to (optional)</label>
-                <input className="admin-input" value={form.replyTo} onChange={(e) => update('replyTo', e.target.value)} placeholder="Defaults to SMTP user" />
-              </div>
+      {isLoading ? (
+        <p style={{ opacity: 0.7 }}>Loading…</p>
+      ) : (
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label className="admin-field-label">SMTP host</label>
+              <input
+                className="admin-input"
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="smtp.gmail.com"
+                required
+              />
             </div>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.65rem' }}>
-              Gmail: use an App Password (2FA on). Port 465 SSL or 587 TLS.
-            </p>
+            <div>
+              <label className="admin-field-label">Port</label>
+              <input
+                type="number"
+                className="admin-input"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(Number(e.target.value))}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label className="admin-field-label">Sender email (SMTP username)</label>
+              <input
+                className="admin-input"
+                type="email"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+                placeholder="you@gmail.com"
+                required
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label className="admin-field-label">App password</label>
+              <input
+                type="password"
+                className="admin-input"
+                value={smtpPass}
+                onChange={(e) => setSmtpPass(e.target.value)}
+                placeholder={data?.emailSettings?.hasPassword ? 'Leave ******** to keep current' : 'Gmail App Password'}
+                autoComplete="new-password"
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.45rem' }}>
+                Gmail: 2FA on + App Password. Port 465 (SSL) ya 587 (TLS).
+              </p>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <button type="submit" className="submit-btn" disabled={saving} style={{ minWidth: 140 }}>
-              {saving ? 'Saving…' : 'Save settings'}
+              {saving ? 'Saving…' : 'Save SMTP'}
             </button>
             <button type="button" className="action-btn-sm" disabled={testing} onClick={() => runTest(false)}>
-              Verify SMTP
+              Verify connection
             </button>
             <button type="button" className="action-btn-sm" disabled={testing} onClick={() => runTest(true)}>
               Send test email
@@ -186,5 +197,16 @@ export default function DistributorEmailTab({ distributorId, distributorName = '
         </form>
       )}
     </section>
+  );
+}
+
+function SignupLinkRow({ link, onCopy, copied }) {
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <code style={{ fontSize: '0.75rem', color: '#fff', wordBreak: 'break-all', flex: 1 }}>{link}</code>
+      <button type="button" className="btn-gold-glow" style={{ padding: '0.45rem 0.75rem', fontSize: '0.75rem' }} onClick={onCopy}>
+        {copied ? 'Copied!' : 'Copy link'}
+      </button>
+    </div>
   );
 }

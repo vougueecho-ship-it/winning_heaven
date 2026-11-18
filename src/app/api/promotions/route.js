@@ -11,9 +11,22 @@ export async function GET(req) {
     const db = await getDb();
     const promotionsCollection = db.collection('promotions');
 
+    const adminDistributorId = String(searchParams.get('adminDistributorId') || '').trim();
+
     if (!email) {
-      // Admin request — return all promotions
-      const promos = await promotionsCollection.find({}).sort({ timestamp: -1 }).toArray();
+      let adminQuery = {};
+      if (adminDistributorId) {
+        adminQuery = { distributorId: adminDistributorId };
+      } else {
+        adminQuery = {
+          $or: [
+            { distributorId: { $exists: false } },
+            { distributorId: null },
+            { distributorId: '' }
+          ]
+        };
+      }
+      const promos = await promotionsCollection.find(adminQuery).sort({ timestamp: -1 }).toArray();
       return NextResponse.json({ success: true, promotions: promos });
     }
 
@@ -24,7 +37,21 @@ export async function GET(req) {
       return NextResponse.json({ success: false, message: 'User not found.' }, { status: 404 });
     }
 
-    const allPromos = await promotionsCollection.find({}).sort({ timestamp: -1 }).toArray();
+    const playerDistId = String(user.distributorId || '').trim();
+    let promoQuery = {};
+    if (playerDistId) {
+      promoQuery = { distributorId: playerDistId };
+    } else {
+      promoQuery = {
+        $or: [
+          { distributorId: { $exists: false } },
+          { distributorId: null },
+          { distributorId: '' }
+        ]
+      };
+    }
+
+    const allPromos = await promotionsCollection.find(promoQuery).sort({ timestamp: -1 }).toArray();
 
     // Check if player has successful deposits
     const depositCount = await db.collection('transactions').countDocuments({

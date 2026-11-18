@@ -86,7 +86,10 @@ export default function PromotionsTab({ adminUser }) {
   };
 
   // Fetch past broadcasts
-  const { data: promoData, mutate: mutatePromos } = useSWR('/api/promotions', fetcher);
+  const promoListUrl = adminUser?.distributorId
+    ? `/api/promotions?adminDistributorId=${encodeURIComponent(adminUser.distributorId)}`
+    : '/api/promotions';
+  const { data: promoData, mutate: mutatePromos } = useSWR(promoListUrl, fetcher);
   const pastPromotions = promoData?.promotions || [];
 
   const handleBroadcastSubmit = async (e) => {
