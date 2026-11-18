@@ -2343,6 +2343,122 @@ input[type="checkbox"]:checked::after {
   }
 }
 
+/* Referred players modal (HQ distributors tab) */
+.dist-referred-players-modal {
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dist-referred-players-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+}
+
+.dist-referred-players-summary span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 0.2rem;
+}
+
+.dist-referred-players-summary strong {
+  font-size: 1.05rem;
+  color: #fff;
+}
+
+.dist-referred-players-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dist-referred-players-table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(6, 8, 16, 0.6);
+}
+
+.dist-referred-players-table {
+  margin: 0;
+  min-width: 640px;
+  width: 100%;
+}
+
+.dist-referred-players-table th {
+  color: #ffd700 !important;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding: 0.75rem 0.85rem;
+  position: sticky;
+  top: 0;
+  background: rgba(6, 8, 18, 0.98);
+  z-index: 1;
+}
+
+.dist-referred-players-table td {
+  padding: 0.7rem 0.85rem;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.dist-referred-players-table th.num,
+.dist-referred-players-table td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dist-referred-players-table .email-cell {
+  color: var(--cyan-primary, #00f0ff);
+  font-family: monospace;
+  font-size: 0.78rem;
+  max-width: 220px;
+  word-break: break-all;
+}
+
+.dist-referred-status {
+  display: inline-flex;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dist-referred-status.is-on {
+  background: rgba(0, 230, 118, 0.15);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.35);
+}
+
+.dist-referred-status.is-off {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.dist-referred-scroll-hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.68rem;
+  color: var(--text-muted, #64748b);
+  text-align: center;
+}
+
 /* =========================================================================
    FLOATING SUPPORT FAB
    ========================================================================= */

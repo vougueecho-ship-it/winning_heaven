@@ -34,6 +34,11 @@ export async function GET(req) {
     let totalDeposits = 0;
     let totalWithdrawals = 0;
 
+    const perPlayerTotals = {};
+    playerEmails.forEach((e) => {
+      perPlayerTotals[e] = { deposits: 0, withdrawals: 0 };
+    });
+
     if (playerEmails.length > 0) {
       // Find all successful transactions to compute totals
       const successTxs = await transactionsCollection.find({
@@ -42,11 +47,15 @@ export async function GET(req) {
       }).toArray();
 
       successTxs.forEach(tx => {
+        const playerKey = (tx.userEmail || '').toLowerCase().trim();
         if (tx.type === 'DEPOSIT' && !tx.isDepositFromCashout) {
-          totalDeposits += parseFloat(tx.amount || 0);
+          const amt = parseFloat(tx.amount || 0);
+          totalDeposits += amt;
+          if (perPlayerTotals[playerKey]) perPlayerTotals[playerKey].deposits += amt;
         } else if (tx.type === 'WITHDRAW') {
           const val = (tx.payoutSent !== undefined && tx.payoutSent !== null) ? parseFloat(tx.payoutSent) : parseFloat(tx.amount || 0);
           totalWithdrawals += val;
+          if (perPlayerTotals[playerKey]) perPlayerTotals[playerKey].withdrawals += val;
         }
       });
 
@@ -94,7 +103,15 @@ export async function GET(req) {
         pendingLedgerCount,
         unreadChatsCount
       },
-      players,
+      players: players.map((p) => {
+        const key = (p.email || '').toLowerCase().trim();
+        const totals = perPlayerTotals[key] || { deposits: 0, withdrawals: 0 };
+        return {
+          ...p,
+          totalDeposits: Math.round(totals.deposits * 100) / 100,
+          totalWithdrawals: Math.round(totals.withdrawals * 100) / 100
+        };
+      }),
       transactions
     });
   } catch (err) {

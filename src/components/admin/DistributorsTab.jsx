@@ -32,6 +32,7 @@ export default function DistributorsTab() {
   // Referred Players List View Modal
   const [viewingPlayersDist, setViewingPlayersDist] = useState(null);
   const [referredPlayersList, setReferredPlayersList] = useState([]);
+  const [referredPlayersStats, setReferredPlayersStats] = useState(null);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
 
   const [onboardKit, setOnboardKit] = useState(null);
@@ -176,11 +177,13 @@ export default function DistributorsTab() {
     setViewingPlayersDist(dist);
     setIsLoadingPlayers(true);
     setReferredPlayersList([]);
+    setReferredPlayersStats(null);
     try {
       const res = await fetch(`/api/distributors/stats?distributorId=${dist.id}`);
       const resData = await res.json();
       if (resData.success) {
         setReferredPlayersList(resData.players || []);
+        setReferredPlayersStats(resData.stats || null);
       } else {
         alert(resData.message || 'Failed to load players.');
       }
@@ -1011,10 +1014,11 @@ export default function DistributorsTab() {
       {viewingPlayersDist && (
         <PanelModalBackdrop onClick={() => setViewingPlayersDist(null)}>
           <div
+            className="dist-referred-players-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '100%',
-              maxWidth: '600px',
+              width: 'min(92vw, 920px)',
+              maxWidth: '920px',
               background: 'rgba(10, 14, 30, 0.95)',
               backdropFilter: 'blur(28px)',
               WebkitBackdropFilter: 'blur(28px)',
@@ -1044,7 +1048,24 @@ export default function DistributorsTab() {
               </button>
             </div>
 
-            <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+            {referredPlayersStats && referredPlayersList.length > 0 && (
+              <div className="dist-referred-players-summary">
+                <div>
+                  <span>Total deposits</span>
+                  <strong style={{ color: '#4ade80' }}>${(referredPlayersStats.totalDeposits || 0).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>Total redeems</span>
+                  <strong style={{ color: '#f87171' }}>${(referredPlayersStats.totalWithdrawals || 0).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>Players</span>
+                  <strong>{referredPlayersStats.playersCount || referredPlayersList.length}</strong>
+                </div>
+              </div>
+            )}
+
+            <div className="dist-referred-players-scroll">
               {isLoadingPlayers ? (
                 <div style={{ textAlign: 'center', padding: '3rem' }}>
                   <i className="fa-solid fa-spinner fa-spin fa-2x" style={{ color: '#ffd700' }} />
@@ -1056,41 +1077,47 @@ export default function DistributorsTab() {
                   No players signed up under this distributor yet.
                 </div>
               ) : (
-                <div className="table-responsive" style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden' }}>
-                  <table className="admin-table" style={{ margin: 0 }}>
+                <>
+                <div className="dist-referred-players-table-wrap">
+                  <table className="admin-table dist-referred-players-table">
                     <thead>
-                      <tr style={{ background: 'rgba(6, 8, 18, 0.9)' }}>
-                        <th style={{ color: '#ffd700' }}>Player Name</th>
-                        <th style={{ color: '#ffd700' }}>Email Address</th>
-                        <th style={{ color: '#ffd700', textAlign: 'center' }}>Account Status</th>
+                      <tr>
+                        <th>Player</th>
+                        <th>Email</th>
+                        <th className="num">Deposits</th>
+                        <th className="num">Redeems</th>
+                        <th className="num">Net</th>
+                        <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {referredPlayersList.map((player) => (
-                        <tr key={player.email}>
-                          <td><strong style={{ color: '#fff' }}>{player.name}</strong></td>
-                          <td style={{ color: 'var(--cyan-primary, #00f0ff)', fontFamily: 'monospace', fontSize: '0.82rem' }}>{player.email}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem',
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: '6px',
-                              background: 'rgba(0, 230, 118, 0.15)',
-                              color: '#00e676',
-                              border: '1px solid rgba(0, 230, 118, 0.35)',
-                              fontSize: '0.68rem',
-                              fontWeight: 800
-                            }}>
-                              ACTIVE
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {referredPlayersList.map((player) => {
+                        const dep = player.totalDeposits ?? 0;
+                        const out = player.totalWithdrawals ?? 0;
+                        const net = dep - out;
+                        const suspended = String(player.status || '').toUpperCase() === 'SUSPENDED';
+                        return (
+                          <tr key={player.email}>
+                            <td><strong style={{ color: '#fff' }}>{player.name || '—'}</strong></td>
+                            <td className="email-cell">{player.email}</td>
+                            <td className="num" style={{ color: '#4ade80', fontWeight: 800 }}>${dep.toFixed(2)}</td>
+                            <td className="num" style={{ color: '#f87171', fontWeight: 800 }}>${out.toFixed(2)}</td>
+                            <td className="num" style={{ color: net >= 0 ? '#e2e8f0' : '#fbbf24', fontWeight: 700 }}>${net.toFixed(2)}</td>
+                            <td>
+                              <span className={`dist-referred-status ${suspended ? 'is-off' : 'is-on'}`}>
+                                {suspended ? 'Suspended' : 'Active'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+                <p className="dist-referred-scroll-hint">
+                  <i className="fa-solid fa-arrows-left-right" /> Swipe horizontally on mobile to see all columns
+                </p>
+                </>
               )}
             </div>
           </div>
