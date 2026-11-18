@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
+import {
+  finalizeCustomPayRedirect,
+  isBuiltinAmountTemplate,
+  isHttpPayUrl
+} from '../../../../lib/gatewayPayLink';
+
+function sanitizeStoredRedirectUrl(redirectUrl) {
+  const url = String(redirectUrl || '').trim();
+  if (!url || !isHttpPayUrl(url) || isBuiltinAmountTemplate(url)) return url;
+  return finalizeCustomPayRedirect(url);
+}
 
 // GET distributor gateways
 export async function GET(req) {
@@ -45,7 +56,7 @@ export async function POST(req) {
     const resolvedTheme = theme || 'cashapp';
     const isLinkPay = resolvedTheme === 'cashapp' || resolvedTheme === 'stripe' || Boolean(String(redirectUrl || '').trim());
     const resolvedTag = String(tag || '').trim() || (isLinkPay ? `${resolvedTheme}-pay` : '');
-    const resolvedRedirect = String(redirectUrl || '').trim();
+    const resolvedRedirect = sanitizeStoredRedirectUrl(redirectUrl);
 
     if (!isLinkPay && !resolvedTag) {
       return NextResponse.json({ success: false, message: 'Name and tag/handle are required.' }, { status: 400 });
@@ -110,7 +121,8 @@ export async function PUT(req) {
       phone,
       theme,
       qrImage,
-      redirectUrl: redirectUrl !== undefined ? String(redirectUrl || '').trim() : undefined,
+      redirectUrl:
+        redirectUrl !== undefined ? sanitizeStoredRedirectUrl(String(redirectUrl || '').trim()) : undefined,
       isWithdrawActive: isWithdrawActive !== undefined ? Boolean(isWithdrawActive) : undefined,
       requireNameOnTag: requireNameOnTag !== undefined ? Boolean(requireNameOnTag) : undefined,
       requireTag: requireTag !== undefined ? Boolean(requireTag) : undefined,

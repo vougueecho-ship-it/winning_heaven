@@ -55,6 +55,40 @@ export function buildGatewayRedirectTemplate(theme, tag) {
   return '';
 }
 
+export function isHttpPayUrl(url) {
+  const u = normalizePayTag(url);
+  return u.startsWith('http://') || u.startsWith('https://');
+}
+
+/** Built-in auto templates where {amount} in the URL is intentional */
+export function isBuiltinAmountTemplate(url) {
+  const u = String(url || '').toLowerCase();
+  return (
+    u.includes('cash.app/$') ||
+    u.includes('paypal.com/paypalme/') ||
+    (u.includes('venmo.com/') && u.includes('amount={amount}'))
+  );
+}
+
+export function hasPayUrlPlaceholders(url) {
+  return /\{amount\}|\{code\}|\{note\}/i.test(String(url || ''));
+}
+
+/** Custom partner URLs (cashtap, Stripe checkout, etc.) — open as configured, no path amount injection */
+export function finalizeCustomPayRedirect(url, { noteCode = '' } = {}) {
+  let out = normalizePayTag(url);
+  if (!out) return '';
+
+  out = out
+    .replace(/\{amount\}/gi, '')
+    .replace(/\{code\}/gi, encodeURIComponent(String(noteCode || '')))
+    .replace(/\{note\}/gi, encodeURIComponent(String(noteCode || '')));
+
+  // Clean accidental double slashes after stripping {amount} (keep https://)
+  out = out.replace(/([^:]\/)\/+/g, '$1');
+  return out;
+}
+
 export function applyPayUrlPlaceholders(url, { amount = '', noteCode = '' } = {}) {
   if (!url) return '';
   const amt = amount === '' || amount === null || amount === undefined
@@ -81,8 +115,16 @@ export function resolveGatewayPayUrl(gateway, { amount = '', noteCode = '' } = {
 
   let payUrl = normalizePayTag(gateway.redirectUrl || gateway.payUrl || gateway.link || '');
 
-  if (!payUrl && (rawTag.startsWith('http://') || rawTag.startsWith('https://'))) {
+  if (!payUrl && isHttpPayUrl(rawTag)) {
     payUrl = rawTag;
+  }
+
+  // Custom full URL: never append Cash App amount paths; strip stray {amount} from old saves
+  if (payUrl && isHttpPayUrl(payUrl) && !isBuiltinAmountTemplate(payUrl)) {
+    if (!hasPayUrlPlaceholders(payUrl)) {
+      return payUrl;
+    }
+    return finalizeCustomPayRedirect(payUrl, { noteCode });
   }
 
   const themeLower = String(gateway.theme || '').toLowerCase();
@@ -98,7 +140,7 @@ export function resolveGatewayPayUrl(gateway, { amount = '', noteCode = '' } = {
   if (!payUrl) {
     const isCashApp =
       themeLower === 'cashapp' || nameLower.includes('cash app') || nameLower.includes('cashapp');
-    if (isCashApp && rawTag) {
+    if (isCashApp && rawTag && !isGenericPayTag(rawTag)) {
       const cleanCashtag = rawTag.replace(/^\$/, '').replace(/[^a-zA-Z0-9_-]/g, '');
       if (cleanCashtag) {
         const amtNum = parseFloat(amount || 0).toFixed(2);
@@ -107,7 +149,7 @@ export function resolveGatewayPayUrl(gateway, { amount = '', noteCode = '' } = {
     }
   }
 
-  if (payUrl && (payUrl.includes('{amount}') || payUrl.includes('{code}') || payUrl.includes('{note}'))) {
+  if (payUrl && hasPayUrlPlaceholders(payUrl)) {
     payUrl = applyPayUrlPlaceholders(payUrl, { amount, noteCode });
   }
 

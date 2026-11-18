@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../lib/mongodb';
 import { cache } from '../../../lib/cache';
-import { buildGatewayRedirectTemplate, normalizePayTag } from '../../../lib/gatewayPayLink';
+import {
+  buildGatewayRedirectTemplate,
+  normalizePayTag,
+  finalizeCustomPayRedirect,
+  isBuiltinAmountTemplate,
+  isHttpPayUrl
+} from '../../../lib/gatewayPayLink';
+
+function sanitizeStoredRedirectUrl(redirectUrl) {
+  const url = String(redirectUrl || '').trim();
+  if (!url || !isHttpPayUrl(url) || isBuiltinAmountTemplate(url)) return url;
+  return finalizeCustomPayRedirect(url);
+}
 
 const PLATFORM_GATEWAY_QUERY = {
   $or: [
@@ -80,6 +92,7 @@ export async function POST(req) {
     if (!redirectUrl && tag) {
       redirectUrl = buildGatewayRedirectTemplate(theme, tag);
     }
+    redirectUrl = sanitizeStoredRedirectUrl(redirectUrl);
     const isStripe = theme === 'stripe';
     const walletThemes = ['applepay', 'googlepay'];
     if (depositMode !== 'support_request' && !tag && !redirectUrl && !walletThemes.includes(theme)) {
@@ -157,6 +170,9 @@ export async function PUT(req) {
       gateway.redirectUrl !== undefined ? String(gateway.redirectUrl || '').trim() : undefined;
     if (redirectUrl !== undefined && !redirectUrl && tag) {
       redirectUrl = buildGatewayRedirectTemplate(theme, tag);
+    }
+    if (redirectUrl !== undefined) {
+      redirectUrl = sanitizeStoredRedirectUrl(redirectUrl);
     }
 
     const updateFields = {
