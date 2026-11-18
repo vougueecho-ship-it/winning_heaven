@@ -95,7 +95,15 @@ export async function GET(req) {
       baseQuery = await typeBExclusionFilter(db);
     }
 
-    let requestsQuery = { ...baseQuery, status: 'PENDING' };
+    let requestsQuery = {
+      ...baseQuery,
+      status: 'PENDING',
+      $or: [
+        { awaitingCoinsApproval: { $ne: true } },
+        { awaitingCoinsApproval: { $exists: false } },
+        { awaitingCoinsApproval: null }
+      ]
+    };
     let coinsQuery = { ...baseQuery, status: { $in: ['PENDING', 'CLAIM_REQUESTED'] } };
     if (adminEmail) {
       requestsQuery = await applyStaffGameFilter(db, requestsQuery, adminEmail);

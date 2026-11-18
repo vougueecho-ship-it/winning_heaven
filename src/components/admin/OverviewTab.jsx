@@ -130,6 +130,45 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool, portalBa
   const [lookupStats, setLookupStats] = React.useState({ totalIn: 0, totalOut: 0 });
   const [lookupLoading, setLookupLoading] = React.useState(false);
 
+  const [playerSignupLink, setPlayerSignupLink] = React.useState('');
+  const [copiedPlayerLink, setCopiedPlayerLink] = React.useState(false);
+  const [copiedShareMessage, setCopiedShareMessage] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!adminUser?.distributorId || typeof window === 'undefined') return;
+    const base =
+      (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '') || window.location.origin;
+    const url = new URL(base.endsWith('/') ? base : `${base}/`);
+    url.searchParams.set('dist', adminUser.distributorId);
+    setPlayerSignupLink(url.toString());
+  }, [adminUser?.distributorId]);
+
+  const playerShareMessage = playerSignupLink
+    ? `Play on Winning Heaven with my link — sign up here: ${playerSignupLink}`
+    : '';
+
+  const copyPlayerLink = async () => {
+    if (!playerSignupLink) return;
+    try {
+      await navigator.clipboard.writeText(playerSignupLink);
+      setCopiedPlayerLink(true);
+      setTimeout(() => setCopiedPlayerLink(false), 2200);
+    } catch {
+      alert('Copy failed — select the link and copy manually.');
+    }
+  };
+
+  const copyShareMessage = async () => {
+    if (!playerShareMessage) return;
+    try {
+      await navigator.clipboard.writeText(playerShareMessage);
+      setCopiedShareMessage(true);
+      setTimeout(() => setCopiedShareMessage(false), 2200);
+    } catch {
+      alert('Copy failed.');
+    }
+  };
+
   React.useEffect(() => {
     if (!lookupDate) return;
     setLookupLoading(true);
@@ -187,7 +226,77 @@ export default function OverviewTab({ adminUser, onUpdateGameCoinsPool, portalBa
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fade-in 0.2s ease-out' }}>
-      
+
+      {isDistributorScoped && adminUser?.distributorId && (
+        <section className="dist-player-share-card" aria-label="Player signup link">
+          <div className="dist-player-share-card__head">
+            <div>
+              <h3 className="dist-player-share-card__title">
+                <i className="fa-solid fa-link gold-text" aria-hidden />
+                Share link with your players
+              </h3>
+              <p className="dist-player-share-card__subtitle">
+                Send this URL on WhatsApp, Facebook, or SMS. New registrations from this link stay under your panel — deposits, support, and games route to you.
+              </p>
+            </div>
+            <span className="dist-player-share-id" title="Distributor ID">
+              ID · {adminUser.distributorId}
+            </span>
+          </div>
+
+          <div className="dist-player-share-link-block">
+            <label htmlFor="dist-player-signup-url">Your player signup URL</label>
+            <div className="dist-player-share-link-row">
+              <input
+                id="dist-player-signup-url"
+                type="text"
+                readOnly
+                className="dist-player-share-link-input"
+                value={playerSignupLink || 'Loading link…'}
+                onFocus={(e) => e.target.select()}
+              />
+              <div className="dist-player-share-actions">
+                <button type="button" className="dist-player-share-btn is-primary" onClick={copyPlayerLink} disabled={!playerSignupLink}>
+                  <i className={`fa-solid ${copiedPlayerLink ? 'fa-check' : 'fa-copy'}`} aria-hidden />
+                  {copiedPlayerLink ? 'Copied!' : 'Copy link'}
+                </button>
+                <button type="button" className="dist-player-share-btn is-secondary" onClick={copyShareMessage} disabled={!playerShareMessage}>
+                  <i className={`fa-solid ${copiedShareMessage ? 'fa-check' : 'fa-comment-dots'}`} aria-hidden />
+                  {copiedShareMessage ? 'Message copied' : 'Copy WhatsApp message'}
+                </button>
+                {playerSignupLink ? (
+                  <a
+                    href={playerSignupLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="dist-player-share-btn is-secondary"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden />
+                    Preview
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="dist-player-share-tips">
+            <div className="dist-player-share-tip">
+              <strong>Step 1</strong>
+              Copy the link and send it to players.
+            </div>
+            <div className="dist-player-share-tip">
+              <strong>Step 2</strong>
+              They open it, register, and appear in your Player Accounts tab.
+            </div>
+            <div className="dist-player-share-tip">
+              <strong>Important</strong>
+              Do not change or remove the <code style={{ color: 'var(--gold-primary)' }}>?dist=</code> part — that ties them to you.
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Inactive Staff / Unresponded Request alert box */}
       {(adminUser?.role === 'admin' || adminUser?.role?.toLowerCase().split(',').map(r => r.trim()).includes('operation_admin')) && activityData?.hasUnrespondedRequest && activityData?.activeStaffCount > 0 && (
         <div style={{

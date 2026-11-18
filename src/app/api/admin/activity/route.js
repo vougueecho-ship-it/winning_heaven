@@ -3,6 +3,7 @@ import { getDb } from '../../../../lib/mongodb';
 import { typeBExclusionFilter } from '../../../../lib/typeBDistributors';
 import { cache } from '../../../../lib/cache';
 import { notifyStaffAsync } from '../../../../lib/pushNotifications';
+import { excludeAwaitingCoinsApprovalFilter } from '../../../../lib/credentialsAccountRequest';
 
 // Pending items older than this (with staff online) count as unresponded.
 const UNRESPONDED_AFTER_MS = 5 * 60 * 1000;
@@ -56,7 +57,7 @@ export async function GET(req) {
       const staleBefore = Date.now() - UNRESPONDED_AFTER_MS;
 
       // 1. Build queries based on distributor role
-      let accountReqQuery = { status: 'PENDING' };
+      let accountReqQuery = { status: 'PENDING', ...excludeAwaitingCoinsApprovalFilter() };
       let txQuery = { status: 'PENDING' };
       let coinsNotiQuery = { status: { $in: ['PENDING', 'CLAIM_REQUESTED'] } };
 

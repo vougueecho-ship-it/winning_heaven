@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
@@ -48,7 +48,12 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
   const [webCode, setWebCode] = useState('');
   const [webScreenshot, setWebScreenshot] = useState('');
   const [webMsg, setWebMsg] = useState('');
+  const [webMsgOk, setWebMsgOk] = useState(true);
   const [isSubmittingWeb, setIsSubmittingWeb] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const webProofInputRef = useRef(null);
+
+  const earnedWebsiteCommission = stats.websiteCommissionEarned || 0;
 
   const [lookupDate, setLookupDate] = useState(() => {
     const d = new Date(Date.now() - 86400000);
@@ -145,16 +150,39 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
         setWebAmount('');
         setWebCode('');
         setWebScreenshot('');
-        setWebMsg('Payment proof submitted!');
+        setWebMsg('Payment proof submitted! HQ will verify shortly.');
+        setWebMsgOk(true);
         mutateWebCommTx();
+        mutateStats();
       } else {
         setWebMsg(data.message || 'Failed.');
+        setWebMsgOk(false);
       }
     } catch {
       setWebMsg('Server error.');
+      setWebMsgOk(false);
     } finally {
       setIsSubmittingWeb(false);
     }
+  };
+
+  const copyUsdtAddress = async () => {
+    if (!usdtAddress) return;
+    try {
+      await navigator.clipboard.writeText(usdtAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch {
+      alert('Could not copy address — select and copy manually.');
+    }
+  };
+
+  const handleWebProofFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setWebScreenshot(ev.target?.result || '');
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -212,60 +240,187 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
         </div>
       </div>
 
-      <div className="dist-staff-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '1.5rem' }}>
+      <div className="dist-staff-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.05fr) 1fr', gap: '1.5rem', alignItems: 'start' }}>
         {distType === 'B' ? (
-          <form onSubmit={handleRequestWebPayment} style={{ background: 'rgba(14,18,36,0.85)', border: '1px solid rgba(255,215,0,0.18)', borderRadius: 20, padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>
-              <i className="fa-solid fa-building-columns gold-text" /> Pay website commission
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Due: <strong style={{ color: '#ff4d6d' }}>${dueWebsiteCommission.toFixed(2)}</strong>
-            </p>
-            {usdtAddress && (
-              <p style={{ fontSize: '0.72rem', wordBreak: 'break-all', marginBottom: '0.75rem' }}>
-                USDT TRC20: <span className="gold-text">{usdtAddress}</span>
-              </p>
-            )}
-            {usdtQrCode && (
-              <button type="button" onClick={() => onInspectProof?.(usdtQrCode)} style={{ marginBottom: '1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                <img src={usdtQrCode} alt="USDT QR" style={{ width: 120, height: 120, borderRadius: 8 }} />
-              </button>
-            )}
-            <div className="input-group">
-              <label>Amount ($)</label>
-              <input type="number" step="0.01" value={webAmount} onChange={(e) => setWebAmount(e.target.value)} required />
+          <div className="dist-platform-fee-card">
+            <div className="dist-platform-fee-card__header">
+              <div>
+                <h3 className="dist-platform-fee-card__title">
+                  <i className="fa-solid fa-building-columns gold-text" aria-hidden />
+                  Pay platform fee to HQ
+                </h3>
+                <p className="dist-platform-fee-card__subtitle">
+                  Send USDT (TRC20) for your website hosting share, then submit TxID and screenshot for HQ approval.
+                </p>
+              </div>
+              <div className="dist-platform-fee-due-pill">
+                <span>Outstanding balance</span>
+                <strong>${dueWebsiteCommission.toFixed(2)}</strong>
+              </div>
             </div>
-            <div className="input-group">
-              <label>TxID / Hash</label>
-              <input type="text" value={webCode} onChange={(e) => setWebCode(e.target.value)} required />
+            <div className="dist-platform-fee-metrics">
+              <div className="dist-platform-fee-metric">
+                <label>Accrued (HQ share)</label>
+                <strong>${earnedWebsiteCommission.toFixed(2)}</strong>
+              </div>
+              <div className="dist-platform-fee-metric">
+                <label>Already paid</label>
+                <strong style={{ color: '#4ade80' }}>${totalWebPaid.toFixed(2)}</strong>
+              </div>
+              <div className="dist-platform-fee-metric">
+                <label>Rate</label>
+                <strong>{stats.websiteCommissionRate || 0}%</strong>
+              </div>
             </div>
-            <div className="input-group">
-              <label>Payment screenshot</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => setWebScreenshot(ev.target?.result || '');
-                  reader.readAsDataURL(file);
-                }}
-              />
-            </div>
-            {webMsg && <p style={{ fontSize: '0.75rem', color: 'var(--gold-primary)' }}>{webMsg}</p>}
-            <button type="submit" className="submit-btn" disabled={isSubmittingWeb} style={{ width: '100%', marginTop: '0.75rem' }}>
-              {isSubmittingWeb ? 'Submitting…' : 'Submit payment proof'}
-            </button>
-          </form>
+            <form onSubmit={handleRequestWebPayment} className="dist-platform-fee-layout">
+              <div className="dist-platform-fee-wallet">
+                <span className="dist-platform-fee-network">
+                  <i className="fa-solid fa-link" aria-hidden /> USDT · TRC20
+                </span>
+                {usdtAddress ? (
+                  <div className="dist-platform-fee-address-box">
+                    <label>HQ wallet address</label>
+                    <div className="dist-platform-fee-address-row">
+                      <code>{usdtAddress}</code>
+                      <button type="button" className="dist-platform-fee-copy-btn" onClick={copyUsdtAddress}>
+                        {copiedAddress ? 'Copied ✓' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                    HQ has not set a USDT address yet — contact support before sending funds.
+                  </p>
+                )}
+                {usdtQrCode && (
+                  <div className="dist-platform-fee-qr-wrap">
+                    <button
+                      type="button"
+                      className="dist-platform-fee-qr-btn"
+                      onClick={() => onInspectProof?.(usdtQrCode)}
+                      title="View full QR"
+                    >
+                      <img src={usdtQrCode} alt="USDT QR code" />
+                    </button>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      Scan in your wallet app or tap the QR to enlarge.
+                    </p>
+                  </div>
+                )}
+                <ol className="dist-platform-fee-steps">
+                  <li>Send <strong style={{ color: '#fff' }}>USDT on TRC20 only</strong> — wrong network = lost funds.</li>
+                  <li>Match amount to your outstanding balance (partial payments are OK).</li>
+                  <li>Paste blockchain TxID and upload payment proof on the right.</li>
+                </ol>
+              </div>
+
+              <div className="dist-platform-fee-form">
+                <div>
+                  <label className="admin-field-label" htmlFor="web-fee-amount">
+                    Payment amount (USD)
+                  </label>
+                  <div className="dist-platform-fee-amount-row">
+                    <input
+                      id="web-fee-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="admin-input"
+                      placeholder="0.00"
+                      value={webAmount}
+                      onChange={(e) => setWebAmount(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="dist-platform-fee-fill-due"
+                      onClick={() => setWebAmount(dueWebsiteCommission > 0 ? dueWebsiteCommission.toFixed(2) : '')}
+                      disabled={dueWebsiteCommission <= 0}
+                    >
+                      Pay full due
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="admin-field-label" htmlFor="web-fee-txid">
+                    Transaction ID / hash
+                  </label>
+                  <input
+                    id="web-fee-txid"
+                    type="text"
+                    className="admin-input"
+                    placeholder="Paste TRC20 TxID from your wallet"
+                    value={webCode}
+                    onChange={(e) => setWebCode(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="admin-field-label">Payment screenshot</label>
+                  <input
+                    type="file"
+                    ref={webProofInputRef}
+                    accept="image/*"
+                    onChange={handleWebProofFile}
+                    style={{ display: 'none' }}
+                  />
+                  {webScreenshot ? (
+                    <div className="dist-platform-fee-proof-preview">
+                      <img src={webScreenshot} alt="Payment proof preview" />
+                      <div>
+                        <div style={{ color: '#4ade80', fontWeight: 800, fontSize: '0.8rem' }}>Proof attached</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Ready to submit</div>
+                      </div>
+                      <div className="proof-actions">
+                        <button type="button" onClick={() => webProofInputRef.current?.click()}>
+                          Change
+                        </button>
+                        <button type="button" className="is-danger" onClick={() => setWebScreenshot('')}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="dist-platform-fee-dropzone"
+                      onClick={() => webProofInputRef.current?.click()}
+                    >
+                      <i className="fa-solid fa-cloud-arrow-up gold-text" aria-hidden />
+                      Upload wallet receipt screenshot
+                    </button>
+                  )}
+                </div>
+                {webMsg ? (
+                  <p className={`dist-platform-fee-alert ${webMsgOk ? 'is-success' : 'is-error'}`}>{webMsg}</p>
+                ) : null}
+                <button
+                  type="submit"
+                  className="submit-btn"
+                  disabled={isSubmittingWeb || !webScreenshot}
+                  style={{ width: '100%', opacity: isSubmittingWeb || !webScreenshot ? 0.65 : 1 }}
+                >
+                  {isSubmittingWeb ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin" aria-hidden /> Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-paper-plane" aria-hidden /> Submit payment proof
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         ) : (
-          <form onSubmit={handleRequestCommWithdraw} style={{ background: 'rgba(14,18,36,0.85)', border: '1px solid rgba(255,215,0,0.18)', borderRadius: 20, padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>
+          <form onSubmit={handleRequestCommWithdraw} className="dist-cashout-card">
+            <h3>
               <i className="fa-solid fa-money-bill-transfer gold-text" /> Commission cashout
             </h3>
             <div className="input-group">
               <label>Amount ($)</label>
-              <input type="number" step="0.01" value={commAmount} onChange={(e) => setCommAmount(e.target.value)} required />
+              <input type="number" step="0.01" className="admin-input" value={commAmount} onChange={(e) => setCommAmount(e.target.value)} required />
             </div>
             <div className="input-group">
               <label>Gateway</label>
@@ -278,9 +433,9 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
             </div>
             <div className="input-group">
               <label>Payment tag / note</label>
-              <input type="text" value={commCode} onChange={(e) => setCommCode(e.target.value)} required />
+              <input type="text" className="admin-input" value={commCode} onChange={(e) => setCommCode(e.target.value)} required />
             </div>
-            {commMsg && <p style={{ fontSize: '0.75rem', color: 'var(--gold-primary)' }}>{commMsg}</p>}
+            {commMsg && <p className="dist-platform-fee-alert is-success" style={{ marginTop: '0.5rem' }}>{commMsg}</p>}
             <button type="submit" className="submit-btn" disabled={isSubmittingComm} style={{ width: '100%', marginTop: '0.75rem' }}>
               {isSubmittingComm ? 'Submitting…' : 'Request payout'}
             </button>

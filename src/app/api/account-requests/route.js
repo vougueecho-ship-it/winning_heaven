@@ -8,6 +8,7 @@ import { publishAdminEvent } from '../../../lib/adminEvents';
 import { getTypeBDistributorIds, typeBExclusionFilter } from '../../../lib/typeBDistributors';
 import { healOrphanedDistributorPlayer } from '../../../lib/orphanDistributorPlayer';
 import { isDeviceBlocked } from '../../../lib/deviceBlock';
+import { excludeAwaitingCoinsApprovalFilter } from '../../../lib/credentialsAccountRequest';
 
 // GET requests (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -63,6 +64,11 @@ export async function GET(req) {
         requestQuery = await applyStaffGameFilter(db, requestQuery, adminEmail);
       }
 
+      const awaitingFilter = excludeAwaitingCoinsApprovalFilter();
+      requestQuery = Object.keys(requestQuery).length > 0
+        ? { $and: [requestQuery, awaitingFilter] }
+        : awaitingFilter;
+
       // Fast path for Shift Dashboard: PENDING-only — limit in Mongo, skip heavy READY synthetics
       const pendingOnlyFastPath = wantPending && !wantReady && statuses.length === 1 && statuses[0] === 'PENDING';
 
@@ -84,7 +90,11 @@ export async function GET(req) {
         userName: 1,
         freeplayPending: 1,
         freeplayTransactionId: 1,
-        hasScreenshot: 1
+        hasScreenshot: 1,
+        needsCredentials: 1,
+        awaitingCoinsApproval: 1,
+        coinsApprovedAt: 1,
+        linkedTransactionId: 1
       };
 
       let accountQuery = {};

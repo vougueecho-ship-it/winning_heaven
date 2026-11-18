@@ -12,6 +12,11 @@ import { compressDataUrlIfNeeded } from '../../../lib/serverImageCompress';
 import { applyStaffGameFilter } from '../../../lib/staffGameAccess';
 import { getDepositBasedMinWithdraw, getDepositWithdrawRule } from '../../../lib/withdrawRules';
 import { isDeviceBlocked } from '../../../lib/deviceBlock';
+import {
+  activateCredentialsAccountRequest,
+  upsertAwaitingCredentialsRequest,
+  playerNeedsGameCredentials
+} from '../../../lib/credentialsAccountRequest';
 
 // GET transactions (supports filtering by email for users, or returning all for admins)
 export async function GET(req) {
@@ -372,15 +377,17 @@ export async function POST(req) {
     );
     const distId = userDoc ? (userDoc.distributorId || '') : '';
     let distType = '';
+    let distName = '';
     if (distId) {
-      const distCacheKey = `dist_type_${distId}`;
-      let cachedType = cache.get(distCacheKey);
-      if (cachedType == null) {
-        const distDoc = await db.collection('distributors').findOne({ id: distId }, { projection: { type: 1 } });
-        cachedType = distDoc?.type || '';
-        cache.set(distCacheKey, cachedType, 120);
+      const distCacheKey = `dist_meta_${distId}`;
+      let cachedMeta = cache.get(distCacheKey);
+      if (cachedMeta == null) {
+        const distDoc = await db.collection('distributors').findOne({ id: distId }, { projection: { type: 1, name: 1 } });
+        cachedMeta = { type: distDoc?.type || '', name: distDoc?.name || '' };
+        cache.set(distCacheKey, cachedMeta, 120);
       }
-      distType = cachedType;
+      distType = cachedMeta.type || '';
+      distName = cachedMeta.name || '';
     }
 
     if (newTx.isRemainderRequest) {
@@ -961,39 +968,24 @@ export async function POST(req) {
     if (isFreeplayBonus && txObject.gameTitle) {
       try {
         const cleanTitle = String(txObject.gameTitle).trim();
-        const titleRegex = new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        const existingAccount = await db.collection('gameAccounts').findOne({
-          userEmail: txObject.userEmail,
-          gameTitle: titleRegex
-        });
-
-        if (!existingAccount) {
-          // Check if there is an active pending request already
-          const existingPending = await db.collection('accountRequests').findOne({
+        const needsCreds = await playerNeedsGameCredentials(db, txObject.userEmail, cleanTitle);
+        if (needsCreds) {
+          const queued = await upsertAwaitingCredentialsRequest(db, {
             userEmail: txObject.userEmail,
-            status: 'PENDING',
-            gameTitle: titleRegex
+            gameTitle: cleanTitle,
+            distributorId: distId,
+            distributorType: distType,
+            distributorName: distName,
+            transactionId: txObject.id,
+            freeplayPending: true,
+            freeplayAmount: parseFloat(txObject.amount || 3),
+            hasScreenshot: Boolean(txObject.screenshot),
+            awaitingCoinsApproval: true,
+            note: 'Freeplay submitted — credentials open after coins queue is ready'
           });
-
-          if (!existingPending) {
-            autoAccountRequestId = (Date.now() + Math.floor(Math.random() * 100)).toString();
-            writeOps.push(db.collection('accountRequests').insertOne({
-              id: autoAccountRequestId,
-              gameTitle: cleanTitle,
-              userEmail: txObject.userEmail,
-              status: 'PENDING',
-              date: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              distributorId: distId || '',
-              distributorType: distType || '',
-              distributorName: distName || '',
-              freeplayPending: true,
-              freeplayTransactionId: txObject.id,
-              freeplayAmount: parseFloat(txObject.amount || 3),
-              hasScreenshot: Boolean(txObject.screenshot),
-              note: 'Auto-created via Freeplay Verification Task'
-            }));
+          if (queued.action === 'created' || queued.action === 'updated') {
             autoAccountCreated = true;
+            autoAccountRequestId = queued.requestId || '';
           }
         }
       } catch (checkAccErr) {
@@ -1027,6 +1019,23 @@ export async function POST(req) {
 
     await Promise.all(writeOps);
 
+    if (isFreeplayBonus && txObject.gameTitle && autoAccountCreated) {
+      try {
+        await activateCredentialsAccountRequest(db, {
+          userEmail: txObject.userEmail,
+          gameTitle: txObject.gameTitle,
+          transactionId: txObject.id,
+          source: 'freeplay_coins',
+          distributorId: distId,
+          freeplayPending: true,
+          freeplayAmount: parseFloat(txObject.amount || 3),
+          hasScreenshot: Boolean(txObject.screenshot)
+        });
+      } catch (activateErr) {
+        console.error('Freeplay credentials request activation failed:', activateErr);
+      }
+    }
+
     // Alert Winning Heaven Portal + owning Distributor APK — never touches player promo push.
     const alertType = String(txObject.type || 'REQUEST').replace(/_/g, ' ');
     const isLedgerTx = txObject.type === 'DEPOSIT' || txObject.type === 'WITHDRAW' || txObject.type === 'PAYOUT' || txObject.type === 'COMMISSION_WITHDRAW';
@@ -1043,20 +1052,6 @@ export async function POST(req) {
       gameTitle: txObject.gameTitle || '',
       alertKind: 'game'
     }, txObject.distributorId);
-
-    if (autoAccountCreated) {
-      publishAdminEvent('requests', { distributorId: distId || '' });
-      notifyStaffAndDistributorAsync(db, {
-        title: 'New Account & Freeplay Request',
-        body: `${txObject.userEmail} · ${txObject.gameTitle} · $${parseFloat(txObject.amount || 3).toFixed(2)} (with Screenshot)`,
-        adminUrl: '/admin/requests',
-        distributorUrl: '/distributor/requests',
-        url: '/admin/requests',
-        tag: `req-${autoAccountRequestId}`,
-        gameTitle: txObject.gameTitle || '',
-        alertKind: 'game'
-      }, distId);
-    }
 
     // Invalidate stats cache + instant admin SSE
     cache.del('admin_stats');
@@ -1520,6 +1515,22 @@ export async function PUT(req) {
             ],
             actionButton: { text: 'OPEN LOBBY', url: '/lobby' }
           });
+
+          if (originalTx.gameTitle && originalTx.gameTitle !== 'Lobby') {
+            try {
+              await activateCredentialsAccountRequest(db, {
+                userEmail: originalTx.userEmail,
+                gameTitle: originalTx.gameTitle,
+                transactionId: originalTx.id,
+                source: isFreeplayNoti ? 'freeplay_coins' : 'deposit_coins_approved',
+                distributorId: originalTx.distributorId || '',
+                freeplayPending: isFreeplayNoti,
+                freeplayAmount: isFreeplayNoti ? parseFloat(originalTx.amount || 0) : 0
+              });
+            } catch (credErr) {
+              console.error('Credentials request activation after coins approval:', credErr);
+            }
+          }
         }
 
         // Consume promo / referral off the hot path

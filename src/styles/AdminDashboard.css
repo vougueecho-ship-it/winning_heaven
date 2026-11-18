@@ -1277,6 +1277,543 @@ input[type="checkbox"]:checked::after {
 }
 
 /* =========================================================================
+   DISTRIBUTOR — PLAYER SIGNUP LINK (OVERVIEW WELCOME)
+   ========================================================================= */
+.dist-player-share-card {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(14, 18, 36, 0.92) 42%, rgba(10, 12, 24, 0.95) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.28);
+  border-radius: 18px;
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.dist-player-share-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dist-player-share-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+}
+
+.dist-player-share-card__subtitle {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 34rem;
+}
+
+.dist-player-share-id {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gold-primary);
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-family: ui-monospace, monospace;
+}
+
+.dist-player-share-link-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.dist-player-share-link-block label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.dist-player-share-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.dist-player-share-link-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 215, 0, 0.22);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 0.78rem;
+  font-family: ui-monospace, monospace;
+  outline: none;
+}
+
+.dist-player-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dist-player-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dist-player-share-btn.is-primary {
+  background: linear-gradient(135deg, #ffd700 0%, #ff9100 100%);
+  color: #0a0b10;
+  box-shadow: 0 4px 18px rgba(255, 200, 0, 0.35);
+}
+
+.dist-player-share-btn.is-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(255, 200, 0, 0.45);
+}
+
+.dist-player-share-btn.is-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.dist-player-share-btn.is-secondary:hover {
+  border-color: rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.dist-player-share-tips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+
+.dist-player-share-tip {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.dist-player-share-tip strong {
+  display: block;
+  color: #fff;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+/* =========================================================================
+   DISTRIBUTOR — PLATFORM FEE (WEBSITE COMMISSION) PAY CARD
+   ========================================================================= */
+.dist-platform-fee-card {
+  background: linear-gradient(145deg, rgba(18, 22, 42, 0.95) 0%, rgba(10, 12, 24, 0.92) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.22);
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dist-platform-fee-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem 1.5rem;
+  background: linear-gradient(90deg, rgba(255, 77, 109, 0.12) 0%, rgba(255, 215, 0, 0.08) 55%, transparent 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.dist-platform-fee-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+}
+
+.dist-platform-fee-card__subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.45;
+  max-width: 28rem;
+}
+
+.dist-platform-fee-due-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(255, 77, 109, 0.14);
+  border: 1px solid rgba(255, 77, 109, 0.45);
+  box-shadow: 0 0 24px rgba(255, 77, 109, 0.12);
+}
+
+.dist-platform-fee-due-pill span:first-child {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ff8fa3;
+}
+
+.dist-platform-fee-due-pill strong {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.dist-platform-fee-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dist-platform-fee-metric {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dist-platform-fee-metric label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.dist-platform-fee-metric strong {
+  font-size: 0.95rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.dist-platform-fee-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, 1.15fr);
+  gap: 0;
+}
+
+@media (max-width: 900px) {
+  .dist-platform-fee-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dist-platform-fee-wallet {
+  padding: 1.35rem 1.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .dist-platform-fee-wallet {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
+.dist-platform-fee-network {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #26d07c;
+  background: rgba(38, 208, 124, 0.12);
+  border: 1px solid rgba(38, 208, 124, 0.35);
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.dist-platform-fee-address-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.dist-platform-fee-address-box label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.dist-platform-fee-address-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.dist-platform-fee-address-row code {
+  flex: 1;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  word-break: break-all;
+  color: var(--gold-primary, #ffd700);
+  font-family: ui-monospace, monospace;
+}
+
+.dist-platform-fee-copy-btn {
+  flex-shrink: 0;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--gold-primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dist-platform-fee-copy-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: var(--gold-primary);
+}
+
+.dist-platform-fee-qr-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dist-platform-fee-qr-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 215, 0, 0.25);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.dist-platform-fee-qr-btn:hover {
+  transform: scale(1.02);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.dist-platform-fee-qr-btn img {
+  display: block;
+  width: 128px;
+  height: 128px;
+  object-fit: cover;
+}
+
+.dist-platform-fee-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.dist-platform-fee-steps li {
+  margin-bottom: 0.35rem;
+}
+
+.dist-platform-fee-form {
+  padding: 1.35rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.dist-platform-fee-form .admin-field-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.dist-platform-fee-amount-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.dist-platform-fee-amount-row .admin-input {
+  flex: 1;
+}
+
+.dist-platform-fee-fill-due {
+  flex-shrink: 0;
+  padding: 0 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 77, 109, 0.4);
+  background: rgba(255, 77, 109, 0.12);
+  color: #ff8fa3;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.dist-platform-fee-fill-due:hover {
+  background: rgba(255, 77, 109, 0.22);
+  color: #fff;
+}
+
+.dist-platform-fee-dropzone {
+  width: 100%;
+  min-height: 88px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.dist-platform-fee-dropzone:hover {
+  border-color: var(--gold-primary);
+  background: rgba(255, 215, 0, 0.08);
+  color: #fff;
+}
+
+.dist-platform-fee-proof-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  background: rgba(46, 204, 113, 0.08);
+}
+
+.dist-platform-fee-proof-preview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dist-platform-fee-proof-preview .proof-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.dist-platform-fee-proof-preview .proof-actions button {
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dist-platform-fee-proof-preview .proof-actions button.is-danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.dist-platform-fee-alert {
+  font-size: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.dist-platform-fee-alert.is-success {
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  color: #4ade80;
+}
+
+.dist-platform-fee-alert.is-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.dist-cashout-card {
+  background: rgba(14, 18, 36, 0.85);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.dist-cashout-card h3 {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* =========================================================================
    FLOATING SUPPORT FAB
    ========================================================================= */
 .portal-support-fab,

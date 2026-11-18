@@ -83,7 +83,7 @@ export default function DistributorPortal() {
   if (!distSession) {
     return (
       <>
-        <ParticlesBackground />
+      <ParticlesBackground />
         <div className="ambient-glow glow-1" aria-hidden="true" />
         <div className="ambient-glow glow-2" aria-hidden="true" />
         <PortalLoginCard

@@ -51,6 +51,9 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
   const [cancelReason, setCancelReason] = useState('Cancelled by admin');
   const [isCancelling, setIsCancelling] = useState(false);
 
+  const [credsInput, setCredsInput] = useState({});
+  const [savingCredsId, setSavingCredsId] = useState(null);
+
   const cleanRoles = (adminUser?.role || '').toLowerCase().split(',').map(r => r.trim());
   const canUpdateCredentials = cleanRoles.some(r => ['admin', 'operation_admin', 'coins_admin', 'distributor'].includes(r));
 
@@ -242,6 +245,65 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
     // Approve action wrapper handles state modifications
     await onApproveRequest(reqItem);
     mutate(); // instantly refresh list
+  };
+
+  const rowNeedsCredentials = (req) => {
+    if (req.status !== 'PENDING') return false;
+    if (req.needsCredentials || req.freeplayPending) return true;
+    const accounts = req.existingAccounts || [];
+    const title = String(req.gameTitle || '').trim().toLowerCase();
+    const match = accounts.find((a) => String(a.gameTitle || '').trim().toLowerCase() === title);
+    if (!match) return true;
+    return !String(match.username || '').trim() || !String(match.password || '').trim();
+  };
+
+  const handleSaveCredentials = async (reqItem) => {
+    const reqKey = String(reqItem?.id ?? '');
+    const fields = credsInput[reqKey] || credsInput[reqItem.id] || {};
+    const username = (fields.username || '').trim();
+    const password = (fields.password || '').trim();
+
+    if (!reqKey || reqKey.startsWith('account-')) {
+      alert('This row is not a pending credentials task.');
+      return;
+    }
+    if (!username || !password) {
+      alert('Please enter both username and password.');
+      return;
+    }
+
+    setSavingCredsId(reqItem.id);
+    try {
+      const response = await fetch('/api/account-requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: reqKey,
+          status: 'READY',
+          gameAccountUsername: username,
+          gameAccountPassword: password,
+          processedBy: adminUser?.email || 'admin@winningheaven.com',
+          adminEmail: adminUser?.email || ''
+        })
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setCredsInput((prev) => {
+          const next = { ...prev };
+          delete next[reqKey];
+          delete next[reqItem.id];
+          return next;
+        });
+        mutate();
+      } else {
+        alert(result.message || 'Failed to save credentials.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving credentials.');
+    } finally {
+      setSavingCredsId(null);
+    }
   };
 
   const handleCancelClick = (reqItem) => {
@@ -453,6 +515,23 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                           <span>FREEPLAY ATTACHED</span>
                         </span>
                       )}
+                      {req.needsCredentials && req.coinsApprovedAt && (
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 800,
+                          color: '#fbbf24',
+                          background: 'rgba(251, 191, 36, 0.12)',
+                          border: '1px solid rgba(251, 191, 36, 0.35)',
+                          padding: '0.15rem 0.4rem',
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <i className="fa-solid fa-key" />
+                          <span>SET CREDENTIALS</span>
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td data-label="Game Account">
@@ -472,6 +551,39 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                         match?.username ||
                         req.gameAccountUsername ||
                         '';
+
+                      if (rowNeedsCredentials(req)) {
+                        const reqKey = String(req.id ?? '');
+                        const draft = credsInput[reqKey] || credsInput[req.id] || {};
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '140px' }}>
+                            <input
+                              type="text"
+                              placeholder="Username"
+                              autoComplete="off"
+                              value={draft.username || ''}
+                              onChange={(e) => setCredsInput((prev) => ({
+                                ...prev,
+                                [reqKey]: { ...(prev[reqKey] || {}), username: e.target.value }
+                              }))}
+                              className="admin-input"
+                              style={{ fontSize: '0.72rem', padding: '0.35rem 0.5rem' }}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Password"
+                              autoComplete="off"
+                              value={draft.password || ''}
+                              onChange={(e) => setCredsInput((prev) => ({
+                                ...prev,
+                                [reqKey]: { ...(prev[reqKey] || {}), password: e.target.value }
+                              }))}
+                              className="admin-input"
+                              style={{ fontSize: '0.72rem', padding: '0.35rem 0.5rem' }}
+                            />
+                          </div>
+                        );
+                      }
 
                       if (username) {
                         return <span className="requests-account-username">{username}</span>;
@@ -504,7 +616,30 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                   </td>
                   <td data-label="Actions">
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      {req.status === 'PENDING' && (
+                      {req.status === 'PENDING' && rowNeedsCredentials(req) && (
+                        <button
+                          type="button"
+                          disabled={savingCredsId === req.id}
+                          onClick={() => handleSaveCredentials(req)}
+                          className="submit-btn"
+                          style={{
+                            margin: 0,
+                            padding: '0.4rem 0.85rem',
+                            width: 'auto',
+                            display: 'inline-flex',
+                            gap: '0.4rem',
+                            alignItems: 'center',
+                            background: 'var(--gold-primary)',
+                            color: '#111',
+                            fontWeight: 800
+                          }}
+                        >
+                          {savingCredsId === req.id ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-floppy-disk" />}
+                          <span style={{ fontSize: '0.7rem' }}>{savingCredsId === req.id ? 'Saving…' : 'Save credentials'}</span>
+                        </button>
+                      )}
+
+                      {req.status === 'PENDING' && !rowNeedsCredentials(req) && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                             <button
