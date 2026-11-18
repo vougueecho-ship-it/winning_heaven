@@ -465,7 +465,14 @@ export default function DistributorFinanceTab({ distSession, onInspectProof }) {
                     <td>{new Date(tx.date || tx.createdAt).toLocaleDateString()}</td>
                     <td>{tx.type}</td>
                     <td>${parseFloat(tx.amount || 0).toFixed(2)}</td>
-                    <td>{tx.status}</td>
+                    <td>
+                      <div>{tx.status}</div>
+                      {tx.status === 'FAILED' && (tx.rejectionReason || tx.note) ? (
+                        <div style={{ fontSize: '0.65rem', color: '#ff6b6b', marginTop: 4, maxWidth: 200 }}>
+                          {tx.rejectionReason || tx.note}
+                        </div>
+                      ) : null}
+                    </td>
                   </tr>
                 ))
               )}

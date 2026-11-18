@@ -59,10 +59,13 @@ export async function GET(req) {
     }
 
     const adminDistributorId = searchParams.get('adminDistributorId');
+    const typeParamEarly = (type || '').toUpperCase().trim();
+    const hqPlatformFeeList =
+      typeParamEarly === 'WEBSITE_COMMISSION_PAYMENT' || typeParamEarly === 'COMMISSION_WITHDRAW';
 
     if (adminDistributorId) {
       query.distributorId = adminDistributorId;
-    } else if (!email) {
+    } else if (!email && !hqPlatformFeeList) {
       Object.assign(query, await typeBExclusionFilter(db));
     }
     if (status) {
@@ -375,9 +378,27 @@ export async function POST(req) {
       { email: userEmail },
       { projection: { email: 1, distributorId: 1 } }
     );
-    const distId = userDoc ? (userDoc.distributorId || '') : '';
+    let distId = userDoc ? (userDoc.distributorId || '') : '';
     let distType = '';
     let distName = '';
+    if (newTx.type === 'WEBSITE_COMMISSION_PAYMENT') {
+      const distDoc = await db.collection('distributors').findOne(
+        { email: userEmail },
+        { projection: { id: 1, type: 1, name: 1 } }
+      );
+      if (!distDoc) {
+        return NextResponse.json({ success: false, message: 'Distributor profile not found.' }, { status: 404 });
+      }
+      if (distDoc.type !== 'B') {
+        return NextResponse.json({ success: false, message: 'Platform fee payments apply to Type B distributors only.' }, { status: 400 });
+      }
+      if (!newTx.screenshot || !String(newTx.screenshot).trim()) {
+        return NextResponse.json({ success: false, message: 'Payment screenshot is required.' }, { status: 400 });
+      }
+      distId = distDoc.id;
+      distType = 'B';
+      distName = distDoc.name || '';
+    }
     if (distId) {
       const distCacheKey = `dist_meta_${distId}`;
       let cachedMeta = cache.get(distCacheKey);
@@ -1038,9 +1059,18 @@ export async function POST(req) {
 
     // Alert Winning Heaven Portal + owning Distributor APK — never touches player promo push.
     const alertType = String(txObject.type || 'REQUEST').replace(/_/g, ' ');
+    const isWebsiteCommissionPayment = txObject.type === 'WEBSITE_COMMISSION_PAYMENT';
     const isLedgerTx = txObject.type === 'DEPOSIT' || txObject.type === 'WITHDRAW' || txObject.type === 'PAYOUT' || txObject.type === 'COMMISSION_WITHDRAW';
-    const targetAdminUrl = isLedgerTx ? '/admin/ledger' : '/admin/requests';
-    const targetDistributorUrl = isLedgerTx ? '/distributor/ledger' : '/distributor/requests';
+    const targetAdminUrl = isWebsiteCommissionPayment
+      ? '/admin/platform_fees'
+      : isLedgerTx
+        ? '/admin/ledger'
+        : '/admin/requests';
+    const targetDistributorUrl = isWebsiteCommissionPayment
+      ? '/distributor/dist_finance'
+      : isLedgerTx
+        ? '/distributor/ledger'
+        : '/distributor/requests';
 
     notifyStaffAndDistributorAsync(db, {
       title: `New ${alertType}`,

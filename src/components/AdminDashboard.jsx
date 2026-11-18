@@ -34,8 +34,8 @@ const DeletedPlayersTab = lazyWithRetry(() => import('./admin/DeletedPlayersTab'
 const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequestsTab'));
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
 const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
-const DistributorStaffTab = lazyWithRetry(() => import('./admin/DistributorStaffTab'));
 const DistributorFinanceTab = lazyWithRetry(() => import('./admin/DistributorFinanceTab'));
+const PlatformFeePaymentsTab = lazyWithRetry(() => import('./admin/PlatformFeePaymentsTab'));
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -151,8 +151,9 @@ export default function AdminDashboard({
   const pendingTransactionsCount = statsData?.stats?.pendingTransactionsCount || 0;
   const pendingCoinsCount = statsData?.stats?.pendingCoinsCount || 0;
   const pendingCampaignRequestsCount = statsData?.stats?.pendingCampaignRequestsCount || 0;
+  const pendingWebsitePaymentsCount = statsData?.stats?.pendingWebsitePaymentsCount || 0;
 
-  const prevCountsRef = React.useRef({ requests: 0, transactions: 0, coins: 0, chats: 0, campaigns: 0 });
+  const prevCountsRef = React.useRef({ requests: 0, transactions: 0, coins: 0, chats: 0, campaigns: 0, websitePayments: 0 });
   const alertsReadyRef = React.useRef(false);
   const soundUrlRef = React.useRef('');
 
@@ -230,7 +231,8 @@ export default function AdminDashboard({
       pendingTransactionsCount = 0,
       pendingCoinsCount = 0,
       pendingChatsCount = 0,
-      pendingCampaignRequestsCount = 0
+      pendingCampaignRequestsCount = 0,
+      pendingWebsitePaymentsCount: pendingWebsitePaymentsStat = 0
     } = statsData.stats;
 
     const counts = {
@@ -238,7 +240,8 @@ export default function AdminDashboard({
       transactions: Number(pendingTransactionsCount) || 0,
       coins: Number(pendingCoinsCount) || 0,
       chats: Number(pendingChatsCount) || 0,
-      campaigns: Number(pendingCampaignRequestsCount) || 0
+      campaigns: Number(pendingCampaignRequestsCount) || 0,
+      websitePayments: Number(pendingWebsitePaymentsStat) || 0
     };
 
     if (!alertsReadyRef.current) {
@@ -259,6 +262,9 @@ export default function AdminDashboard({
     const canCoins = isFull || roles.includes('coins_admin');
     const canChats = isFull || roles.includes('support_admin');
     const canCampaigns = roles.includes('admin') && !adminUser?.distributorId;
+    const canPlatformFees =
+      !adminUser?.distributorId &&
+      (roles.includes('admin') || roles.includes('operation_admin') || roles.includes('financial_admin'));
 
     const prev = prevCountsRef.current;
     const hasNewRequest = canRequests && counts.requests > prev.requests;
@@ -266,8 +272,9 @@ export default function AdminDashboard({
     const hasNewCoin = canCoins && counts.coins > prev.coins;
     const hasNewChat = canChats && counts.chats > prev.chats;
     const hasNewCampaign = canCampaigns && counts.campaigns > prev.campaigns;
+    const hasNewWebFee = canPlatformFees && counts.websitePayments > prev.websitePayments;
 
-    if (hasNewRequest || hasNewTx || hasNewCoin || hasNewChat || hasNewCampaign) {
+    if (hasNewRequest || hasNewTx || hasNewCoin || hasNewChat || hasNewCampaign || hasNewWebFee) {
       try {
         playNotificationSound(soundUrlRef.current);
       } catch (_) {
@@ -280,9 +287,11 @@ export default function AdminDashboard({
         if (hasNewCoin) parts.push('coins request');
         if (hasNewChat) parts.push('support message');
         if (hasNewCampaign) parts.push('campaign request');
+        if (hasNewWebFee) parts.push('distributor platform fee payment');
         let targetUrl = portalBasePath;
         if (hasNewCoin) targetUrl = `${portalBasePath}/coins`;
         else if (hasNewChat) targetUrl = `${portalBasePath}/support`;
+        else if (hasNewWebFee) targetUrl = `${portalBasePath}/platform_fees`;
         else if (hasNewCampaign) targetUrl = `${portalBasePath}/campaign_requests`;
         else if (hasNewTx) targetUrl = `${portalBasePath}/ledger`;
         else if (hasNewRequest) targetUrl = `${portalBasePath}/requests`;
@@ -301,6 +310,9 @@ export default function AdminDashboard({
         if (hasNewCoin) mutate((key) => typeof key === 'string' && key.includes('/api/coins-notifications'));
         if (hasNewChat) mutate((key) => typeof key === 'string' && key.includes('/api/support'));
         if (hasNewCampaign) mutate((key) => typeof key === 'string' && key.includes('/api/campaign-requests'));
+        if (hasNewWebFee) {
+          mutate((key) => typeof key === 'string' && key.includes('WEBSITE_COMMISSION_PAYMENT'));
+        }
       } catch (_) {
         // ignore mutate errors
       }
@@ -364,7 +376,7 @@ export default function AdminDashboard({
 
   const distributorScopedDeny = (tabName) => {
     if (!adminUser?.distributorId) return false;
-    if (['staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName)) {
+    if (['settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices', 'platform_fees'].includes(tabName)) {
       return true;
     }
     if (tabName === 'gateways' && distributorType !== 'B') return true;
@@ -376,19 +388,26 @@ export default function AdminDashboard({
     if (distributorScopedDeny(tabName)) return false;
 
     const roleString = adminUser.role.toLowerCase();
-    
+
     // Split roles by comma for multi-role access checks
     const roles = roleString.split(',').map(r => r.trim());
-    
+
+    if (tabName === 'dist_finance') {
+      return Boolean(adminUser?.distributorId && roles.includes('distributor'));
+    }
+
+    if (tabName === 'platform_fees') {
+      return (
+        !adminUser?.distributorId &&
+        (roles.includes('admin') || roles.includes('operation_admin') || roles.includes('financial_admin'))
+      );
+    }
+
     return roles.some((role) => {
       if (role === 'admin' && !adminUser?.distributorId) return true; // HQ Super Admin only
-      
-      if (tabName === 'dist_staff') {
-        return Boolean(adminUser?.distributorId && distributorType === 'B' && (role === 'distributor' || role === 'operation_admin'));
-      }
 
-      if (tabName === 'dist_finance') {
-        return Boolean(adminUser?.distributorId && role === 'distributor');
+      if (tabName === 'staff' && adminUser?.distributorId) {
+        return role === 'distributor';
       }
 
       if (tabName === 'games' && adminUser?.distributorId) {
@@ -400,11 +419,13 @@ export default function AdminDashboard({
       if (tabName === 'frontend_settings') return false;
 
       if (role === 'distributor') {
-        return !['staff', 'settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName);
+        return !['settings', 'frontend_settings', 'distributors', 'deleted_accounts', 'campaign_requests', 'devices'].includes(tabName);
       }
 
       if (role === 'operation_admin') return !['staff', 'settings'].includes(tabName); // Operational Manager has access to all EXCEPT staff and settings
-      if (role === 'financial_admin') return ['dashboard', 'ledger', 'gateways', 'tx_search', 'users'].includes(tabName);
+      if (role === 'financial_admin') {
+        return ['dashboard', 'ledger', 'gateways', 'tx_search', 'users', 'platform_fees'].includes(tabName);
+      }
       if (role === 'support_admin') return ['dashboard', 'support', 'users'].includes(tabName);
       if (role === 'coins_admin') return ['dashboard', 'requests', 'coins', 'tx_search', 'users'].includes(tabName);
       return false;
@@ -749,31 +770,6 @@ export default function AdminDashboard({
             </button>
           )}
 
-          {hasAccess('dist_staff') && (
-            <button
-              onClick={() => { setActiveTab('dist_staff'); setSidebarOpen(false); }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                background: activeTab === 'dist_staff' ? 'var(--gold-primary)' : 'none',
-                color: activeTab === 'dist_staff' ? '#111' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fa-solid fa-user-shield" style={{ width: '18px' }}></i>
-              <span>Staff Management</span>
-            </button>
-          )}
-
           {hasAccess('tx_search') && (
             <button
               onClick={() => { setActiveTab('tx_search'); setSidebarOpen(false); }}
@@ -885,6 +881,37 @@ export default function AdminDashboard({
             >
               <i className="fa-solid fa-users-gear" style={{ width: '18px' }}></i>
               <span>Distributors</span>
+            </button>
+          )}
+
+          {hasAccess('platform_fees') && (
+            <button
+              onClick={() => { setActiveTab('platform_fees'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'platform_fees' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'platform_fees' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                position: 'relative',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-brands fa-bitcoin" style={{ width: '18px' }}></i>
+              <span>Distributor USDT Payments</span>
+              {pendingWebsitePaymentsCount > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '10px', fontWeight: 'bold' }}>
+                  {pendingWebsitePaymentsCount}
+                </span>
+              )}
             </button>
           )}
 
@@ -1201,9 +1228,6 @@ export default function AdminDashboard({
                   gatewaysListUrl={gatewaysListUrl}
                 />
               )}
-              {activeTab === 'dist_staff' && hasAccess('dist_staff') && (
-                <DistributorStaffTab distributorId={adminUser?.distributorId || ''} />
-              )}
               {activeTab === 'coins' && hasAccess('coins') && (
                 <CoinsAllotmentTab
                   onUpdateCoinsNotification={onUpdateCoinsNotification}
@@ -1218,10 +1242,27 @@ export default function AdminDashboard({
                 <SupportTab adminUser={adminUser} />
               )}
               {activeTab === 'staff' && hasAccess('staff') && (
-                <StaffTab adminUser={adminUser} onCreateAdmin={onCreateAdmin} onDeleteUser={onDeleteUser} />
+                <StaffTab
+                  adminUser={adminUser}
+                  onCreateAdmin={onCreateAdmin}
+                  onDeleteUser={onDeleteUser}
+                  distributorScopeId={adminUser?.distributorId || ''}
+                />
               )}
               {activeTab === 'distributors' && hasAccess('distributors') && !adminUser?.distributorId && (
                 <DistributorsTab />
+              )}
+              {activeTab === 'platform_fees' && hasAccess('platform_fees') && (
+                <PlatformFeePaymentsTab
+                  adminUser={adminUser}
+                  onInspectProof={onInspectProof}
+                  onApproveTransaction={onApproveTransaction}
+                  completedActionIds={completedActionIds}
+                  processingIds={processingIds}
+                  wrapAction={wrapAction}
+                  showToast={showToast}
+                  onOpenSettings={() => setActiveTab('settings')}
+                />
               )}
               {activeTab === 'deleted_accounts' && !adminUser?.distributorId && isSuperAdmin() && (
                 <DeletedPlayersTab />

@@ -14,9 +14,28 @@ const AVAILABLE_ROLES = [
   { value: 'support_admin', label: 'Support Admin', desc: 'Live chat & customer help', icon: 'fa-headset', color: '#c084fc' }
 ];
 
-export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
-  const { data: usersData, mutate } = useSWR('/api/users?limit=200&segment=staff', fetcher);
-  const { data: gamesData } = useSWR('/api/games', fetcher);
+const DIST_STAFF_ROLES = ['financial_admin', 'coins_admin', 'support_admin'];
+
+export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser, distributorScopeId = '' }) {
+  const isDistScope = Boolean(distributorScopeId);
+
+  const { data: usersData, mutate: mutateUsers } = useSWR(
+    isDistScope ? null : '/api/users?limit=200&segment=staff',
+    fetcher
+  );
+  const { data: distStaffData, mutate: mutateDistStaff } = useSWR(
+    isDistScope ? `/api/distributors/staff?distributorId=${encodeURIComponent(distributorScopeId)}` : null,
+    fetcher
+  );
+  const mutate = () => {
+    mutateUsers();
+    mutateDistStaff();
+  };
+
+  const gamesUrl = isDistScope
+    ? `/api/games?distributorId=${encodeURIComponent(distributorScopeId)}&ownedOnly=1`
+    : '/api/games';
+  const { data: gamesData } = useSWR(gamesUrl, fetcher);
   const [staffSearch, setStaffSearch] = useState('');
 
   const catalogGames = gamesData?.games || [];
@@ -25,7 +44,9 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState(['financial_admin']);
+  const [selectedRoles, setSelectedRoles] = useState(
+    isDistScope ? ['coins_admin'] : ['financial_admin']
+  );
   const [allowedGameIds, setAllowedGameIds] = useState([]);
 
   // Editing staff states
@@ -42,7 +63,7 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
   const { data: distsData } = useSWR('/api/distributors', fetcher);
   const distributorsList = distsData?.distributors || [];
 
-  const [activeSubTab, setActiveSubTab] = useState('system'); // 'system' | 'distributor'
+  const [activeSubTab, setActiveSubTab] = useState(isDistScope ? 'distributor' : 'system'); // 'system' | 'distributor'
 
   const staffUsers = users.filter((u) => {
     if (!u.role) return false;
@@ -62,12 +83,21 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
     );
   });
 
-  const filteredStaff = (activeSubTab === 'system' ? staffUsers : distributorStaffUsers).filter(
+  const scopedDistStaff = isDistScope ? (distStaffData?.staff || []) : distributorStaffUsers;
+
+  const filteredStaff = (isDistScope
+    ? scopedDistStaff
+    : (activeSubTab === 'system' ? staffUsers : distributorStaffUsers)
+  ).filter(
     (s) =>
       s.name.toLowerCase().includes(staffSearch.toLowerCase()) ||
       s.email.toLowerCase().includes(staffSearch.toLowerCase()) ||
       s.role.toLowerCase().includes(staffSearch.toLowerCase())
   );
+
+  const registerRoleOptions = isDistScope
+    ? AVAILABLE_ROLES.filter((r) => DIST_STAFF_ROLES.includes(r.value))
+    : AVAILABLE_ROLES;
 
   const getDistributorEmail = (distId) => {
     const d = distributorsList.find(dist => dist.id === distId);
@@ -77,6 +107,11 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRoleCheckboxChange = (roleVal) => {
+    if (isDistScope) {
+      setSelectedRoles([roleVal]);
+      if (roleVal !== 'coins_admin') setAllowedGameIds([]);
+      return;
+    }
     if (selectedRoles.includes(roleVal)) {
       if (selectedRoles.length > 1) {
         setSelectedRoles(selectedRoles.filter(r => r !== roleVal));
@@ -87,6 +122,11 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
   };
 
   const handleEditRoleCheckboxChange = (roleVal) => {
+    if (isDistScope) {
+      setSelectedEditRoles([roleVal]);
+      if (roleVal !== 'coins_admin') setEditAllowedGameIds([]);
+      return;
+    }
     if (selectedEditRoles.includes(roleVal)) {
       if (selectedEditRoles.length > 1) {
         setSelectedEditRoles(selectedEditRoles.filter(r => r !== roleVal));
@@ -135,22 +175,45 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        name: newAdminName.trim(),
-        email: newAdminEmail.toLowerCase().trim(),
-        password: newAdminPassword.trim(),
-        role: selectedRoles.join(',')
-      };
-      if (needsGameAccess(selectedRoles)) {
-        payload.allowedGameIds = allowedGameIds;
+      if (isDistScope) {
+        const role = selectedRoles[0];
+        const payload = {
+          name: newAdminName.trim(),
+          email: newAdminEmail.toLowerCase().trim(),
+          password: newAdminPassword.trim(),
+          role,
+          distributorId: distributorScopeId
+        };
+        if (needsGameAccess(selectedRoles)) {
+          payload.allowedGameIds = allowedGameIds;
+        }
+        const res = await fetch('/api/distributors/staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.message || 'Failed to register staff.');
+          return;
+        }
+      } else {
+        const payload = {
+          name: newAdminName.trim(),
+          email: newAdminEmail.toLowerCase().trim(),
+          password: newAdminPassword.trim(),
+          role: selectedRoles.join(',')
+        };
+        if (needsGameAccess(selectedRoles)) {
+          payload.allowedGameIds = allowedGameIds;
+        }
+        await onCreateAdmin(payload);
       }
-
-      await onCreateAdmin(payload);
 
       setNewAdminName('');
       setNewAdminEmail('');
       setNewAdminPassword('');
-      setSelectedRoles(['financial_admin']);
+      setSelectedRoles(isDistScope ? ['coins_admin'] : ['financial_admin']);
       setAllowedGameIds([]);
     } catch (err) {
       console.error(err);
@@ -188,7 +251,7 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
       const payload = {
         email: editEmail,
         name: editName.trim(),
-        role: selectedEditRoles.join(',')
+        role: isDistScope ? selectedEditRoles[0] : selectedEditRoles.join(',')
       };
       if (editPassword.trim()) {
         payload.password = editPassword.trim();
@@ -199,11 +262,17 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
         payload.allowedGameIds = [];
       }
 
-      const res = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const res = isDistScope
+        ? await fetch('/api/distributors/staff', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, distributorId: distributorScopeId })
+          })
+        : await fetch('/api/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
       const data = await res.json();
       if (data.success) {
         setEditingStaff(null);
@@ -224,10 +293,29 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
       alert('You cannot delete your own admin account.');
       return;
     }
-    if (window.confirm(`Are you sure you want to remove staff account "${email}"? Access will be immediately revoked.`)) {
-      await onDeleteUser(email);
-      mutate();
+    if (!window.confirm(`Are you sure you want to remove staff account "${email}"? Access will be immediately revoked.`)) {
+      return;
     }
+    if (isDistScope) {
+      try {
+        const res = await fetch(
+          `/api/distributors/staff?email=${encodeURIComponent(email)}&distributorId=${encodeURIComponent(distributorScopeId)}`,
+          { method: 'DELETE' }
+        );
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.message || 'Failed to delete staff.');
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error deleting staff.');
+        return;
+      }
+    } else {
+      await onDeleteUser(email);
+    }
+    mutate();
   };
 
   const getRoleBadge = (roleVal) => {
@@ -317,10 +405,15 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
             gap: '0.6rem'
           }}>
             <i className="fa-solid fa-users-gear" style={{ color: '#ffd700' }} />
-            <span>STAFF &amp; <span className="gold-gradient-text">ACCESS CONTROL</span></span>
+            <span>
+              STAFF &amp;{' '}
+              <span className="gold-gradient-text">{isDistScope ? 'YOUR TEAM' : 'ACCESS CONTROL'}</span>
+            </span>
           </h2>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #94a3b8)', marginTop: '0.2rem' }}>
-            Provision staff accounts, configure granular role permissions, and audit active users
+            {isDistScope
+              ? 'Same HQ-style staff panel — roles scoped to your distributor players only.'
+              : 'Provision staff accounts, configure granular role permissions, and audit active users'}
           </div>
         </div>
 
@@ -338,23 +431,25 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
             gap: '0.4rem'
           }}>
             <i className="fa-solid fa-user-shield" />
-            <span>{staffUsers.length} System Staff</span>
+            <span>{isDistScope ? scopedDistStaff.length : staffUsers.length} {isDistScope ? 'Team Members' : 'System Staff'}</span>
           </div>
-          <div style={{
-            background: 'rgba(0, 240, 255, 0.1)',
-            border: '1px solid rgba(0, 240, 255, 0.3)',
-            borderRadius: '12px',
-            padding: '0.45rem 0.85rem',
-            fontSize: '0.78rem',
-            color: '#00f0ff',
-            fontWeight: 800,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem'
-          }}>
-            <i className="fa-solid fa-network-wired" />
-            <span>{distributorStaffUsers.length} Distributor Staff</span>
-          </div>
+          {!isDistScope && (
+            <div style={{
+              background: 'rgba(0, 240, 255, 0.1)',
+              border: '1px solid rgba(0, 240, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '0.45rem 0.85rem',
+              fontSize: '0.78rem',
+              color: '#00f0ff',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}>
+              <i className="fa-solid fa-network-wired" />
+              <span>{distributorStaffUsers.length} Distributor Staff</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -472,7 +567,7 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
                 Authority Roles (Select Multiple)
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                {AVAILABLE_ROLES.map((role) => {
+                {registerRoleOptions.map((role) => {
                   const isChecked = selectedRoles.includes(role.value);
                   return (
                     <div
@@ -631,27 +726,28 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
               </span>
             </div>
 
-            {/* Subtabs */}
-            <div className="promotions-subtabs" style={{ margin: 0, padding: '0.3rem' }}>
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('system')}
-                className={`promotions-subtab${activeSubTab === 'system' ? ' is-active' : ''}`}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-              >
-                <i className="fa-solid fa-shield-halved" />
-                <span>System Staff ({staffUsers.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('distributor')}
-                className={`promotions-subtab${activeSubTab === 'distributor' ? ' is-active' : ''}`}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-              >
-                <i className="fa-solid fa-network-wired" />
-                <span>Distributor Staff ({distributorStaffUsers.length})</span>
-              </button>
-            </div>
+            {!isDistScope && (
+              <div className="promotions-subtabs" style={{ margin: 0, padding: '0.3rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('system')}
+                  className={`promotions-subtab${activeSubTab === 'system' ? ' is-active' : ''}`}
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                >
+                  <i className="fa-solid fa-shield-halved" />
+                  <span>System Staff ({staffUsers.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('distributor')}
+                  className={`promotions-subtab${activeSubTab === 'distributor' ? ' is-active' : ''}`}
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                >
+                  <i className="fa-solid fa-network-wired" />
+                  <span>Distributor Staff ({distributorStaffUsers.length})</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Search bar */}
@@ -695,14 +791,14 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
                   <th style={{ color: '#ffd700' }}>Login Email</th>
                   <th style={{ color: '#ffd700' }}>Privilege Clearance</th>
                   <th style={{ color: '#ffd700' }}>Game Access</th>
-                  {activeSubTab === 'distributor' && <th style={{ color: '#ffd700' }}>Distributor</th>}
+                  {!isDistScope && activeSubTab === 'distributor' && <th style={{ color: '#ffd700' }}>Distributor</th>}
                   <th style={{ color: '#ffd700', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStaff.length === 0 ? (
                   <tr>
-                    <td colSpan={activeSubTab === 'distributor' ? 6 : 5} className="text-center text-muted" style={{ padding: '2.5rem' }}>
+                    <td colSpan={!isDistScope && activeSubTab === 'distributor' ? 6 : 5} className="text-center text-muted" style={{ padding: '2.5rem' }}>
                       <i className="fa-solid fa-user-slash" style={{ fontSize: '1.8rem', color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: '0.5rem' }} />
                       No staff accounts found matching your query.
                     </td>
@@ -752,7 +848,7 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
                             ? formatAllowedGames(staff)
                             : '—'}
                         </td>
-                        {activeSubTab === 'distributor' && (
+                        {!isDistScope && activeSubTab === 'distributor' && (
                           <td style={{ color: '#ffd700', fontWeight: 700, fontSize: '0.82rem' }}>
                             {getDistributorEmail(staff.distributorId)}
                           </td>
@@ -924,7 +1020,7 @@ export default function StaffTab({ adminUser, onCreateAdmin, onDeleteUser }) {
                   Modify Authority Roles
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  {AVAILABLE_ROLES.map((role) => {
+                  {registerRoleOptions.map((role) => {
                     const isChecked = selectedEditRoles.includes(role.value);
                     return (
                       <div

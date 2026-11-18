@@ -149,7 +149,7 @@ export async function GET(req) {
             status: 'PENDING'
           })
         : db.collection('transactions').countDocuments({
-            type: { $in: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW'] },
+            type: 'WEBSITE_COMMISSION_PAYMENT',
             status: 'PENDING'
           }),
       adminDistributorId

@@ -840,17 +840,17 @@ export default function SettingsTab({ onUpdateSettings }) {
           <div>
             <h3 style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 800, margin: 0, fontFamily: 'var(--font-heading, "Outfit", sans-serif)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <i className="fa-solid fa-building-columns" style={{ color: '#ffd700' }} />
-              <span>Platform Owner Settlement Address &amp; QR Code</span>
+              <span>Binance / USDT wallet (Platform Owner)</span>
             </h3>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
-              Independent Type B distributors send platform commission revenue share to this wallet.
+              Type B distributors see this TRC20 address &amp; QR in Commission &amp; Fees when paying HQ platform share.
             </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                Platform Owner Settlement Address (USDT TRC20 / Zelle)
+                USDT TRC20 address (Binance or any TRC20 wallet)
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <i className="fa-solid fa-wallet" style={{ position: 'absolute', left: '14px', color: '#ffd700', fontSize: '0.88rem' }} />
