@@ -262,7 +262,10 @@ export default function AdminDashboard({
     const canRequests = isFull || roles.includes('coins_admin');
     const canTx = isFull || roles.includes('financial_admin');
     const canCoins = isFull || roles.includes('coins_admin');
-    const canChats = isFull || roles.includes('support_admin');
+    const canChats =
+      isFull ||
+      roles.includes('support_admin') ||
+      Boolean(adminUser?.distributorId);
     const canCampaigns = roles.includes('admin') && !adminUser?.distributorId;
     const canPlatformFees =
       !adminUser?.distributorId &&
@@ -322,6 +325,56 @@ export default function AdminDashboard({
 
     prevCountsRef.current = counts;
   }, [statsData, adminUser?.role, adminUser?.distributorId, portalBasePath]);
+
+  useEffect(() => {
+    const onSupportIncoming = (ev) => {
+      const detail = ev?.detail || {};
+      const eventDist = String(detail.distributorId || '').trim();
+      const myDist = String(adminUser?.distributorId || '').trim();
+
+      if (myDist) {
+        if (eventDist && eventDist !== myDist) return;
+      } else if (eventDist) {
+        return;
+      }
+
+      const roles = String(adminUser?.role || '')
+        .toLowerCase()
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean);
+      const isFull = roles.includes('admin') || roles.includes('operation_admin') || roles.includes('distributor');
+      const canChats =
+        isFull ||
+        roles.includes('support_admin') ||
+        Boolean(adminUser?.distributorId);
+      if (!canChats) return;
+
+      try {
+        playNotificationSound(soundUrlRef.current);
+      } catch {
+        /* ignore */
+      }
+      try {
+        notifyStaffActivity({
+          title: 'New support message',
+          body: 'A player sent a live chat message.',
+          url: `${portalBasePath}/support`
+        });
+      } catch {
+        /* ignore */
+      }
+      try {
+        mutate((key) => typeof key === 'string' && key.includes('/api/admin/stats'));
+        mutate((key) => typeof key === 'string' && key.includes('/api/support'));
+      } catch {
+        /* ignore */
+      }
+    };
+
+    window.addEventListener('wh-admin-support-incoming', onSupportIncoming);
+    return () => window.removeEventListener('wh-admin-support-incoming', onSupportIncoming);
+  }, [adminUser?.role, adminUser?.distributorId, portalBasePath]);
 
   useEffect(() => {
     if (!adminUser?.email) return;

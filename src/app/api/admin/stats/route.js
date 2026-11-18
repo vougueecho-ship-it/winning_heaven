@@ -3,7 +3,7 @@ import { getDb, resetMongoConnection } from '../../../../lib/mongodb';
 import { cache } from '../../../../lib/cache';
 import { applyStaffGameFilter } from '../../../../lib/staffGameAccess';
 import { typeBExclusionFilter } from '../../../../lib/typeBDistributors';
-import { hqSupportListMatch } from '../../../../lib/supportDistributor';
+import { distributorSupportUnreadQuery, hqSupportListMatch } from '../../../../lib/supportDistributor';
 import { jsonOk } from '../../../../lib/apiResponse';
 
 async function aggregateFinancialTotals(db, baseQuery) {
@@ -111,6 +111,10 @@ export async function GET(req) {
       coinsQuery = await applyStaffGameFilter(db, coinsQuery, adminEmail);
     }
 
+    const supportUnreadQuery = adminDistributorId
+      ? await distributorSupportUnreadQuery(db, adminDistributorId)
+      : { senderType: 'player', read: false, ...hqSupportListMatch() };
+
     const [
       pendingRequestsCount,
       pendingTransactionsCount,
@@ -128,12 +132,7 @@ export async function GET(req) {
         type: { $nin: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW', 'AFFILIATE_COMMISSION_WITHDRAW'] }
       }),
       db.collection('coinsNotifications').countDocuments(coinsQuery),
-      db.collection('supportMessages').distinct(
-        'userEmail',
-        adminDistributorId
-          ? { distributorId: adminDistributorId, senderType: 'player', read: false }
-          : { senderType: 'player', read: false, ...hqSupportListMatch() }
-      ),
+      db.collection('supportMessages').distinct('userEmail', supportUnreadQuery),
       adminDistributorId
         ? db.collection('transactions').countDocuments({
             type: { $in: ['WEBSITE_COMMISSION_PAYMENT', 'COMMISSION_WITHDRAW'] },

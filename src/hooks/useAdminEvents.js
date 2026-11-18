@@ -52,6 +52,13 @@ export default function useAdminEvents(options = {}) {
         }
         if (type === 'support') {
           mutate((key) => typeof key === 'string' && key.includes('/api/support'));
+          if (String(event.senderType || '').toLowerCase() === 'player') {
+            try {
+              window.dispatchEvent(new CustomEvent('wh-admin-support-incoming', { detail: event }));
+            } catch {
+              /* ignore */
+            }
+          }
         }
         if (type === 'campaigns') {
           mutate((key) => typeof key === 'string' && key.includes('/api/campaign-requests'));

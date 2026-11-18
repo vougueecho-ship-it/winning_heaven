@@ -1,5 +1,31 @@
 import { resolvePlayerDistributor } from './resolvePlayerDistributor';
 
+/** Player messages + threads for one distributor office (matches support list logic). */
+export async function buildDistributorSupportScope(db, distributorId) {
+  const id = String(distributorId || '').trim();
+  if (!id) return null;
+
+  const playerEmails = await db.collection('users').distinct('email', {
+    distributorId: id,
+    role: 'user'
+  });
+  const emailList = playerEmails.map((e) => String(e || '').toLowerCase().trim()).filter(Boolean);
+  const or = [{ distributorId: id }];
+  if (emailList.length) or.push({ userEmail: { $in: emailList } });
+  return { $or: or };
+}
+
+/** Unread player chats for distributor sidebar badge / alerts. */
+export async function distributorSupportUnreadQuery(db, distributorId) {
+  const scope = await buildDistributorSupportScope(db, distributorId);
+  if (!scope) return null;
+  return {
+    senderType: 'player',
+    read: false,
+    ...scope
+  };
+}
+
 /** Mongo $match for HQ / platform support inbox (no distributor-linked messages). */
 export function hqSupportListMatch() {
   return {
