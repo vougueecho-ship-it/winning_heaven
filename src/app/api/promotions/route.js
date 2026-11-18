@@ -50,7 +50,7 @@ export async function GET(req) {
   }
 }
 
-import nodemailer from 'nodemailer';
+import { resolveMailContext, sendResolvedMail } from '../../../lib/distributorMail';
 
 // POST create/broadcast a promotion
 export async function POST(req) {
@@ -91,7 +91,8 @@ export async function POST(req) {
       promoType: type,
       freeplayAmount: fpAmount,
       bonusPercent: bPercent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      distributorId: adminDistributorId || ''
     };
 
     // Save to website promo banners collection if channel includes website or all
@@ -134,26 +135,18 @@ export async function POST(req) {
       }
     }
 
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-
     // Send email broadcast if channel includes email or all
     if ((channel === 'all' || channel === 'email') && emails.length > 0) {
-      if (smtpUser && smtpPass) {
-        const smtpHost = process.env.SMTP_HOST;
-        const transporter = smtpHost
-          ? nodemailer.createTransport({
-              host: smtpHost,
-              port: Number(process.env.SMTP_PORT || 465),
-              secure: Number(process.env.SMTP_PORT || 465) === 465,
-              auth: { user: smtpUser, pass: smtpPass }
-            })
-          : nodemailer.createTransport({
-              service: 'gmail',
-              auth: { user: smtpUser, pass: smtpPass }
-            });
+      let mailCtx;
+      try {
+        mailCtx = await resolveMailContext(db, { distributorId: adminDistributorId || '' });
+      } catch (ctxErr) {
+        return NextResponse.json({ success: false, message: ctxErr.message || 'Email not configured.' }, { status: 503 });
+      }
 
-        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://winningheaven.com').replace(/\/$/, '');
+      if (mailCtx?.transporter) {
+        const siteUrl = (mailCtx.siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://winningheaven.com').replace(/\/$/, '');
+        const brand = mailCtx.brandName || mailCtx.fromName || 'Winning Heaven';
         const attachments = [];
         let imageHtml = '';
         if (image) {
@@ -253,7 +246,7 @@ export async function POST(req) {
           <body>
             <div class="email-container">
               <div class="email-header">
-                <h1>WINNING HEAVEN</h1>
+                <h1>${brand.toUpperCase()}</h1>
               </div>
               <div class="email-body">
                 ${imageHtml}
@@ -265,7 +258,7 @@ export async function POST(req) {
                 </div>
               </div>
               <div class="email-footer">
-                &copy; 2026 Winning Heaven. All Rights Reserved.<br>
+                &copy; ${new Date().getFullYear()} ${brand}. All Rights Reserved.<br>
                 You received this email because you are a registered player.
               </div>
             </div>
@@ -274,16 +267,15 @@ export async function POST(req) {
         `;
 
         const mailOptions = {
-          from: `"Winning Heaven" <${smtpUser}>`,
-          to: smtpUser,
+          to: mailCtx.smtpUser,
           bcc: emails,
           subject: `🔥 Special Offer: ${title}`,
           html: htmlContent,
           attachments
         };
 
-        transporter.sendMail(mailOptions).catch(err => {
-          console.error('Nodemailer promo broadcast error:', err);
+        sendResolvedMail(mailCtx, mailOptions).catch((err) => {
+          console.error('Promo broadcast email error:', err);
         });
       } else {
         console.log(`[SMTP SIMULATOR] Broadcasting promo "${title}" to ${emails.length} players:`, emails);

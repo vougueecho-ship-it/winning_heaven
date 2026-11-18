@@ -35,6 +35,7 @@ const CampaignRequestsTab = lazyWithRetry(() => import('./admin/CampaignRequests
 const DevicesTab = lazyWithRetry(() => import('./admin/DevicesTab'));
 const DistributorsTab = lazyWithRetry(() => import('./admin/DistributorsTab'));
 const DistributorFinanceTab = lazyWithRetry(() => import('./admin/DistributorFinanceTab'));
+const DistributorEmailTab = lazyWithRetry(() => import('./admin/DistributorEmailTab'));
 const PlatformFeePaymentsTab = lazyWithRetry(() => import('./admin/PlatformFeePaymentsTab'));
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
@@ -396,6 +397,10 @@ export default function AdminDashboard({
       return Boolean(adminUser?.distributorId && roles.includes('distributor'));
     }
 
+    if (tabName === 'dist_email') {
+      return Boolean(adminUser?.distributorId && roles.includes('distributor'));
+    }
+
     if (tabName === 'platform_fees') {
       return (
         !adminUser?.distributorId &&
@@ -605,6 +610,31 @@ export default function AdminDashboard({
             >
               <i className="fa-solid fa-bullhorn" style={{ width: '18px' }}></i>
               <span>Promotions & Segments</span>
+            </button>
+          )}
+
+          {hasAccess('dist_email') && (
+            <button
+              onClick={() => { setActiveTab('dist_email'); setSidebarOpen(false); }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: activeTab === 'dist_email' ? 'var(--gold-primary)' : 'none',
+                color: activeTab === 'dist_email' ? '#111' : '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fa-solid fa-envelope" style={{ width: '18px' }}></i>
+              <span>Email &amp; SMTP</span>
             </button>
           )}
 
@@ -1201,6 +1231,12 @@ export default function AdminDashboard({
               )}
               {activeTab === 'dist_finance' && hasAccess('dist_finance') && distributorSession && (
                 <DistributorFinanceTab distSession={distributorSession} onInspectProof={onInspectProof} />
+              )}
+              {activeTab === 'dist_email' && hasAccess('dist_email') && adminUser?.distributorId && (
+                <DistributorEmailTab
+                  distributorId={adminUser.distributorId}
+                  distributorName={distributorSession?.name || adminUser?.name || ''}
+                />
               )}
               {activeTab === 'users' && hasAccess('users') && (
                 <PlayerAccountsTab adminUser={adminUser} onDeleteUser={onDeleteUser} />

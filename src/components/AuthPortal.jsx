@@ -448,7 +448,8 @@ export default function AuthPortal({
           email: regEmail.toLowerCase().trim(),
           name: regName.trim(),
           purpose: 'register',
-          deviceId
+          deviceId,
+          distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : ''
         })
       });
 
@@ -484,7 +485,8 @@ export default function AuthPortal({
           email: regEmail.toLowerCase().trim(),
           name: regName.trim(),
           purpose: 'register',
-          deviceId
+          deviceId,
+          distributorId: typeof window !== 'undefined' ? localStorage.getItem('winning_heaven_distributor_id') || '' : ''
         })
       });
 

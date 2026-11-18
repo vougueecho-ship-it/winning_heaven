@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
 import { getDb } from '../../../../lib/mongodb';
+import { resolveMailContext, sendResolvedMail } from '../../../../lib/distributorMail';
 
 export async function POST(req) {
   try {
@@ -30,13 +30,15 @@ export async function POST(req) {
       console.error('Error logging freeplay task in db:', dbErr);
     }
 
-    const smtpHost = process.env.SMTP_HOST || 'smtp.hostinger.com';
-    const smtpPort = Number(process.env.SMTP_PORT || 465);
-    const smtpUser = process.env.SMTP_USER || 'verified@winningheaven.com';
-    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '0761071Na@';
+    const db = await getDb();
+    let mailCtx;
+    try {
+      mailCtx = await resolveMailContext(db, { userEmail: cleanEmail });
+    } catch (ctxErr) {
+      return NextResponse.json({ success: false, message: ctxErr.message || 'Email not configured.' }, { status: 503 });
+    }
 
-    // If no password configured, log in console for development mode
-    if (!smtpPass) {
+    if (!mailCtx.transporter) {
       console.log(`[SMTP DEV MODE] Freeplay task email sent to ${cleanEmail} (Task #${taskId})`);
       return NextResponse.json({
         success: true,
@@ -45,18 +47,8 @@ export async function POST(req) {
       });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const brand = mailCtx.brandName || mailCtx.fromName || 'Winning Heaven';
+    const smtpUser = mailCtx.smtpUser;
 
     // Premium Anti-Spam & Deliverability HTML Email Template
     const htmlTemplate = `
@@ -189,16 +181,15 @@ Official Sender: verified@winningheaven.com
     `;
 
     // Send Mail
-    await transporter.sendMail({
-      from: `"Winning Heaven Verified" <${smtpUser}>`,
+    await sendResolvedMail(mailCtx, {
       to: cleanEmail,
-      subject: `Winning Heaven: $3 Freeplay Verification & Inbox Task 🎁 [${taskId}]`,
-      text: textTemplate,
-      html: htmlTemplate,
+      subject: `${brand}: $3 Freeplay Verification & Inbox Task 🎁 [${taskId}]`,
+      text: textTemplate.replace(/Winning Heaven/g, brand),
+      html: htmlTemplate.replace(/Winning Heaven/g, brand),
       headers: {
         'X-Priority': '1 (Highest)',
         'X-MSMail-Priority': 'High',
-        'Importance': 'High'
+        Importance: 'High'
       }
     });
 

@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { sendUserPush } from './pushNotifications';
 import { publishAdminEvent } from './adminEvents';
+import { resolveMailContext, sendResolvedMail } from './distributorMail';
 
 let cachedTransporter = null;
 
@@ -49,12 +50,15 @@ function buildAlertEmailHtml({
   details = [],
   credentials = null,
   actionButton = null,
-  siteUrl = 'https://winningheaven.com'
+  siteUrl = 'https://winningheaven.com',
+  brandName = 'Winning Heaven',
+  tagline = ''
 }) {
   const safeTitle = title || 'Account Notification';
   const safeBadge = badgeText || title || 'NOTIFICATION';
   const safeName = userName || 'Player';
-  const btn = actionButton || { text: 'OPEN WINNING HEAVEN', url: `${siteUrl}/lobby` };
+  const safeBrand = brandName || 'Winning Heaven';
+  const btn = actionButton || { text: `OPEN ${safeBrand.toUpperCase()}`, url: `${siteUrl}/lobby` };
   const targetUrl = btn.url.startsWith('http') ? btn.url : `${siteUrl}${btn.url.startsWith('/') ? '' : '/'}${btn.url}`;
 
   let detailsRows = '';
@@ -123,11 +127,11 @@ function buildAlertEmailHtml({
               <!-- Header -->
               <tr>
                 <td align="center" style="padding: 30px 20px 20px 20px; background: linear-gradient(135deg, #182042 0%, #080b1a 100%); border-bottom: 1px solid rgba(251, 191, 36, 0.25);">
-                  <div style="font-size: 24px; font-weight: 900; letter-spacing: 3px; color: #ffffff; text-transform: uppercase;">
-                    WINNING<span style="color: #fbbf24;">HEAVEN</span>
+                  <div style="font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #fbbf24; text-transform: uppercase;">
+                    ${safeBrand}
                   </div>
                   <div style="font-size: 11px; letter-spacing: 2px; color: #94a3b8; margin-top: 4px; text-transform: uppercase;">
-                    VIP Sweepstakes Casino & Gaming Lounge
+                    ${tagline || 'Player notifications'}
                   </div>
                 </td>
               </tr>
@@ -180,10 +184,10 @@ function buildAlertEmailHtml({
               <tr>
                 <td style="padding: 20px; background-color: #03050c; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
                   <p style="font-size: 11px; line-height: 1.5; color: #64748b; margin: 0 0 8px 0;">
-                    Winning Heaven VIP Support is active 24/7. Need assistance? Reply to our live chat in the lobby.
+                    ${safeBrand} support — use live chat in your player lobby if you need help.
                   </p>
                   <p style="font-size: 10px; color: #475569; margin: 0;">
-                    &copy; ${new Date().getFullYear()} Winning Heaven. All rights reserved. Instant 24/7 Redemptions.
+                    &copy; ${new Date().getFullYear()} ${safeBrand}. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -297,15 +301,26 @@ export async function notifyUser(
     console.error('[userAlertService] Push send error:', pushErr?.message || pushErr);
   }
 
-  // 3. Send Email Notification via SMTP
+  // 3. Send Email Notification via SMTP (distributor-owned when enabled)
   try {
-    const transporter = getMailTransporter();
-    if (transporter) {
-      const userDoc = await db
-        .collection('users')
-        .findOne({ email: cleanEmail }, { projection: { name: 1 } });
-      const userName = userDoc?.name || 'Player';
+    const userDoc = await db
+      .collection('users')
+      .findOne({ email: cleanEmail }, { projection: { name: 1, distributorId: 1 } });
+    const userName = userDoc?.name || 'Player';
+    let mailCtx;
+    try {
+      mailCtx = await resolveMailContext(db, {
+        distributorId: userDoc?.distributorId || '',
+        userEmail: cleanEmail
+      });
+    } catch (ctxErr) {
+      console.error('[userAlertService] Mail context error:', ctxErr?.message || ctxErr);
+      mailCtx = null;
+    }
 
+    if (mailCtx?.transporter) {
+      const alertSite = mailCtx.siteUrl || siteUrl;
+      const brand = mailCtx.brandName || mailCtx.fromName || 'Winning Heaven';
       const emailHtml = buildAlertEmailHtml({
         title,
         badgeText: safeBadge,
@@ -316,14 +331,14 @@ export async function notifyUser(
         details,
         credentials,
         actionButton,
-        siteUrl
+        siteUrl: alertSite,
+        brandName: brand,
+        tagline: mailCtx.tagline
       });
 
-      const smtpUser = process.env.SMTP_USER || 'verified@winningheaven.com';
-      await transporter.sendMail({
-        from: `"Winning Heaven VIP" <${smtpUser}>`,
+      await sendResolvedMail(mailCtx, {
         to: cleanEmail,
-        subject: emailSubject || `${title} | Winning Heaven VIP`,
+        subject: emailSubject || `${title} | ${brand}`,
         html: emailHtml
       });
     }
