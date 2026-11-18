@@ -11,6 +11,8 @@ import CoinsAllotmentTab from '../../components/admin/CoinsAllotmentTab';
 import RequestsTab from '../../components/admin/RequestsTab';
 import LedgerTab from '../../components/admin/LedgerTab';
 import ShiftDashboardTab from '../../components/admin/ShiftDashboardTab';
+import PlayerAccountsTab from '../../components/admin/PlayerAccountsTab';
+import OverviewTab from '../../components/admin/OverviewTab';
 import RemainderClaimAction from '../../components/RemainderClaimAction';
 import { canShowClaimRemainderButton } from '../../lib/remainderClaim';
 import { filterGamesForStaff } from '../../lib/staffGameAccess';
@@ -231,6 +233,17 @@ export default function DistributorPortal() {
 
   const staffAdminEmail = distSession?.isStaff ? distSession.email : '';
 
+  const staffAdminUser = React.useMemo(
+    () => ({
+      name: distSession?.name || 'Distributor',
+      role: distSession?.isStaff ? (distSession.staffRole || distSession.role || 'coins_admin') : 'admin',
+      distributorId: distId || '',
+      email: distSession?.email || '',
+      allowedGameIds: distSession?.allowedGameIds || []
+    }),
+    [distSession, distId]
+  );
+
   // Heartbeat ping tracker for current active distributor staff/admin
   useEffect(() => {
     if (!distSession?.email) return;
@@ -286,13 +299,13 @@ export default function DistributorPortal() {
 
   // Pending queue counts for sidebar badges (status-filtered, use total from API)
   const { data: pendingRequestsData, mutate: mutatePendingRequests } = usePollingSWR(
-    distId && distSession?.type === 'B' ? `/api/account-requests?status=PENDING&page=1&limit=1&adminRole=distributor&adminDistributorId=${distId}&adminEmail=${encodeURIComponent(staffAdminEmail)}` : null,
+    distId ? `/api/account-requests?status=PENDING&page=1&limit=1&adminRole=${encodeURIComponent(staffAdminUser.role)}&adminDistributorId=${distId}&adminEmail=${encodeURIComponent(staffAdminEmail)}` : null,
     POLL.LIVE,
     { refreshWhenHidden: true }
   );
 
   const { data: pendingCoinsData, mutate: mutatePendingCoins } = usePollingSWR(
-    distId && distSession?.type === 'B' ? `/api/coins-notifications?status=PENDING,CLAIM_REQUESTED&page=1&limit=1&adminRole=distributor&adminDistributorId=${distId}&adminEmail=${encodeURIComponent(staffAdminEmail)}` : null,
+    distId ? `/api/coins-notifications?status=PENDING,CLAIM_REQUESTED&page=1&limit=1&adminRole=${encodeURIComponent(staffAdminUser.role)}&adminDistributorId=${distId}&adminEmail=${encodeURIComponent(staffAdminEmail)}` : null,
     POLL.LIVE,
     { refreshWhenHidden: true }
   );
@@ -326,13 +339,6 @@ export default function DistributorPortal() {
 
   const gameTitleById = (id) => gamesData?.games?.find((g) => String(g.id) === String(id))?.title || id;
   const players = statsData?.players || [];
-
-  const staffAdminUser = {
-    role: distSession?.staffRole || distSession?.role || 'distributor',
-    distributorId: distId,
-    email: distSession?.email || '',
-    allowedGameIds: distSession?.allowedGameIds || []
-  };
 
   const visiblePoolGames = filterGamesForStaff(gamesData?.games || [], distSession?.isStaff ? staffAdminUser : null) || gamesData?.games || [];
 
@@ -1358,13 +1364,16 @@ export default function DistributorPortal() {
     if (!distSession?.isStaff) return true;
     const role = distSession.staffRole || distSession.role;
     if (role === 'coins_admin') {
-      return ['overview', 'operations', 'requests', 'shift_dashboard'].includes(tabName);
+      return ['overview', 'operations', 'requests', 'shift_dashboard', 'users', 'tx_logs'].includes(tabName);
     }
     if (role === 'support_admin') {
-      return ['overview', 'support'].includes(tabName);
+      return ['overview', 'support', 'users'].includes(tabName);
     }
     if (role === 'financial_admin') {
-      return ['overview', 'tx_logs', 'gateways', 'ledger'].includes(tabName);
+      return ['overview', 'tx_logs', 'gateways', 'ledger', 'users'].includes(tabName);
+    }
+    if (role === 'operation_admin' || role === 'admin') {
+      return true;
     }
     return false;
   };
@@ -1439,7 +1448,7 @@ export default function DistributorPortal() {
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'overview' ? 'var(--gold-primary)' : 'none', color: activeTab === 'overview' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
             >
               <i className="fa-solid fa-chart-line" style={{ width: '16px' }}></i>
-              Overview & Analytics
+              Dashboard
             </button>
           )}
 
@@ -1493,58 +1502,7 @@ export default function DistributorPortal() {
             </button>
           )}
 
-          {distSession.type === 'B' && (
-            <>
-              {hasTabAccess('gateways') && (
-                <button
-                  onClick={() => goTab('gateways')}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'gateways' ? 'var(--gold-primary)' : 'none', color: activeTab === 'gateways' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
-                >
-                  <i className="fa-solid fa-wallet" style={{ width: '16px' }}></i>
-                  My Gateways
-                </button>
-              )}
-
-              {hasTabAccess('staff') && (
-                <button
-                  onClick={() => goTab('staff')}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'staff' ? 'var(--gold-primary)' : 'none', color: activeTab === 'staff' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
-                >
-                  <i className="fa-solid fa-user-shield" style={{ width: '16px' }}></i>
-                  My Staff
-                </button>
-              )}
-
-              {hasTabAccess('operations') && (
-                <button
-                  onClick={() => goTab('operations')}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    background: activeTab === 'operations' ? 'var(--gold-primary)' : 'none',
-                    color: activeTab === 'operations' ? '#000' : '#fff',
-                    border: 'none',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '0.8rem',
-                    textAlign: 'left'
-                  }}
-                >
-                  <i className="fa-solid fa-circle-play" style={{ width: '16px' }}></i>
-                  Operations Queue
-                  {pendingCoinsCount > 0 && (
-                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.625rem', padding: '0.15rem 0.35rem', borderRadius: '10px' }}>
-                      {pendingCoinsCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {hasTabAccess('requests') && (
+          {hasTabAccess('requests') && (
                 <button
                   onClick={() => goTab('requests')}
                   style={{
@@ -1568,6 +1526,64 @@ export default function DistributorPortal() {
                   {pendingAccountRequestsCount > 0 && (
                     <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.625rem', padding: '0.15rem 0.35rem', borderRadius: '10px' }}>
                       {pendingAccountRequestsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+          {hasTabAccess('ledger') && (
+                <button
+                  onClick={() => goTab('ledger')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    background: activeTab === 'ledger' ? 'var(--gold-primary)' : 'none',
+                    color: activeTab === 'ledger' ? '#000' : '#fff',
+                    border: 'none',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.8rem',
+                    textAlign: 'left'
+                  }}
+                >
+                  <i className="fa-solid fa-wallet" style={{ width: '16px' }}></i>
+                  Financial Ledger
+                  {statsData?.stats?.pendingLedgerCount > 0 && (
+                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.625rem', padding: '0.15rem 0.35rem', borderRadius: '10px' }}>
+                      {statsData.stats.pendingLedgerCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+          {hasTabAccess('operations') && (
+                <button
+                  onClick={() => goTab('operations')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    background: activeTab === 'operations' ? 'var(--gold-primary)' : 'none',
+                    color: activeTab === 'operations' ? '#000' : '#fff',
+                    border: 'none',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.8rem',
+                    textAlign: 'left'
+                  }}
+                >
+                  <i className="fa-solid fa-circle-play" style={{ width: '16px' }}></i>
+                  Operations Queue
+                  {pendingCoinsCount > 0 && (
+                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.625rem', padding: '0.15rem 0.35rem', borderRadius: '10px' }}>
+                      {pendingCoinsCount}
                     </span>
                   )}
                 </button>
@@ -1602,35 +1618,6 @@ export default function DistributorPortal() {
                 </button>
               )}
 
-              {hasTabAccess('ledger') && (
-                <button
-                  onClick={() => goTab('ledger')}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    background: activeTab === 'ledger' ? 'var(--gold-primary)' : 'none',
-                    color: activeTab === 'ledger' ? '#000' : '#fff',
-                    border: 'none',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '0.8rem',
-                    textAlign: 'left'
-                  }}
-                >
-                  <i className="fa-solid fa-wallet" style={{ width: '16px' }}></i>
-                  Financial Ledger
-                  {statsData?.stats?.pendingLedgerCount > 0 && (
-                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.625rem', padding: '0.15rem 0.35rem', borderRadius: '10px' }}>
-                      {statsData.stats.pendingLedgerCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
               {hasTabAccess('support') && (
                 <button
                   onClick={() => goTab('support')}
@@ -1657,6 +1644,37 @@ export default function DistributorPortal() {
                       {statsData.stats.unreadChatsCount}
                     </span>
                   )}
+                </button>
+              )}
+
+          {hasTabAccess('users') && (
+            <button
+              onClick={() => goTab('users')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'users' ? 'var(--gold-primary)' : 'none', color: activeTab === 'users' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
+            >
+              <i className="fa-solid fa-users" style={{ width: '16px' }}></i>
+              Player Accounts
+            </button>
+          )}
+
+          {distSession.type === 'B' && (
+            <>
+              {hasTabAccess('gateways') && (
+                <button
+                  onClick={() => goTab('gateways')}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'gateways' ? 'var(--gold-primary)' : 'none', color: activeTab === 'gateways' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
+                >
+                  <i className="fa-solid fa-sliders" style={{ width: '16px' }}></i>
+                  Payment Gateways
+                </button>
+              )}
+              {hasTabAccess('staff') && (
+                <button
+                  onClick={() => goTab('staff')}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'staff' ? 'var(--gold-primary)' : 'none', color: activeTab === 'staff' ? '#000' : '#fff', border: 'none', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}
+                >
+                  <i className="fa-solid fa-user-shield" style={{ width: '16px' }}></i>
+                  Staff Management
                 </button>
               )}
             </>
@@ -1720,25 +1738,15 @@ export default function DistributorPortal() {
         
         {/* TAB: TRANSACTION LOGS */}
         {activeTab === 'tx_logs' && (
-          <TxSearchTab 
-            onInspectProof={handleInspectProof} 
-            adminUser={{
-              role: distSession?.role || 'distributor',
-              distributorId: distId
-            }} 
-          />
+          <TxSearchTab onInspectProof={handleInspectProof} adminUser={staffAdminUser} />
+        )}
+
+        {activeTab === 'users' && (
+          <PlayerAccountsTab adminUser={staffAdminUser} onDeleteUser={() => {}} />
         )}
 
         {/* TAB: SUPPORT CHAT */}
-        {activeTab === 'support' && (
-          <SupportTab
-            adminUser={{
-              email: distSession?.email || '',
-              role: distSession?.role || 'distributor',
-              distributorId: distId
-            }}
-          />
-        )}
+        {activeTab === 'support' && <SupportTab adminUser={staffAdminUser} />}
 
         {/* TAB: REFERRED PLAYERS */}
         {activeTab === 'referred_players' && !distSession?.isStaff && (
@@ -2346,10 +2354,11 @@ export default function DistributorPortal() {
           </div>
         )}
 
-        {/* TAB 1: OVERVIEW */}
+        {/* TAB 1: DASHBOARD (same queues/widgets as Super Admin, scoped to this distributor) */}
         {activeTab === 'overview' && (
           <div>
-            <div className="panel-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
+            <OverviewTab adminUser={staffAdminUser} onUpdateGameCoinsPool={() => {}} />
+            <div className="panel-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
               <div>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>Overview & Analytics</h1>
                 <p style={{ fontSize: '0.75rem', color: '#888' }}>Track your referred players, deposits, and commission summaries.</p>
@@ -2869,7 +2878,7 @@ export default function DistributorPortal() {
         )}
 
         {/* TAB 4: OPERATIONS QUEUE (TYPE B) - Render CoinsAllotmentTab */}
-        {activeTab === 'operations' && distSession.type === 'B' && (
+        {activeTab === 'operations' && (
           <CoinsAllotmentTab
             onUpdateCoinsNotification={handleUpdateCoinsNotificationDirect}
             completedActionIds={{}}
@@ -2880,7 +2889,7 @@ export default function DistributorPortal() {
         )}
 
         {/* TAB: ACCOUNT CREDENTIALS REQUESTS - Render RequestsTab */}
-        {activeTab === 'requests' && distSession.type === 'B' && (
+        {activeTab === 'requests' && (
           <RequestsTab
             onApproveRequest={(reqItem) => handleApproveRequest(reqItem.id, reqItem.gameAccountUsername, reqItem.gameAccountPassword)}
             completedActionIds={{}}
@@ -2891,14 +2900,12 @@ export default function DistributorPortal() {
         )}
 
         {/* TAB: SHIFT DASHBOARD */}
-        {activeTab === 'shift_dashboard' && distSession.type === 'B' && (
-          <ShiftDashboardTab
-            adminUser={staffAdminUser}
-          />
+        {activeTab === 'shift_dashboard' && (
+          <ShiftDashboardTab adminUser={staffAdminUser} />
         )}
 
         {/* TAB: FINANCIAL LEDGER - Render LedgerTab */}
-        {activeTab === 'ledger' && distSession.type === 'B' && (
+        {activeTab === 'ledger' && (
           <LedgerTab
             onInspectProof={handleInspectProof}
             onApproveTransaction={handleApproveTransactionDirect}
