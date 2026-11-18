@@ -563,7 +563,7 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const linkHintByTheme = {
-    cashapp: 'Cash App: $Cashtag → auto link, or paste https://cash.app/$You/{amount}',
+    cashapp: 'Paste your exact pay URL (e.g. cashtap.cash) — saved as you type. Add {amount} only if you want the deposit amount in the link.',
     paypal: 'PayPal: username → paypal.me link, or paste your full PayPal link',
     venmo: 'Venmo: @username → pay link with amount + note code',
     stripe: 'Stripe: paste your Stripe payment / checkout link (required)',
@@ -664,9 +664,6 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
         if (!safeRedirect && safeTag) {
           const auto = buildGatewayRedirectTemplate(theme, safeTag);
           if (auto) safeRedirect = auto;
-        }
-        if (theme === 'cashapp' && safeRedirect && !safeRedirect.includes('{amount}') && !/\/\d+(\.\d+)?$/.test(safeRedirect)) {
-          safeRedirect = `${safeRedirect.replace(/\/$/, '')}/{amount}`;
         }
 
         await onSave({
@@ -810,7 +807,7 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
                 <input
                   type="url"
                   id="gt-redirect"
-                  placeholder="https://… use {amount} and {code} for auto-fill"
+                  placeholder="https://your-exact-pay-link/"
                   value={redirectUrl}
                   onChange={(e) => { setRedirectUrl(e.target.value); setRedirectError(''); }}
                 />
@@ -819,7 +816,7 @@ export function AdminGatewayModal({ isOpen, onClose, onSave, editGateway }) {
               <span className="game-tap-tip" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                 {linkHintByTheme[theme] || 'Paste any payment URL, or leave empty to auto-build from tag (Cash App, PayPal, Venmo).'}
                 {' '}
-                Placeholders: <strong>{'{amount}'}</strong>, <strong>{'{code}'}</strong>.
+                Optional placeholders: <strong>{'{amount}'}</strong>, <strong>{'{code}'}</strong> (only if you add them yourself).
               </span>
             </div>
 
