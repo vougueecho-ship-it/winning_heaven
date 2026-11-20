@@ -45,9 +45,11 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
   const [isExistingAccount, setIsExistingAccount] = useState(false);
   const [isUpdatingCreds, setIsUpdatingCreds] = useState(false);
 
-  // Cancel Request Modal States
+  // Cancel / reject request modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [requestToCancel, setRequestToCancel] = useState(null);
+  /** 'cancel' = approve flow; 'reject_credentials' = pending row waiting for credentials */
+  const [cancelModalMode, setCancelModalMode] = useState('cancel');
   const [cancelReason, setCancelReason] = useState('Cancelled by admin');
   const [isCancelling, setIsCancelling] = useState(false);
 
@@ -306,14 +308,20 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
     }
   };
 
-  const handleCancelClick = (reqItem) => {
+  const handleCancelClick = (reqItem, mode = 'cancel') => {
+    setCancelModalMode(mode);
     setRequestToCancel(reqItem);
-    setCancelReason('Cancelled by admin');
+    setCancelReason(mode === 'reject_credentials' ? '' : 'Cancelled by admin');
     setCancelModalOpen(true);
   };
 
   const handleConfirmCancel = async () => {
     if (!requestToCancel) return;
+    const trimmedReason = cancelReason.trim();
+    if (cancelModalMode === 'reject_credentials' && !trimmedReason) {
+      alert('Please enter a rejection reason — the player will see this note.');
+      return;
+    }
     setIsCancelling(true);
     try {
       const response = await fetch('/api/account-requests', {
@@ -322,7 +330,7 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
         body: JSON.stringify({
           id: requestToCancel.id,
           status: 'REJECTED',
-          rejectionReason: cancelReason.trim() || 'Cancelled by admin',
+          rejectionReason: trimmedReason || 'Cancelled by admin',
           processedBy: adminUser?.email || 'admin@winningheaven.com',
           adminEmail: adminUser?.email || ''
         })
@@ -331,6 +339,7 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
       if (response.ok && resData.success) {
         setCancelModalOpen(false);
         setRequestToCancel(null);
+        setCancelModalMode('cancel');
         mutate(); // Refresh the list instantly
       } else {
         alert(resData.message || 'Failed to cancel account request.');
@@ -617,26 +626,53 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                   <td data-label="Actions">
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       {req.status === 'PENDING' && rowNeedsCredentials(req) && (
-                        <button
-                          type="button"
-                          disabled={savingCredsId === req.id}
-                          onClick={() => handleSaveCredentials(req)}
-                          className="submit-btn"
-                          style={{
-                            margin: 0,
-                            padding: '0.4rem 0.85rem',
-                            width: 'auto',
-                            display: 'inline-flex',
-                            gap: '0.4rem',
-                            alignItems: 'center',
-                            background: 'var(--gold-primary)',
-                            color: '#111',
-                            fontWeight: 800
-                          }}
-                        >
-                          {savingCredsId === req.id ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-floppy-disk" />}
-                          <span style={{ fontSize: '0.7rem' }}>{savingCredsId === req.id ? 'Saving…' : 'Save credentials'}</span>
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            disabled={savingCredsId === req.id}
+                            onClick={() => handleSaveCredentials(req)}
+                            className="submit-btn"
+                            style={{
+                              margin: 0,
+                              padding: '0.4rem 0.85rem',
+                              width: 'auto',
+                              display: 'inline-flex',
+                              gap: '0.4rem',
+                              alignItems: 'center',
+                              background: 'var(--gold-primary)',
+                              color: '#111',
+                              fontWeight: 800
+                            }}
+                          >
+                            {savingCredsId === req.id ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-floppy-disk" />}
+                            <span style={{ fontSize: '0.7rem' }}>{savingCredsId === req.id ? 'Saving…' : 'Save credentials'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingCredsId === req.id}
+                            onClick={() => handleCancelClick(req, 'reject_credentials')}
+                            className="action-row-btn"
+                            style={{
+                              margin: 0,
+                              padding: '0.4rem 0.85rem',
+                              width: 'auto',
+                              display: 'inline-flex',
+                              gap: '0.35rem',
+                              alignItems: 'center',
+                              background: '#ef4444',
+                              color: '#fff',
+                              fontSize: '0.7rem',
+                              borderRadius: '6px',
+                              cursor: savingCredsId === req.id ? 'not-allowed' : 'pointer',
+                              border: 'none',
+                              opacity: savingCredsId === req.id ? 0.6 : 1
+                            }}
+                            title="Reject request — player will see your note"
+                          >
+                            <i className="fa-solid fa-ban" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
                       )}
 
                       {req.status === 'PENDING' && !rowNeedsCredentials(req) && (
@@ -959,7 +995,8 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
           <div className="admin-modal" style={{ width: '90%', maxWidth: '440px', background: '#0a0e1a', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
               <h3 style={{ margin: 0, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontFamily: 'var(--font-heading)' }}>
-                <i className="fa-solid fa-circle-exclamation"></i> Cancel Game Request
+                <i className="fa-solid fa-circle-exclamation"></i>
+                {cancelModalMode === 'reject_credentials' ? 'Reject Account Request' : 'Cancel Game Request'}
               </h3>
               <button
                 type="button"
@@ -972,7 +1009,16 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                Are you sure you want to <strong style={{ color: '#ef4444' }}>CANCEL</strong> this game account request?
+                {cancelModalMode === 'reject_credentials' ? (
+                  <>
+                    Reject this request without saving credentials. The player will see your{' '}
+                    <strong style={{ color: '#fbbf24' }}>reason</strong> on their game hub and in notifications.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to <strong style={{ color: '#ef4444' }}>CANCEL</strong> this game account request?
+                  </>
+                )}
               </p>
 
               <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.85rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -992,17 +1038,24 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
 
               <div className="input-group" style={{ marginBottom: '0.25rem' }}>
                 <label htmlFor="cancel-reason" style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem', display: 'block' }}>
-                  Cancellation Reason (Optional)
+                  {cancelModalMode === 'reject_credentials'
+                    ? 'Rejection reason (shown to player) *'
+                    : 'Cancellation Reason (Optional)'}
                 </label>
                 <div className="input-wrapper">
                   <i className="fa-solid fa-comment-dots input-icon"></i>
                   <input
                     type="text"
                     id="cancel-reason"
-                    placeholder="e.g. Cancelled by admin / Invalid request"
+                    placeholder={
+                      cancelModalMode === 'reject_credentials'
+                        ? 'e.g. Game not available / Invalid signup details'
+                        : 'e.g. Cancelled by admin / Invalid request'
+                    }
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     style={{ fontSize: '0.8rem' }}
+                    required={cancelModalMode === 'reject_credentials'}
                   />
                 </div>
               </div>
@@ -1040,7 +1093,15 @@ export default function RequestsTab({ adminUser, onApproveRequest, completedActi
                   }}
                 >
                   {isCancelling ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-xmark"></i>}
-                  <span>{isCancelling ? 'Cancelling...' : 'Confirm Cancel'}</span>
+                  <span>
+                    {isCancelling
+                      ? cancelModalMode === 'reject_credentials'
+                        ? 'Rejecting...'
+                        : 'Cancelling...'
+                      : cancelModalMode === 'reject_credentials'
+                        ? 'Confirm Reject'
+                        : 'Confirm Cancel'}
+                  </span>
                 </button>
               </div>
             </div>
